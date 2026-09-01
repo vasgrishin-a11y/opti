@@ -560,13 +560,21 @@ const SEED_ROWS=[
 let DS=null; // {runs:[...]}
 let CUR_KEY=null,TAB='ov';
 let HIST_A=0,HIST_B=0;
+// Ключи прогонов, выбранных пользователем на вкладке «История прогонов»
+let SEL_HIST=new Set();
 
+// Дефолт: последние 2 прогона (графики остаются читаемыми при большом числе прогонов)
+function resetHistSel(runs){
+  SEL_HIST.clear();
+  runs.slice(-2).forEach(r=>SEL_HIST.add(runKey(r)));
+  HIST_A=0;HIST_B=1;
+}
 function initFromRows(rows){
   const runs=parseOptimizerRows(rows);
   runs.sort((a,b)=>(a.meta.startTime||'').localeCompare(b.meta.startTime||'')||num(a.runid)-num(b.runid));
   DS={runs};
   CUR_KEY=runKey(runs[runs.length-1]);
-  HIST_A=0;HIST_B=runs.length-1;
+  resetHistSel(DS.runs);
 }
 function curRun(){if(!DS||!DS.runs.length)return null;
   return DS.runs.find(r=>runKey(r)===CUR_KEY)||DS.runs[DS.runs.length-1]}
@@ -796,103 +804,192 @@ function tabPEN(){
       `Если материальность штрафов низкая — оставить настройку SOFT без изменений, это осознанный компромисс модели в пользу более выгодного общего решения.`,
       `Если материальность растёт от прогона к прогону — пересмотреть штрафной коэффициент или сам минимальный/максимальный лимит: либо цель нереалистична, либо штраф слишком мал, чтобы удерживать план в рамках.`]}]);
 }
+/* ═══════════════ 12. ИСТОРИЯ ПРОГОНОВ (с мультивыбором прогонов) ═══════════════ */
+function histSummary(s,gapArr,objArr,slvArr){
+  const multi=s.length>=2,last=s[s.length-1];
+  return summary('Резюме: выбранные прогоны',[
+    {t:'Выводы',i:[
+      multi?`По ${nf(s.length)} выбранным прогонам gap изменился с ${pctFmt(gapArr[0])} до <span class="h">${pctFmt(gapArr[gapArr.length-1])}</span>.`
+           :`Выбран один прогон (#${esc(last.runid)}). Отметьте в фильтре выше минимум 2 прогона, чтобы увидеть динамику и сравнение A/B.`,
+      multi?`Экономический эффект плана в последнем выбранном прогоне: <span class="h">${bn(last.solve.objectiveValue)}</span>, изменение к предыдущему выбранному — ${bn(last.solve.objectiveValue-s[s.length-2].solve.objectiveValue)}.`
+           :`Экономический эффект плана: <span class="h">${bn(last.solve.objectiveValue)}</span>.`,
+      multi?`Время решения ${slvArr[slvArr.length-1]>slvArr[0]?'выросло':'снизилось'} с ${timeFmt(slvArr[0])} до <span class="h">${timeFmt(slvArr[slvArr.length-1])}</span>.`
+           :`Время решения: <span class="h">${timeFmt(last.solve.solveTimeSec)}</span>.`]},
+    {t:'Аномалии',i:multi?[
+      gapArr[gapArr.length-1]>gapArr[gapArr.length-2]*1.5&&gapArr[gapArr.length-2]>0?'Заметный скачок gap в последнем выбранном прогоне — возможна деградация исходных данных или изменение конфигурации солвера.':'Существенных скачков gap между соседними выбранными прогонами не выявлено.',
+      slvArr[slvArr.length-1]>slvArr[slvArr.length-2]*3?'Резкий рост времени решения — проверить рост размера модели (переменные/ограничения) и лимит времени.':'Время решения стабильно.'
+    ]:['Для одиночного прогона разбор аномалий — на вкладке «Качество и аномалии».']},
+    {t:'Рекомендации',i:[
+      'Использовать сравнение A/B перед каждым переходом на новую конфигурацию оптимизатора, чтобы отделить эффект настроек от эффекта входных данных.',
+      'Фиксировать историю показателей на регулярной основе (еженедельно/ежемесячно) — это единственный способ отличить системную деградацию от разовой аномалии.']}]);
+}
 
-/* ═══════════════ 12. ИСТОРИЯ ПРОГОНОВ ═══════════════ */
 function tabHIST(){
   if(!DS||DS.runs.length<1)return '<div class="empty">Нет данных</div>';
   const runs=DS.runs;
   if(runs.length<2){
     return '<div class="empty"><h2>Загружен только один прогон</h2><p>Загрузите ещё один файл optimizer_status (за другую дату/прогон) — здесь появится динамика качества оптимизации во времени и сравнение прогонов A/B.</p></div>';
   }
-  HIST_A=Math.min(HIST_A,runs.length-1);HIST_B=Math.min(HIST_B,runs.length-1);
-  const labs=runs.map(r=>'#'+r.runid);
-  const gapArr=runs.map(r=>r.solve.gapPct),objArr=runs.map(r=>r.solve.objectiveValue),
-    slvArr=runs.map(r=>r.solve.solveTimeSec),saleArr=runs.map(r=>{const e=r.entities.find(x=>x.entity==='sale');return e?e.pct:0});
+  // Выбранные прогоны — в хронологическом порядке DS.runs
+  const sel=()=>runs.filter(r=>SEL_HIST.has(runKey(r)));
   const html=`
-  <div class="kpis">
-    <div class="kpi"><div class="t">Прогонов в истории</div><div class="v">${nf(runs.length)}</div><div class="s">от ${esc(runs[0].meta.startTime||runs[0].runid)} до ${esc(runs[runs.length-1].meta.startTime||runs[runs.length-1].runid)}</div></div>
-    <div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v ${gapArr[gapArr.length-1]<=gapArr[gapArr.length-2]?'pos':'neg'}">${nf(gapArr[gapArr.length-1]-gapArr[gapArr.length-2],2)} п.п.</div><div class="s">${pctFmt(gapArr[gapArr.length-2])} → ${pctFmt(gapArr[gapArr.length-1])}</div></div>
-    <div class="kpi"><div class="t">Изменение эффекта плана</div><div class="v ${objArr[objArr.length-1]>=objArr[objArr.length-2]?'pos':'neg'}">${bn(objArr[objArr.length-1]-objArr[objArr.length-2])}</div><div class="s">${bn(objArr[objArr.length-2])} → ${bn(objArr[objArr.length-1])}</div></div>
-    <div class="kpi"><div class="t">Изменение покрытия спроса</div><div class="v ${saleArr[saleArr.length-1]>=saleArr[saleArr.length-2]?'pos':'neg'}">${nf(saleArr[saleArr.length-1]-saleArr[saleArr.length-2],1)} п.п.</div><div class="s">${pctFmt(saleArr[saleArr.length-2])} → ${pctFmt(saleArr[saleArr.length-1])}</div></div>
+  <div class="tbar" style="margin-bottom:14px">
+    <span class="tbar-lbl">Прогоны для анализа</span>
+    <button class="chip" id="histSelBtn">Выбрать прогоны</button>
+    <span class="dt-info" id="histSelInfo"></span>
+    <span style="flex:1"></span>
+    <button class="dt-btn" id="histSelAll">Все прогоны</button>
   </div>
-  <div class="grid">
-    <div class="card"><h3>Отклонение от оптимума по прогонам</h3><div class="sub">Ниже — лучше</div><canvas id="h1"></canvas></div>
-    <div class="card"><h3>Время решения по прогонам</h3><div class="sub">Секунды на полное решение</div><canvas id="h2"></canvas></div>
-    <div class="card"><h3>Экономический эффект плана</h3><div class="sub">Значение целевой функции, млрд</div><canvas id="h3"></canvas></div>
-    <div class="card"><h3>Покрытие спроса</h3><div class="sub">Доля строк спроса с планом продаж, %</div><canvas id="h4"></canvas></div>
-    <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Полный набор ключевых показателей по каждому прогону</div><div id="h5"></div></div>
-    <div class="card w">
-      <h3>Сравнение двух прогонов</h3><div class="sub">Выберите базовый и сравниваемый прогон</div>
-      <div class="frow">
-        <div class="fg"><label>Прогон A (база)</label><select id="histA"></select></div>
-        <div class="fg"><label>Прогон B (сравниваемый)</label><select id="histB"></select></div>
-      </div>
-      <div id="histDelta"></div>
-    </div>
-  </div>`;
-  setTimeout(()=>{
-    chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,v:gapArr,fill:1}],v=>nf(v,3)+'%',
-      i=>`<b>${labs[i]}</b><br>Gap: ${pctFmt(gapArr[i])}<br>Статус: ${esc(runs[i].solve.status)}`,null);
-    chLine('#h2',H('#h2',220,0.4),labs,[{c:CH.d2,v:slvArr,fill:1}],v=>nf(v,2)+' с',
-      i=>`<b>${labs[i]}</b><br>Время решения: ${nf(slvArr[i],3)} сек<br>Итераций: ${nf(runs[i].solve.iterations)}`,null);
-    chBars('#h3',H('#h3',220,0.4),labs,[{c:CH.d3,v:objArr.map(v=>v/1e9)}],v=>nf(v,1)+' млрд',
-      i=>`<b>${labs[i]}</b><br>Эффект плана: ${bn(objArr[i])}`,null);
-    chLine('#h4',H('#h4',220,0.4),labs,[{c:CH.d4,v:saleArr,fill:1}],v=>nf(v,1)+'%',
-      i=>`<b>${labs[i]}</b><br>Покрытие спроса: ${pctFmt(saleArr[i])}`,null);
-    dtable('#h5',[
-      {k:'label',t:'Прогон',left:1,flt:1},
-      {k:'startTime',t:'Дата запуска',left:1,flt:1},
-      {k:'status',t:'Статус',flt:1},
-      {k:'gap',t:'Gap, %',num:1,f:v=>pctFmt(v)},
-      {k:'solveTime',t:'Время решения, с',num:1,f:v=>nf(v,3)},
-      {k:'objective',t:'Эффект плана',num:1,f:v=>bn(v)},
-      {k:'salePct',t:'Покрытие спроса, %',num:1,f:v=>pctFmt(v)},
-      {k:'movePct',t:'Логистика, %',num:1,f:v=>pctFmt(v)},
-      {k:'prodPct',t:'Производство, %',num:1,f:v=>pctFmt(v)}
-    ],runs.map(r=>({label:r.label,startTime:r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
-      objective:r.solve.objectiveValue,salePct:(r.entities.find(e=>e.entity==='sale')||{}).pct||0,
-      movePct:(r.entities.find(e=>e.entity==='movement')||{}).pct||0,prodPct:(r.entities.find(e=>e.entity==='production')||{}).pct||0})),
-      {key:'hist_reg',sort:'startTime',dir:'asc',h:280,csv:1,name:'history'});
+  <div id="histBody"></div>`;
 
-    const selA=$('#histA'),selB=$('#histB');
-    selA.innerHTML=runs.map((r,i)=>`<option value="${i}" ${i===HIST_A?'selected':''}>${esc(r.label)}</option>`).join('');
-    selB.innerHTML=runs.map((r,i)=>`<option value="${i}" ${i===HIST_B?'selected':''}>${esc(r.label)}</option>`).join('');
-    const drawDelta=()=>{
-      const A=runs[HIST_A],B=runs[HIST_B];
-      const saleA=(A.entities.find(e=>e.entity==='sale')||{}).pct||0,saleB=(B.entities.find(e=>e.entity==='sale')||{}).pct||0;
-      const rows2=[
-        ['Статус',A.solve.status,B.solve.status,null],
-        ['Gap, %',A.solve.gapPct,B.solve.gapPct,-1],
-        ['Время решения, с',A.solve.solveTimeSec,B.solve.solveTimeSec,-1],
-        ['Эффект плана',A.solve.objectiveValue,B.solve.objectiveValue,1],
-        ['Покрытие спроса, %',saleA,saleB,1]
-      ];
-      $('#histDelta').innerHTML=`<div class="kpis">${rows2.map(x=>{
-        if(x[3]===null)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">${esc(x[1])} → ${esc(x[2])}</div><div class="s">A → B</div></div>`;
-        const d=(x[2]-x[1])*x[3];const isPct=x[0].includes('%');const isMoney=x[0]==='Эффект плана';
-                const fmt=v=>isMoney?bn(v):(isPct?nf(v,2)+' п.п.':nf(v,2));
-        const raw=x[2]-x[1];
-        return `<div class="kpi"><div class="t">${x[0]}</div>
-          <div class="v ${d>=0?'pos':'neg'}">${fmt(raw)}</div>
-          <div class="s">${isMoney?bn(x[1])+' → '+bn(x[2]):(isPct?pctFmt(x[1])+' → '+pctFmt(x[2]):nf(x[1],2)+' → '+nf(x[2],2))}</div></div>`;
-      }).join('')}</div>`;
+  setTimeout(()=>{
+    const body=$('#histBody'),btn=$('#histSelBtn'),info=$('#histSelInfo');
+
+    const updateChip=()=>{
+      const s=sel();
+      btn.classList.toggle('on',s.length>0);
+      btn.textContent=s.length===0?'Прогоны не выбраны'
+        :(s.length===1?s[0].label:`Выбрано прогонов: ${s.length}`);
+      info.textContent=`из ${nf(runs.length)} доступных · кликните чип для выбора`;
     };
-    selA.onchange=()=>{HIST_A=+selA.value;drawDelta()};
-    selB.onchange=()=>{HIST_B=+selB.value;drawDelta()};
-    drawDelta();
+
+    const drawAll=()=>{
+      const s=sel();
+      updateChip();
+      if(!s.length){
+        body.innerHTML='<div class="empty"><h2>Прогоны не выбраны</h2><p>Нажмите «Выбрать прогоны» и отметьте хотя бы один прогон для анализа.</p></div>';
+        return;
+      }
+      HIST_A=Math.min(Math.max(0,HIST_A),s.length-1);
+      HIST_B=Math.min(Math.max(0,HIST_B),s.length-1);
+      const labs=s.map(r=>'#'+r.runid);
+      const gapArr=s.map(r=>r.solve.gapPct),objArr=s.map(r=>r.solve.objectiveValue),
+        slvArr=s.map(r=>r.solve.solveTimeSec),
+        saleArr=s.map(r=>{const e=r.entities.find(x=>x.entity==='sale');return e?e.pct:0});
+      const multi=s.length>=2;
+
+      const kpis=`
+        <div class="kpis">
+          <div class="kpi"><div class="t">Прогонов выбрано</div><div class="v">${nf(s.length)}</div><div class="s">из ${nf(runs.length)} доступных в истории</div></div>
+          ${multi?`
+          <div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v ${gapArr[gapArr.length-1]<=gapArr[gapArr.length-2]?'pos':'neg'}">${nf(gapArr[gapArr.length-1]-gapArr[gapArr.length-2],2)} п.п.</div><div class="s">${pctFmt(gapArr[gapArr.length-2])} → ${pctFmt(gapArr[gapArr.length-1])}</div></div>
+          <div class="kpi"><div class="t">Изменение эффекта плана</div><div class="v ${objArr[objArr.length-1]>=objArr[objArr.length-2]?'pos':'neg'}">${bn(objArr[objArr.length-1]-objArr[objArr.length-2])}</div><div class="s">${bn(objArr[objArr.length-2])} → ${bn(objArr[objArr.length-1])}</div></div>
+          <div class="kpi"><div class="t">Изменение покрытия спроса</div><div class="v ${saleArr[saleArr.length-1]>=saleArr[saleArr.length-2]?'pos':'neg'}">${nf(saleArr[saleArr.length-1]-saleArr[saleArr.length-2],1)} п.п.</div><div class="s">${pctFmt(saleArr[saleArr.length-2])} → ${pctFmt(saleArr[saleArr.length-1])}</div></div>`
+          :`<div class="kpi"><div class="t">Режим</div><div class="v">Один прогон</div><div class="s">выберите ≥2 прогона — появятся графики динамики и сравнение A/B</div></div>`}
+        </div>`;
+      const charts=multi?`
+        <div class="grid">
+          <div class="card"><h3>Отклонение от оптимума по прогонам</h3><div class="sub">Ниже — лучше</div><canvas id="h1"></canvas></div>
+          <div class="card"><h3>Время решения по прогонам</h3><div class="sub">Секунды на полное решение</div><canvas id="h2"></canvas></div>
+          <div class="card"><h3>Экономический эффект плана</h3><div class="sub">Значение целевой функции, млрд</div><canvas id="h3"></canvas></div>
+          <div class="card"><h3>Покрытие спроса</h3><div class="sub">Доля строк спроса с планом продаж, %</div><canvas id="h4"></canvas></div>
+        </div>`:'';
+      const abCard=multi?`
+        <div class="card w">
+          <h3>Сравнение двух прогонов</h3><div class="sub">Выберите базовый и сравниваемый прогон из отмеченных выше</div>
+          <div class="frow">
+            <div class="fg"><label>Прогон A (база)</label><select id="histA"></select></div>
+            <div class="fg"><label>Прогон B (сравниваемый)</label><select id="histB"></select></div>
+          </div>
+          <div id="histDelta"></div>
+        </div>`:'';
+
+      body.innerHTML=kpis+charts+`
+        <div class="grid" style="margin-top:12px">
+          <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Только выбранные прогоны · поиск, сортировка, экспорт</div><div id="h5"></div></div>
+          ${abCard}
+        </div>`+histSummary(s,gapArr,objArr,slvArr);
+
+      if(multi){
+        chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,v:gapArr,fill:1}],v=>nf(v,3)+'%',
+          i=>`<b>${labs[i]}</b><br>Gap: ${pctFmt(gapArr[i])}<br>Статус: ${esc(s[i].solve.status)}`,null);
+        chLine('#h2',H('#h2',220,0.4),labs,[{c:CH.d2,v:slvArr,fill:1}],v=>nf(v,2)+' с',
+          i=>`<b>${labs[i]}</b><br>Время решения: ${nf(slvArr[i],3)} сек<br>Итераций: ${nf(s[i].solve.iterations)}`,null);
+        chBars('#h3',H('#h3',220,0.4),labs,[{c:CH.d3,v:objArr.map(v=>v/1e9)}],v=>nf(v,1)+' млрд',
+          i=>`<b>${labs[i]}</b><br>Эффект плана: ${bn(objArr[i])}`,null);
+        chLine('#h4',H('#h4',220,0.4),labs,[{c:CH.d4,v:saleArr,fill:1}],v=>nf(v,1)+'%',
+          i=>`<b>${labs[i]}</b><br>Покрытие спроса: ${pctFmt(saleArr[i])}`,null);
+      }
+
+      dtable('#h5',[
+        {k:'label',t:'Прогон',left:1,flt:1},
+        {k:'startTime',t:'Дата запуска',left:1,flt:1},
+        {k:'status',t:'Статус',flt:1},
+        {k:'gap',t:'Gap, %',num:1,f:v=>pctFmt(v)},
+        {k:'solveTime',t:'Время решения, с',num:1,f:v=>nf(v,3)},
+        {k:'objective',t:'Эффект плана',num:1,f:v=>bn(v)},
+        {k:'salePct',t:'Покрытие спроса, %',num:1,f:v=>pctFmt(v)},
+        {k:'movePct',t:'Логистика, %',num:1,f:v=>pctFmt(v)},
+        {k:'prodPct',t:'Производство, %',num:1,f:v=>pctFmt(v)}
+      ],s.map(r=>({label:r.label,startTime:r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
+        objective:r.solve.objectiveValue,salePct:(r.entities.find(e=>e.entity==='sale')||{}).pct||0,
+        movePct:(r.entities.find(e=>e.entity==='movement')||{}).pct||0,prodPct:(r.entities.find(e=>e.entity==='production')||{}).pct||0})),
+        {key:'hist_reg',sort:'startTime',dir:'asc',h:280,csv:1,name:'history'});
+
+      if(multi){
+        const selA=$('#histA'),selB=$('#histB');
+        selA.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_A?'selected':''}>${esc(r.label)}</option>`).join('');
+        selB.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_B?'selected':''}>${esc(r.label)}</option>`).join('');
+        const drawDelta=()=>{
+          const A=s[HIST_A],B=s[HIST_B];
+          const saleA=(A.entities.find(e=>e.entity==='sale')||{}).pct||0,saleB=(B.entities.find(e=>e.entity==='sale')||{}).pct||0;
+          const rows2=[
+            ['Статус',A.solve.status,B.solve.status,null],
+            ['Gap, %',A.solve.gapPct,B.solve.gapPct,-1],
+            ['Время решения, с',A.solve.solveTimeSec,B.solve.solveTimeSec,-1],
+            ['Эффект плана',A.solve.objectiveValue,B.solve.objectiveValue,1],
+            ['Покрытие спроса, %',saleA,saleB,1]
+          ];
+          $('#histDelta').innerHTML=`<div class="kpis">${rows2.map(x=>{
+            if(x[3]===null)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">${esc(x[1])} → ${esc(x[2])}</div><div class="s">A → B</div></div>`;
+            const d=(x[2]-x[1])*x[3];const isPct=x[0].includes('%');const isMoney=x[0]==='Эффект плана';
+            const fmt=v=>isMoney?bn(v):(isPct?nf(v,2)+' п.п.':nf(v,2));
+            const raw=x[2]-x[1];
+            return `<div class="kpi"><div class="t">${x[0]}</div>
+              <div class="v ${d>=0?'pos':'neg'}">${fmt(raw)}</div>
+              <div class="s">${isMoney?bn(x[1])+' → '+bn(x[2]):(isPct?pctFmt(x[1])+' → '+pctFmt(x[2]):nf(x[1],2)+' → '+nf(x[2],2))}</div></div>`;
+          }).join('')}</div>`;
+        };
+        selA.onchange=()=>{HIST_A=+selA.value;drawDelta()};
+        selB.onchange=()=>{HIST_B=+selB.value;drawDelta()};
+        drawDelta();
+      }
+    };
+
+    // Попап мультивыбора прогонов (в стиле фильтров таблиц)
+    const openPicker=(anchor)=>{
+      const P=dtp();let fq='';
+      const rebuild=()=>{
+        const list=runs.filter(r=>!fq||r.label.toLowerCase().includes(fq));
+        P.innerHTML=`<div class="dtp-h"><span>Выбор прогонов для анализа</span><span class="dtp-x">✕</span></div>
+          <input class="dtp-q" type="text" placeholder="Поиск прогона" value="${esc(fq)}">
+          <div class="dtp-a"><button data-all="1">Выбрать все</button><button data-non="1">Снять все</button></div>
+          <div class="dtp-l">${list.map(r=>{const on=SEL_HIST.has(runKey(r));
+            return `<label class="dtp-i${on?' on':''}"><input type="checkbox" ${on?'checked':''} data-k="${esc(runKey(r))}"><span>${esc(r.label)}</span></label>`}).join('')||'<div class="dtp-e">ничего не найдено</div>'}</div>`;
+        P.querySelector('.dtp-x').onclick=dtpHide;
+        const fi=P.querySelector('.dtp-q');
+        fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();rebuild();const n=P.querySelector('.dtp-q');n.value=fq?fi.value:'';n.focus();n.selectionStart=n.selectionEnd=p};
+        P.querySelector('[data-all]').onclick=()=>{list.forEach(r=>SEL_HIST.add(runKey(r)));rebuild();drawAll()};
+        P.querySelector('[data-non]').onclick=()=>{SEL_HIST.clear();rebuild();drawAll()};
+        P.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
+          const k=i.dataset.k;
+          if(i.checked)SEL_HIST.add(k);else SEL_HIST.delete(k);
+          i.closest('.dtp-i').classList.toggle('on',i.checked);
+          drawAll();updateChip();
+        });
+      };
+      rebuild();
+      P.style.display='block';
+      const r=anchor.getBoundingClientRect();
+      P.style.left=Math.max(8,Math.min(r.left-12,innerWidth-272))+'px';
+      P.style.top=Math.min(r.bottom+6,Math.max(8,innerHeight-370))+'px';
+    };
+
+    btn.onclick=e=>{e.stopPropagation();openPicker(btn)};
+    $('#histSelAll').onclick=()=>{runs.forEach(r=>SEL_HIST.add(runKey(r)));dtpHide();drawAll()};
+    drawAll();
   },0);
-  const last=runs[runs.length-1],prev=runs[runs.length-2];
-  return html+summary('Резюме: история прогонов',[
-    {t:'Выводы',i:[
-      `За ${nf(runs.length)} прогонов gap изменился с ${pctFmt(gapArr[0])} до <span class="h">${pctFmt(gapArr[gapArr.length-1])}</span>.`,
-      `Экономический эффект плана в последнем прогоне: <span class="h">${bn(last.solve.objectiveValue)}</span>, изменение к предыдущему — ${bn(last.solve.objectiveValue-prev.solve.objectiveValue)}.`,
-      `Время решения ${slvArr[slvArr.length-1]>slvArr[0]?'выросло':'снизилось'} с ${timeFmt(slvArr[0])} до <span class="h">${timeFmt(slvArr[slvArr.length-1])}</span> при сопоставимом масштабе модели.`]},
-    {t:'Аномалии',i:[
-      gapArr[gapArr.length-1]>gapArr[gapArr.length-2]*1.5&&gapArr[gapArr.length-2]>0?'Заметный скачок gap в последнем прогоне — возможна деградация исходных данных или изменение конфигурации солвера.':'Существенных скачков gap между соседними прогонами не выявлено.',
-      slvArr[slvArr.length-1]>slvArr[gapArr.length-2]*3?'Резкий рост времени решения — проверить рост размера модели (переменные/ограничения) и лимит времени.':'Время решения стабильно.']},
-    {t:'Рекомендации',i:[
-      'Использовать сравнение A/B перед каждым переходом на новую конфигурацию оптимизатора, чтобы отделить эффект настроек от эффекта входных данных.',
-      'Фиксировать историю показателей на регулярной основе (еженедельно/ежемесячно) — это единственный способ отличить системную деградацию от разовой аномалии.']}]);
+  return html;
 }
 
 /* ═══════════════ 13. ДАННЫЕ (RAW) ═══════════════ */
@@ -1076,7 +1173,7 @@ async function loadFiles(fileList){
     parsed.forEach(p=>{if(!existKeys.has(runKey(p))){DS.runs.push(p);existKeys.add(runKey(p))}});
     DS.runs.sort((a,b)=>(a.meta.startTime||'').localeCompare(b.meta.startTime||'')||num(a.runid)-num(b.runid));
     CUR_KEY=runKey(DS.runs[DS.runs.length-1]);
-    HIST_A=Math.max(0,DS.runs.length-2);HIST_B=DS.runs.length-1;
+    resetHistSel(DS.runs);
     render();
     $('#stat').innerHTML=`<span class="pos">Загружено:</span> ${nf(parsed.length)} прогон(ов) из файла(ов)<br>Всего в истории: ${nf(DS.runs.length)}`;
   }catch(err){
