@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SNP Optimizer Insight · In.Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --scp-n-0:#ffffff;--scp-n-50:#f5f6f8;--scp-n-100:#eaeaea;--scp-n-150:#dfdfe0;
+  --scp-n-200:#d4d5d6;--scp-n-300:#bfbfc1;--scp-n-500:#949598;--scp-n-600:#77787a;
+  --scp-n-700:#5a5a5c;--scp-n-800:#3c3d3e;--scp-n-900:#1f1f20;--scp-n-950:#111111;
+  --scp-b-50:#faf3ff;--scp-b-900:#4f0096;
+  --scp-accent:#9000ff;--scp-accent-hover:#7320d9;--scp-accent-bd:#e9ccff;--scp-accent-bg:#f1e0ff;
+  --scp-bg:#f4f3f7;--scp-surface:#ffffff;--scp-rail:#17171a;--scp-rail-2:#2a2a30;--scp-rail-hover:#242429;
+  --scp-text:#212529;--scp-text-2:#444647;--scp-text-3:#8c9096;--scp-text-dis:#d9d9d9;
+  --scp-line:#e8e7ee;--scp-line-2:#dedce5;--scp-ctrl:#949598;--scp-ctrl-hover:#5a5a5c;--scp-menu-bd:#cfd4dc;
+  --scp-ok:#22bb55;--scp-ok-bg:#d2faef;--scp-err:#f22a41;--scp-err-bg:#ffd6db;--scp-warn:#ff9a3b;--scp-warn-bg:#fcf0d4;
+  --r-s:4px;--r-m:8px;--r-l:16px;--rail-w:224px;--rail-w-min:56px;
+}
+[data-theme="dark"]{
+  --scp-bg:#1a1a22;--scp-surface:#22222c;--scp-rail:#15151c;--scp-rail-2:#2f2f3d;--scp-rail-hover:#252533;
+  --scp-text:#f1f2f6;--scp-text-2:#c4c6d4;--scp-text-3:#8f92a4;--scp-text-dis:#525464;
+  --scp-line:#2d2d3a;--scp-line-2:#383849;--scp-ctrl:#616378;--scp-ctrl-hover:#9a9cb2;--scp-menu-bd:#434357;
+  --scp-accent:#a846ff;--scp-accent-hover:#962bf9;--scp-accent-bd:#6e2da8;--scp-accent-bg:#3a195a;
+  --scp-ok:#2dd468;--scp-ok-bg:#143823;--scp-err:#f84b5c;--scp-err-bg:#42171c;--scp-warn:#fb9e38;--scp-warn-bg:#41290f;
+  --scp-n-50:#292936;--scp-n-100:#313140;
+}
+[data-theme="dark"] .dq.e{background:var(--scp-err-bg)} [data-theme="dark"] .dq.w{background:var(--scp-warn-bg)}
+[data-theme="dark"] .dq.i{background:var(--scp-ok-bg)} [data-theme="dark"] #tip{background:#15151c;border:1px solid var(--scp-line-2)}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--scp-bg);color:var(--scp-text);font:400 14px/20px 'Open Sans',sans-serif;-webkit-font-smoothing:antialiased;transition:background .2s,color .2s}
+.app{display:flex;min-height:100vh}
+.rail{width:var(--rail-w);flex:0 0 var(--rail-w);background:var(--scp-rail);display:flex;flex-direction:column;transition:width .2s,flex-basis .2s;position:sticky;top:0;height:100vh;z-index:300}
+.app.min .rail{width:var(--rail-w-min);flex:0 0 var(--rail-w-min)}
+.rail-logo{display:flex;align-items:center;gap:8px;padding:16px 14px 10px;min-height:56px}
+.ip-sq{width:11px;height:11px;border-radius:2.5px}
+.ip-s1{background:var(--scp-accent);box-shadow:0 0 8px rgba(144,0,255,.6)}
+.rail-sub{color:#8a8a8a;font-size:11px;padding:0 16px 12px}
+.rail-grp{color:#77787a;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;padding:10px 16px 6px}
+.app.min .rail-sub,.app.min .rail-nav b,.app.min .rail-grp{display:none}
+.rail-nav{display:flex;flex-direction:column;overflow-y:auto;flex:1;padding-bottom:8px}
+.rail-nav button{display:flex;align-items:center;gap:10px;background:transparent;border:0;border-left:4px solid transparent;color:#d6d6d6;text-align:left;padding:9px 14px 9px 12px;font:400 13px 'Open Sans',sans-serif;cursor:pointer;white-space:nowrap;overflow:hidden}
+.rail-nav button:hover{background:var(--scp-rail-hover);color:#fff}
+.rail-nav button.on{background:var(--scp-rail-2);border-left-color:var(--scp-accent);color:#fff;font-weight:600}
+.rail-nav .dot{width:6px;height:6px;border-radius:50%;background:var(--scp-warn);flex:0 0 6px}
+.rail-nav button.on .dot{background:#c57aff}
+.rail-foot{border-top:1px solid #2e2e2e;padding:8px}
+.rail-foot button{width:100%;background:transparent;border:0;color:#8a8a8a;cursor:pointer;font:400 12px 'Open Sans',sans-serif;padding:7px 8px;border-radius:var(--r-s);text-align:center}
+.rail-foot button:hover{background:var(--scp-rail-hover);color:#fff}
+.wrap{flex:1;min-width:0;display:flex;flex-direction:column}
+header{background:var(--scp-surface);border-bottom:1px solid var(--scp-line-2);padding:14px 32px 12px;display:flex;align-items:flex-start;gap:16px}
+.hdr-left{display:flex;align-items:flex-start;gap:12px}
+.btn-rail-menu{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;background:var(--scp-surface);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);color:var(--scp-text-2);cursor:pointer;margin-top:2px}
+.btn-rail-menu:hover{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
+.btn-rail-menu svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+h1{font:600 26px/32px 'Open Sans',sans-serif;margin:0;color:var(--scp-text)}
+.h-sub{font-size:12px;color:var(--scp-text-3);margin-top:2px}
+.hdr-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
+.icon-btn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;background:var(--scp-surface);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);color:var(--scp-text-2);cursor:pointer;position:relative}
+.icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.icon-btn:hover{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
+.icon-btn.p{background:var(--scp-accent);border-color:var(--scp-accent);color:#fff}
+.icon-btn.p:hover{background:var(--scp-accent-hover);border-color:var(--scp-accent-hover)}
+.icon-btn.d:hover{border-color:var(--scp-err);color:var(--scp-err);background:var(--scp-err-bg)}
+.icon-btn[data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);background:var(--scp-n-900);color:#fff;font-size:12px;white-space:nowrap;padding:5px 9px;border-radius:var(--r-s);opacity:0;pointer-events:none;transition:opacity .15s;z-index:500}
+.icon-btn[data-tip]:hover::after{opacity:1}
+.stat{font-size:12px;color:var(--scp-text-3);text-align:right;white-space:nowrap;align-self:center}
+.runbar{background:var(--scp-surface);border-bottom:1px solid var(--scp-line-2);padding:8px 32px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:52px}
+.runbar-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--scp-text-3)}
+select{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:7px 10px;font:400 13px 'Open Sans',sans-serif}
+select:focus{outline:none;border-color:var(--scp-accent)}
+main{padding:20px 32px 72px;flex:1}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m);padding:14px 16px}
+.kpi .t{font-size:13px;color:var(--scp-text-2)}
+.kpi .v{font:700 26px/32px 'Open Sans',sans-serif;color:var(--scp-text);margin-top:6px;letter-spacing:-.3px}
+.kpi .s{font-size:12px;color:var(--scp-text-3);margin-top:3px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(440px,1fr))}
+.card{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m);padding:16px 18px 12px;min-width:0}
+.card.w{grid-column:1/-1}
+.card h3{margin:0;font:600 15px/20px 'Open Sans',sans-serif;color:var(--scp-text)}
+.card .sub{font-size:12px;color:var(--scp-text-3);margin:3px 0 10px}
+canvas{width:100%;display:block;cursor:pointer}
+.lg{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--scp-text-2);padding:2px 0 8px;justify-content:center}
+.lg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:0 8px;height:32px;text-align:right;border-bottom:1px solid var(--scp-line);white-space:nowrap;line-height:16px}
+th{height:36px;color:var(--scp-text-2);font-size:13px;font-weight:600;position:sticky;top:0;background:var(--scp-surface);z-index:2}
+tbody tr:hover{background:var(--scp-b-50)}
+.scr{max-height:340px;overflow:auto;border:1px solid var(--scp-line);border-radius:var(--r-s)}
+.pos{color:var(--scp-ok)}.neg{color:var(--scp-err)}.mid{color:#c47512}
+.dt-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.dt-q{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:6px 10px;font:400 13px 'Open Sans',sans-serif;width:240px}
+.dt-q:focus{outline:none;border-color:var(--scp-accent)}
+.dt-info{font-size:12px;color:var(--scp-text-3)}
+.dt-btn{background:var(--scp-surface);color:var(--scp-text-2);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:5px 10px;font:400 12px 'Open Sans',sans-serif;cursor:pointer}
+.dt-btn:hover{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
+.dt-btn.off,.dt-btn:disabled{opacity:.45;cursor:default}
+.dt-chip{background:var(--scp-accent-bg);border:1px solid var(--scp-accent-bd);color:var(--scp-b-900);border-radius:9999px;padding:3px 10px;font-size:12px;cursor:pointer}
+.dt-chip:hover{background:var(--scp-err-bg);border-color:var(--scp-err);color:var(--scp-err)}
+.dt th.dt-th{padding-right:18px;white-space:nowrap}
+.dt td,.dt th{text-align:right}
+.dt td.l,.dt th.dt-th.l{text-align:left}
+.dt .dt-t{cursor:pointer;user-select:none}
+.dt .dt-t:hover{color:var(--scp-accent)}
+.dt-ar{color:var(--scp-n-300);margin-left:5px;font-size:9px}
+.dt-fn{cursor:pointer;margin-left:6px;color:var(--scp-n-300);font-size:10px}
+.dt-fn:hover,.dt-fn.on{color:var(--scp-accent)}
+.dt-pgs{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:10px;font-size:12px;color:var(--scp-text-3)}
+#dtpop{display:none;position:fixed;z-index:600;width:260px;background:var(--scp-surface);border:1px solid var(--scp-menu-bd);border-radius:var(--r-m);box-shadow:0 4px 15px #00000026;padding:10px}
+.dtp-h{display:flex;justify-content:space-between;align-items:center;font-size:11px;font-weight:600;color:var(--scp-text-3);text-transform:uppercase;padding-bottom:6px;border-bottom:1px solid var(--scp-line)}
+.dtp-x{cursor:pointer}.dtp-x:hover{color:var(--scp-err)}
+.dtp-q{width:100%;background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:6px 9px;font:400 13px 'Open Sans',sans-serif;margin:7px 0 5px}
+.dtp-a{display:flex;gap:6px;margin-bottom:5px}
+.dtp-a button{flex:1;background:var(--scp-surface);color:var(--scp-text-2);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:5px 0;font-size:12px;cursor:pointer}
+.dtp-a button:hover{border-color:var(--scp-accent);color:var(--scp-accent)}
+.dtp-l{max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:1px}
+.dtp-i{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:var(--r-s);font-size:13px;cursor:pointer}
+.dtp-i:hover{background:#eee7f3}
+.dtp-i input{accent-color:var(--scp-accent);margin:0;width:14px;height:14px}
+.dtp-i span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dtp-e{padding:12px;text-align:center;color:var(--scp-text-3);font-size:12px}
+.btn{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:7px 14px;cursor:pointer;font:400 13px 'Open Sans',sans-serif}
+.btn:hover{background:var(--scp-n-50);border-color:var(--scp-ctrl-hover)}
+.btn.p{background:var(--scp-accent);color:#fff;border-color:var(--scp-accent);font-weight:600}
+.btn.p:hover{background:var(--scp-accent-hover);border-color:var(--scp-accent-hover)}
+.chip{background:var(--scp-surface);border:1px solid var(--scp-ctrl);border-radius:9999px;padding:4px 12px;font-size:12.5px;cursor:pointer;color:var(--scp-text-2);white-space:nowrap}
+.chip:hover{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
+.chip.on{background:var(--scp-accent);color:#fff;border-color:var(--scp-accent);font-weight:600}
+.tag{font-size:11px;padding:2px 8px;border-radius:9999px;background:var(--scp-n-50);color:var(--scp-text-2);border:1px solid var(--scp-line-2)}
+.sum{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-left:4px solid var(--scp-accent);border-radius:var(--r-m);padding:16px 20px;margin-top:16px}
+.sum h4{margin:0 0 10px;font:600 15px/20px 'Open Sans',sans-serif;color:var(--scp-text)}
+.sum ul{margin:0 0 12px;padding-left:22px}
+.sum li{margin:5px 0;font-size:13.5px;line-height:19px;color:var(--scp-text-2)}
+.sum .h{color:var(--scp-text);font-weight:600}
+.sec{font-size:11px;color:var(--scp-text-3);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin:14px 0 6px;border-bottom:1px solid var(--scp-line);padding-bottom:5px}
+#tip{position:fixed;pointer-events:none;background:var(--scp-n-900);color:#fff;border-radius:var(--r-s);padding:8px 11px;font-size:12px;line-height:17px;z-index:700;display:none;max-width:320px;box-shadow:0 4px 15px #00000040}
+#tip b{color:#c57aff}
+.dq{display:flex;gap:10px;align-items:flex-start;padding:11px 14px;border-radius:var(--r-m);margin-bottom:8px;font-size:13.5px;line-height:19px;border:1px solid var(--scp-line-2);background:var(--scp-surface);color:var(--scp-text-2)}
+.dq.e{border-left:4px solid var(--scp-err)} .dq.w{border-left:4px solid var(--scp-warn)} .dq.i{border-left:4px solid var(--scp-ok)}
+.dq .m{flex:1} .dq b{color:var(--scp-text)}
+.empty{text-align:center;padding:72px 24px;color:var(--scp-text-3);font-size:14px;background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m)}
+.empty h2{font:600 20px/26px 'Open Sans',sans-serif;color:var(--scp-text);margin:0 0 8px}
+.tbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 10px;background:var(--scp-n-50);border:1px solid var(--scp-line-2);border-radius:var(--r-m)}
+.tbar-lbl{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--scp-text-3);margin-right:4px}
+.frow{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
+.fg label{font-size:11px;color:var(--scp-text-3);font-weight:600;text-transform:uppercase;display:block;margin-bottom:4px}
+.mtbl{table-layout:fixed}
+.mtbl td{height:auto;padding:7px 8px;text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere;vertical-align:top;line-height:18px;font-size:13px}
+.mtbl td.mt-k{width:38%;color:var(--scp-text-3);font-size:12px;padding-right:14px}
+.mtbl td.mt-v{width:62%;color:var(--scp-text)}
+.mtbl tbody tr:hover{background:transparent}
+@media(max-width:1100px){
+  .grid{grid-template-columns:1fr}
+  header,main,.runbar{padding-left:16px;padding-right:16px}
+  .app{flex-direction:column}
+  .rail{width:100%;flex:0 0 auto;height:auto;position:static;flex-direction:column}
+  .rail-nav{flex-direction:row;overflow-x:auto}
+  .rail-nav button{border-left:0;border-bottom:4px solid transparent}
+  .rail-nav button.on{border-left:0;border-bottom-color:var(--scp-accent)}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="rail">
+    <div class="rail-logo">
+      <span class="ip-sq ip-s1"></span><span class="ip-sq" style="background:#af47ff"></span>
+      <span class="ip-sq" style="background:#c57aff"></span><span class="ip-sq" style="background:#fff;opacity:.9"></span>
+    </div>
+    <div class="rail-sub">SNP Optimizer Insight</div>
+    <div class="rail-grp">Работа оптимизатора</div>
+    <nav class="rail-nav" id="nav"></nav>
+    <div class="rail-foot"><button id="railToggle">‹ Свернуть панель</button></div>
+  </aside>
+  <div class="wrap">
+    <header>
+      <div class="hdr-left">
+        <button class="btn-rail-menu" id="bRailToggleHdr" title="Свернуть/раскрыть меню">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <div><h1 id="pgTitle">Обзор</h1><div class="h-sub" id="pgSub">Как отработал оптимизатор и чему верить в результате</div></div>
+      </div>
+      <div class="stat" id="stat"></div>
+      <div class="hdr-actions">
+        <button class="icon-btn" id="bThemeToggle" data-tip="Тёмная/светлая тема">
+          <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="icon-btn p" id="bLoad" data-tip="Загрузить XLSX с листом optimizer_status">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </button>
+        <input type="file" id="fIn" accept=".xlsx,.xls" multiple style="display:none">
+        <button class="icon-btn d" id="bReset" data-tip="Очистить все загруженные прогоны">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+        </button>
+      </div>
+    </header>
+    <div class="runbar" id="runbar"></div>
+    <main id="main"></main>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script>
+/* ═══════════════ 1. УТИЛИТЫ ═══════════════ */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const nf=(v,d=0)=>(isFinite(v)?v:0).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d});
+const bn=v=>nf(v/1e9,2)+' млрд',mln=v=>nf(v/1e6,1)+' млн',pc=v=>nf((isFinite(v)?v:0)*100,1)+'%';
+const pctFmt=v=>(v==null||!isFinite(v))?'—':nf(v,2)+'%';
+const S=(a,f)=>a.reduce((s,o)=>s+(f(o)||0),0);
+const uq=(a,f)=>[...new Set(a.map(f).filter(x=>x!==''&&x!=null))].sort();
+function grp(a,k,ag){const m=new Map();a.forEach(o=>{const key=k(o);if(!m.has(key))m.set(key,[]);m.get(key).push(o)});
+  return [...m].map(([key,rows])=>({k:key,n:rows.length,rows,...ag(rows)}))}
+const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const plural=(n,f)=>{const a=Math.abs(n)%100,b=a%10;
+  if(a>10&&a<20)return f[2];if(b>1&&b<5)return f[1];if(b===1)return f[0];return f[2]};
+const num=v=>{if(v===undefined||v===null||v==='')return 0;
+  const n=typeof v==='number'?v:parseFloat(String(v).replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:0};
+const str=v=>v===undefined||v===null?'':String(v).trim();
+function timeFmt(sec){if(!isFinite(sec)||sec<=0)return '0 сек';
+  if(sec<60)return nf(sec,sec<10?2:1)+' сек';
+  const m=Math.floor(sec/60),r=sec-m*60;return m+' мин '+nf(r,0)+' сек'}
+
+/* ── Палитра ── */
+let THEME=localStorage.getItem('snp_opt_theme')||'light';
+let PAL=[];let CH={};
+function syncThemeTokens(){
+  const isDark=(THEME==='dark');
+  document.documentElement.setAttribute('data-theme',THEME);
+  const sun=$('#iconSun'),moon=$('#iconMoon');
+  if(sun&&moon){sun.style.display=isDark?'block':'none';moon.style.display=isDark?'none':'block'}
+  PAL=isDark?['#647ae8','#38bdf8','#2dd468','#fb9e38','#f84b5c','#a78bfa','#2dd4bf','#e879f9']
+            :['#2d3f8f','#1b98b8','#1ba84c','#ea8520','#e0243b','#7c5cd6','#0d9488','#c026a3'];
+  CH=isDark?{grid:'#2d2d3a',axis:'#8f92a4',lab:'#c4c6d4',txt:'#f1f2f6',sub:'#9a9cb0',
+    surf:'#22222c',pane:'#292936',line:'#383849',brand:'#a846ff',
+    ok:'#2dd468',warn:'#fb9e38',err:'#f84b5c',d1:'#647ae8',d2:'#38bdf8',d3:'#2dd468',d4:'#fb9e38',d5:'#f84b5c',d6:'#a78bfa'}
+    :{grid:'#e8e7ee',axis:'#8c9096',lab:'#444647',txt:'#212529',sub:'#77787a',
+    surf:'#ffffff',pane:'#f9f8fb',line:'#dedce5',brand:'#9000ff',
+    ok:'#22bb55',warn:'#ff9a3b',err:'#f22a41',d1:'#2d3f8f',d2:'#1b98b8',d3:'#1ba84c',d4:'#ea8520',d5:'#e0243b',d6:'#7c5cd6'};
+}
+syncThemeTokens();
+function onFill(hex){if(!hex||hex[0]!=='#')return CH.txt;const h=hex.length===4?hex.replace(/#(.)(.)(.)/,'#$1$1$2$2$3$3'):hex;
+  const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(4,6),16);
+  return (0.299*r+0.587*g+0.114*b)>138?'#15151c':'#ffffff'}
+function rgba(hex,a){const h=hex.replace('#','');const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+  return `rgba(${r},${g},${b},${a})`}
+
+/* ═══════════════ 2. УНИВЕРСАЛЬНАЯ ТАБЛИЦА ═══════════════ */
+const TBL={};let DTP=null;
+function dtp(){if(!DTP){DTP=document.createElement('div');DTP.id='dtpop';DTP.onclick=e=>e.stopPropagation();document.body.appendChild(DTP)}return DTP}
+function dtpHide(){if(DTP)DTP.style.display='none'}
+function dtable(sel,cols,rows,opts){
+  opts=opts||{};const host=$(sel);if(!host)return;
+  const key=(opts.key||sel).replace(/[^A-Za-z0-9_]/g,'');
+  if(!TBL[key])TBL[key]={sort:opts.sort||cols[0].k,dir:opts.dir||'desc',q:'',flt:{},pg:1};
+  const st=TBL[key];
+  const data=rows.map(r=>{const o={_r:r};cols.forEach(c=>{o[c.k]=c.v?c.v(r):r[c.k]});return o});
+  const cell=(c,d)=>c.f?c.f(d[c.k],d._r):(d[c.k]===''||d[c.k]==null?'—':(typeof d[c.k]==='number'?nf(d[c.k],2):esc(d[c.k])));
+  const plain=(c,d)=>String(cell(c,d)).replace(/<[^>]*>/g,'').trim();
+  function view(){let out=data;
+    cols.forEach(c=>{const s=st.flt[c.k];if(s&&s.length){const set=new Set(s);out=out.filter(d=>set.has(String(d[c.k]==null?'':d[c.k])))}});
+    const q=st.q.trim().toLowerCase();if(q)out=out.filter(d=>cols.some(c=>plain(c,d).toLowerCase().includes(q)));
+    const sc=cols.find(c=>c.k===st.sort);
+    if(sc){const dir=st.dir==='asc'?1:-1;out=out.slice().sort((a,b)=>{const x=a[sc.k],y=b[sc.k];
+      const nx=typeof x==='number',ny=typeof y==='number';
+      if(sc.num||(nx&&ny))return((nx?x:0)-(ny?y:0))*dir;
+      return String(x==null?'':x).localeCompare(String(y==null?'':y),'ru',{numeric:true})*dir})}
+    return out}
+  const uqv=c=>[...new Set(data.map(d=>String(d[c.k]==null?'':d[c.k])))].sort((a,b)=>a.localeCompare(b,'ru',{numeric:true}));
+  function draw(){
+    const out=view(),pg=opts.pg||0;const tp=pg?Math.max(1,Math.ceil(out.length/pg)):1;st.pg=Math.min(Math.max(1,st.pg),tp);
+    const slice=pg?out.slice((st.pg-1)*pg,st.pg*pg):out.slice(0,opts.max||4000);
+    const actC=cols.filter(c=>st.flt[c.k]&&st.flt[c.k].length);const nAct=actC.length+(st.q?1:0);
+    host.innerHTML=`<div class="dt">
+      <div class="dt-bar">
+        <input class="dt-q" type="text" placeholder="Поиск по таблице" value="${esc(st.q)}">
+        <span class="dt-info">${nf(out.length)} из ${nf(data.length)}${pg?` · стр. ${st.pg} из ${tp}`:''}</span>
+        ${actC.map(c=>`<span class="dt-chip" data-cf="${c.k}">${esc(c.t)}: ${st.flt[c.k].length} ✕</span>`).join('')}
+        <span style="flex:1"></span>
+        ${opts.csv?`<button class="dt-btn" data-csv="1">Экспорт CSV</button>`:''}
+        <button class="dt-btn ${nAct?'':'off'}" data-clr="1" ${nAct?'':'disabled'}>Сбросить</button>
+      </div>
+      <div class="scr" style="max-height:${opts.h||340}px"><table><thead><tr>
+        ${cols.map(c=>{const on=st.sort===c.k,fon=st.flt[c.k]&&st.flt[c.k].length;
+          return `<th class="dt-th${c.left?' l':''}"><span class="dt-t" data-sk="${c.k}">${esc(c.t)}
+            <span class="dt-ar">${on?(st.dir==='asc'?'▲':'▼'):'↕'}</span></span>${
+            c.flt?`<span class="dt-fn${fon?' on':''}" data-fk="${c.k}">▾</span>`:''}</th>`}).join('')}
+      </tr></thead><tbody>
+        ${slice.length?slice.map(d=>`<tr>${cols.map(c=>`<td class="${c.cls?(c.cls(d[c.k],d._r)||''):''}${c.left?' l':''}">${cell(c,d)}</td>`).join('')}</tr>`).join('')
+          :`<tr><td colspan="${cols.length}" style="text-align:center;padding:26px;color:var(--scp-text-3)">Ничего не найдено</td></tr>`}
+      </tbody></table></div>
+      ${pg&&tp>1?`<div class="dt-pgs"><button class="dt-btn" data-pg="1">«</button><button class="dt-btn" data-pg="${st.pg-1}">Назад</button>
+        <span>${st.pg} из ${tp}</span><button class="dt-btn" data-pg="${st.pg+1}">Вперёд</button><button class="dt-btn" data-pg="${tp}">»</button></div>`:''}
+    </div>`;
+    const qi=host.querySelector('.dt-q');
+    qi.oninput=()=>{const p=qi.selectionStart;st.q=qi.value;st.pg=1;draw();const n=host.querySelector('.dt-q');n.focus();n.selectionStart=n.selectionEnd=p};
+    host.querySelectorAll('.dt-t').forEach(e=>e.onclick=()=>{const k=e.dataset.sk;
+      if(st.sort===k)st.dir=st.dir==='asc'?'desc':'asc';else{st.sort=k;st.dir='desc'}draw()});
+    host.querySelectorAll('.dt-fn').forEach(e=>e.onclick=ev=>{ev.stopPropagation();openFlt(e,e.dataset.fk)});
+    host.querySelectorAll('[data-cf]').forEach(e=>e.onclick=()=>{st.flt[e.dataset.cf]=[];st.pg=1;draw()});
+    const clr=host.querySelector('[data-clr]');if(clr)clr.onclick=()=>{st.q='';st.flt={};st.pg=1;draw()};
+    host.querySelectorAll('[data-pg]').forEach(e=>e.onclick=()=>{st.pg=+e.dataset.pg;draw()});
+    const cb=host.querySelector('[data-csv]');
+    if(cb)cb.onclick=()=>{const lines=[cols.map(c=>c.t).join(';')].concat(out.map(d=>cols.map(c=>`"${plain(c,d).replace(/"/g,'""')}"`).join(';')));
+      const b=new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=(opts.name||'table')+'_'+new Date().toISOString().slice(0,10)+'.csv';a.click()};
+  }
+  function openFlt(anchor,k){
+    const c=cols.find(z=>z.k===k),P=dtp(),vals=uqv(c);let fq='';
+    const build=()=>{const list=vals.filter(v=>!fq||v.toLowerCase().includes(fq));const cur=st.flt[k]||[];
+      P.innerHTML=`<div class="dtp-h"><span>${esc(c.t)}</span><span class="dtp-x">✕</span></div>
+        <input class="dtp-q" type="text" placeholder="Поиск значения" value="${esc(fq)}">
+        <div class="dtp-a"><button data-all="1">Выбрать все</button><button data-non="1">Снять все</button></div>
+        <div class="dtp-l">${list.map(v=>{const on=cur.includes(v);
+          return `<label class="dtp-i${on?' on':''}"><input type="checkbox" ${on?'checked':''} data-v="${esc(v)}"><span>${esc(v===''?'(пусто)':v)}</span></label>`}).join('')||'<div class="dtp-e">нет значений</div>'}</div>`;
+      P.querySelector('.dtp-x').onclick=dtpHide;
+      const fi=P.querySelector('.dtp-q');
+      fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();build();const n=P.querySelector('.dtp-q');n.value=fq?fi.value:'';n.focus();n.selectionStart=n.selectionEnd=p};
+      P.querySelector('[data-all]').onclick=()=>{st.flt[k]=list.slice();st.pg=1;draw();build()};
+      P.querySelector('[data-non]').onclick=()=>{st.flt[k]=[];st.pg=1;draw();build()};
+      P.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{const s=new Set(st.flt[k]||[]);i.checked?s.add(i.dataset.v):s.delete(i.dataset.v);st.flt[k]=[...s];st.pg=1;draw();build()});
+    };build();P.style.display='block';const r=anchor.getBoundingClientRect();
+    P.style.left=Math.max(8,Math.min(r.left-12,innerWidth-272))+'px';
+    P.style.top=Math.min(r.bottom+6,Math.max(8,innerHeight-370))+'px';
+  }
+  draw();
+}
+document.addEventListener('click',()=>dtpHide());
+window.addEventListener('keydown',e=>{if(e.key==='Escape')dtpHide()});
+
+/* ═══════════════ 3. ГРАФИЧЕСКИЙ ДВИЖОК ═══════════════ */
+const TIP=$('#tip');const FNT='Open Sans, sans-serif';
+function cv(id,h){const c=$(id);if(!c)return null;
+  const r=Math.max(1,Math.min(devicePixelRatio||1,3));
+  const w=Math.max(c.clientWidth||(c.parentElement?c.parentElement.clientWidth-36:0)||600,260);
+  c.width=Math.round(w*r);c.height=Math.round(h*r);c.style.width='100%';c.style.height=h+'px';
+  const x=c.getContext('2d');x.setTransform(r,0,0,r,0,0);x.clearRect(0,0,w,h);x.font='12px '+FNT;c._h=[];
+  return {c,x,w,h}}
+function H(id,base,ratio=0.5,min=180,max=430){const c=$(id);if(!c)return base;
+  const w=c.clientWidth||(c.parentElement?c.parentElement.clientWidth-36:0)||600;
+  return Math.round(Math.max(min,Math.min(max,Math.max(base,w*ratio))))}
+function reg(c,x,y,w,h,html,cb){c._h.push({x,y,w,h,html,cb})}
+function bind(c){
+  c.onmousemove=e=>{const b=c.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top;
+    const hit=(c._h||[]).find(r=>mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h);
+    if(hit){TIP.innerHTML=hit.html;TIP.style.display='block';
+      let L=e.clientX+14,T=e.clientY+14;
+      if(L+TIP.offsetWidth>innerWidth-10)L=e.clientX-TIP.offsetWidth-14;
+      if(T+TIP.offsetHeight>innerHeight-10)T=e.clientY-TIP.offsetHeight-14;
+      TIP.style.left=L+'px';TIP.style.top=T+'px';c.style.cursor=hit.cb?'pointer':'default'}
+    else{TIP.style.display='none';c.style.cursor='default'}};
+  c.onmouseleave=()=>TIP.style.display='none';
+  c.onclick=e=>{const b=c.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top;
+    const hit=(c._h||[]).find(r=>mx>=r.x&&mx<=r.x+r.w&&my>=r.y&&my<=r.y+r.h);if(hit&&hit.cb)hit.cb()};
+}
+function yAxis(x,w,h,p,max,fmt,n=5){x.strokeStyle=CH.grid;x.lineWidth=1;x.fillStyle=CH.axis;x.font='11px '+FNT;x.textAlign='right';x.textBaseline='middle';
+  for(let i=0;i<=n;i++){const y=h-p.b-(h-p.t-p.b)*i/n;x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillText(fmt(max*i/n),p.l-7,y)}}
+function xAxis(x,w,h,p,labs,rot){x.fillStyle=CH.lab;x.font='11px '+FNT;x.textAlign=rot?'right':'center';x.textBaseline='top';
+  const bw=(w-p.l-p.r)/labs.length;
+  labs.forEach((l,i)=>{const cx=p.l+bw*(i+.5),s=String(l).length>13?String(l).slice(0,12)+'…':l;
+    if(rot){x.save();x.translate(cx,h-p.b+7);x.rotate(-.6);x.fillText(s,0,0);x.restore()}else x.fillText(s,cx,h-p.b+7)})}
+function barLab(x,txt,cx,cy){x.fillStyle=CH.lab;x.font='600 10.5px '+FNT;x.textAlign='center';x.textBaseline='bottom';x.fillText(txt,cx,cy)}
+function chBars(id,h,labs,ser,fmt,tips,cb,rot,showLab){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
+  const p={l:64,r:16,t:showLab?24:14,b:rot?56:32},max=Math.max(...ser.flatMap(s=>s.v),1)*1.14;
+  yAxis(x,w,h,p,max,fmt);xAxis(x,w,h,p,labs,rot);
+  const bw=(w-p.l-p.r)/labs.length,iw=Math.max(bw*.72/ser.length,3);
+  const lab=showLab&&labs.length<=9&&ser.length<=2;
+  labs.forEach((l,i)=>{ser.forEach((s,si)=>{const hh=(h-p.t-p.b)*Math.max(s.v[i],0)/max,bx=p.l+bw*i+bw*.14+iw*si;
+    x.fillStyle=s.c;x.fillRect(bx,h-p.b-hh,iw-3,hh);
+    if(lab&&s.v[i]>0)barLab(x,fmt(s.v[i]),bx+(iw-3)/2,h-p.b-hh-3)});
+    reg(c,p.l+bw*i,p.t,bw,h-p.t-p.b,tips(i),cb?()=>cb(i):null)});bind(c)}
+function chH(id,h,items,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
+  const p={l:150,r:96,t:8,b:8},max=Math.max(...items.map(i=>Math.abs(i.v)),1),row=(h-p.t-p.b)/Math.max(items.length,1);
+  items.forEach((it,i)=>{const y=p.t+i*row,bh=Math.min(row-6,24),bw=(w-p.l-p.r)*Math.abs(it.v)/max;
+    x.fillStyle=it.c||PAL[i%PAL.length];x.fillRect(p.l,y+(row-bh)/2,Math.max(bw,1),bh);
+    x.fillStyle=CH.lab;x.font='11.5px '+FNT;x.textAlign='right';x.textBaseline='middle';
+    const nm=String(it.k).length>21?String(it.k).slice(0,20)+'…':it.k;x.fillText(nm,p.l-8,y+row/2);
+    x.fillStyle=CH.txt;x.font='600 11.5px '+FNT;x.textAlign='left';x.fillText(fmt(it.v),p.l+bw+7,y+row/2);
+    reg(c,0,y,w,row,it.tip||`<b>${it.k}</b><br>${fmt(it.v)}`,cb?()=>cb(it):null)});bind(c)}
+function chDonut(id,h,parts,title,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
+  const narrow=w<360;const lgW=narrow?0:Math.min(180,w*0.4);const area=w-lgW;
+  const cx=narrow?w/2:area/2+8,cy=narrow?(h-parts.length*18)/2:h/2;
+  const R=Math.min(area*.4,(narrow?h-parts.length*18:h)*.42),r0=R*.62,tot=S(parts,p=>Math.abs(p.v))||1;let a=-Math.PI/2;
+  parts.forEach((pt,i)=>{const col=pt.c||PAL[i%PAL.length];const sw=2*Math.PI*Math.abs(pt.v)/tot;
+    x.beginPath();x.arc(cx,cy,R,a,a+sw);x.arc(cx,cy,r0,a+sw,a,true);x.closePath();x.fillStyle=col;x.fill();
+    if(sw>.32){const m=a+sw/2,tr=(R+r0)/2;x.fillStyle=onFill(col);x.textAlign='center';x.textBaseline='middle';x.font='600 10.5px '+FNT;
+      x.fillText(pc(Math.abs(pt.v)/tot),cx+Math.cos(m)*tr,cy+Math.sin(m)*tr)}
+    const ma=a+sw/2;reg(c,cx+Math.cos(ma)*((R+r0)/2)-16,cy+Math.sin(ma)*((R+r0)/2)-12,32,24,
+      `<b>${pt.k}</b><br>${fmt(pt.v)} · ${pc(Math.abs(pt.v)/tot)}`,cb?()=>cb(pt):null);a+=sw});
+  x.fillStyle=CH.txt;x.textAlign='center';x.textBaseline='middle';x.font='600 12px '+FNT;x.fillText(title,cx,cy);
+  x.font='11.5px '+FNT;x.textAlign='left';x.textBaseline='middle';
+  parts.forEach((pt,i)=>{const lx=narrow?12:area+12,ly=narrow?(h-parts.length*18+9)+i*18:(cy-parts.length*10+i*20);
+    x.fillStyle=pt.c||PAL[i%PAL.length];x.fillRect(lx,ly-4.5,9,9);x.fillStyle=CH.lab;
+    x.fillText(String(pt.k).slice(0,narrow?24:18)+'  '+pc(Math.abs(pt.v)/tot),lx+15,ly);
+    reg(c,lx,ly-9,narrow?w-lx-6:lgW,18,`<b>${pt.k}</b><br>${fmt(pt.v)} · ${pc(Math.abs(pt.v)/tot)}`,cb?()=>cb(pt):null)});
+  bind(c)}
+function chLine(id,h,labs,ser,fmt,tips,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
+  const p={l:68,r:18,t:24,b:32},all=ser.flatMap(s=>s.v),max=Math.max(...all,1)*1.2,min=Math.min(0,...all);
+  yAxis(x,w,h,p,max,fmt);xAxis(x,w,h,p,labs);
+  const sx=i=>p.l+(w-p.l-p.r)*(labs.length>1?i/(labs.length-1):.5),sy=v=>h-p.b-(h-p.t-p.b)*v/max;
+  x.save();x.beginPath();x.rect(p.l-2,p.t-2,w-p.l-p.r+4,h-p.t-p.b+4);x.clip();
+  ser.forEach(s=>{if(s.fill){const gr=x.createLinearGradient(0,p.t,0,h-p.b);gr.addColorStop(0,rgba(s.c,.2));gr.addColorStop(1,rgba(s.c,0));
+      x.beginPath();s.v.forEach((v,i)=>i?x.lineTo(sx(i),sy(v)):x.moveTo(sx(i),sy(v)));
+      x.lineTo(sx(s.v.length-1),h-p.b);x.lineTo(sx(0),h-p.b);x.closePath();x.fillStyle=gr;x.fill()}
+    x.beginPath();s.v.forEach((v,i)=>i?x.lineTo(sx(i),sy(v)):x.moveTo(sx(i),sy(v)));
+    x.strokeStyle=s.c;x.lineWidth=2.2;x.stroke();
+    s.v.forEach((v,i)=>{x.fillStyle=s.c;x.beginPath();x.arc(sx(i),sy(v),3.4,0,7);x.fill()})});
+  x.restore();
+  if(labs.length<=9&&ser.length===1)ser[0].v.forEach((v,i)=>barLab(x,fmt(v),sx(i),sy(v)-8));
+  labs.forEach((_,i)=>reg(c,sx(i)-15,p.t,30,h-p.t-p.b,tips(i),cb?()=>cb(i):null));bind(c)}
+
+/* ═══════════════ 4. ПАРСЕР optimizer_status ═══════════════ */
+const ENT_LBL={movement:'Логистика (перемещения)',procurement:'Закупки сырья',production:'Производство',sale:'Продажи (спрос)',stock:'Запасы (склад)'};
+const ENT_COL={movement:'d1',procurement:'d4',production:'d2',sale:'d3',stock:'d6'};
+const CONS_LBL={
+  movement_capacity:'Пропускная способность маршрутов',aggregated_production:'Агрегированный план производства',
+  frozen_horizon:'Замороженный горизонт (защищённые периоды)',demand_cons:'Выполнение плана спроса',
+  stock_capacity:'Лимит запаса (мин/макс)',wh_capacity:'Вместимость склада',production_capacity:'Мощность ресурса производства',
+  movement_multiplier:'Кратность партии перемещения',movement_lotsize:'Размер партии перемещения',
+  production_multiplier:'Кратность партии производства',production_lotsize:'Размер партии производства',
+  adjusted_production_receipt:'Скорректированный план производства',firmed_production_receipt:'Зафиксированный план производства',
+  adjusted_distribution_receipt:'Скорректированный план поставок',firmed_distribution_receipt:'Зафиксированный план поставок',
+  firmed_purchase_receipt:'Зафиксированная закупка',aggregated_product:'Агрегированный лимит по продукту',
+  aggregated_demand:'Агрегированный лимит спроса',aggregated_procurement:'Агрегированный лимит закупки',
+  aggregated_transportation:'Агрегированный лимит перевозки',aggregated_storage:'Агрегированный лимит хранения',
+  late_delivery:'Допустимая задержка поставки',hr_locfr:'Ограничение по локации-отправителю',hr_locto:'Ограничение по локации-получателю'
+};
+function consLbl(k){return CONS_LBL[k]||(k.replace(/_/g,' ').replace(/^./,c=>c.toUpperCase()))}
+const STATUS_LBL={STRICT:'Жёсткое',SOFT:'Мягкое',OFF:'Отключено'};
+
+function parseCalcTime(s){if(!s)return 0;const m=String(s).match(/(\d+):(\d+):([\d.]+)/);
+  if(!m)return parseFloat(s)||0;return (+m[1])*3600+(+m[2])*60+parseFloat(m[3])}
+
+function parseOptimizerRows(rows){
+  const getF=(row,names)=>{for(const n of names)if(row[n]!==undefined&&row[n]!==null&&row[n]!=='')return row[n];return undefined};
+  const groups=new Map();
+  rows.forEach(r=>{
+    const runid=getF(r,['runid','RunId','run_id','Run']);
+    const param=getF(r,['Параметр','параметр','Parameter','parameter']);
+    const value=getF(r,['Значение','значение','Value','value']);
+    const dsid=getF(r,['datasetid','DatasetId','dataset_id']);
+    const cfgid=getF(r,['configid','ConfigId','config_id']);
+    if(runid===undefined||param===undefined)return;
+    const key=String(runid)+'|'+String(dsid)+'|'+String(cfgid);
+    if(!groups.has(key))groups.set(key,{runid:String(runid),datasetid:String(dsid??''),configid:String(cfgid??''),raw:new Map()});
+    const g=groups.get(key),pname=String(param).trim(),val=(value===undefined||value===null)?'':String(value);
+    if(!g.raw.has(pname)||val!=='')g.raw.set(pname,val);
+  });
+  return [...groups.values()].map(buildRun);
+}
+function buildRun(g){
+  const raw=g.raw,get=k=>raw.get(k),numv=k=>num(get(k));
+  let cfg=null;try{cfg=JSON.parse(get('Config')||'null')}catch(e){cfg=null}
+  const meta={
+    startTime:get('Start time')||'',periods:numv('Periods'),solver:get('Solver')||'',configHash:get('Config hash')||'',
+    includedEntities:(get('Included entities')||'').split(';').map(s=>s.trim()).filter(Boolean),
+    functionalEntities:(get('Functional entities')||'').split(';').map(s=>s.trim()).filter(Boolean),
+    constraintTypes:(get('Constraint types')||'').split(';').map(s=>s.trim()).filter(Boolean),
+    globalCostMultiplier:numv('Global cost mutliplier')||numv('Global cost multiplier'),
+    gapLimit:cfg&&cfg.gap_limit!=null?num(cfg.gap_limit)*100:null,
+    timeLimit:cfg&&cfg.time_limit!=null?num(cfg.time_limit):null,
+    threads:cfg&&cfg.threads_number!=null?num(cfg.threads_number):null,
+    solverType:cfg?cfg.solver_type:null,exportModel:cfg?cfg.export_model:null,
+    freezable:cfg&&cfg.freezable_entities?cfg.freezable_entities.join(', '):'',
+    decompByPeriods:cfg?Boolean(cfg.decomposition_by_periods):false,
+    cfgParsed:!!cfg
+  };
+  const solve={
+    variables:numv('Variables'),continuousVars:numv('Continuous vars'),constraints:numv('Constraints'),nodes:numv('Nodes'),
+    gapPct:numv('Result gap %'),status:get('Solution')||'',calcTimeStr:get('Calc time')||'',solveTimeStr:get('Solve time')||'',
+    calcTimeSec:parseCalcTime(get('Calc time')),solveTimeSec:parseCalcTime(get('Solve time')),iterations:numv('Iterations'),
+    solutionValueScaled:numv('Solution value (scaled)'),sumVarsValues:numv('Sum of variables values'),
+    objectiveValue:numv('Objective value'),deletedVars:numv('Deleted variables'),deletedConstraints:numv('Deleted constraints'),
+    bestBound:numv('Best bound'),solverNodes:numv('Solver nodes')
+  };
+  const entMap=new Map();const ensureEnt=e=>{if(!entMap.has(e))entMap.set(e,{entity:e,nonzero:0,total:0,pct:0,value:0});return entMap.get(e)};
+  raw.forEach((val,key)=>{let m;
+    if(m=key.match(/^Non-zero values of (\w+) variables$/)){const parts=String(val).split('/').map(s=>s.trim());
+      const e=ensureEnt(m[1]);e.nonzero=num(parts[0]);e.total=num(parts[1]);}
+    else if(m=key.match(/^Non-zero values of (\w+) variables %$/)){ensureEnt(m[1]).pct=num(val);}
+    else if(m=key.match(/^Value of (\w+)$/)){ensureEnt(m[1]).value=num(val);}
+  });
+  const entities=[...entMap.values()].filter(e=>e.total>0||e.value!==0);
+
+  const bndMap=new Map();
+  raw.forEach((val,key)=>{let m;
+    if(m=key.match(/^Lower bound reached (\w+):(\w+) $([A-Z]+)$ %$/)){const k=m[1]+'|'+m[2];
+      if(!bndMap.has(k))bndMap.set(k,{entity:m[1],constraint:m[2],status:m[3],lowerPct:null,upperPct:null});
+      bndMap.get(k).lowerPct=num(val);}
+    else if(m=key.match(/^Upper bound reached (\w+):(\w+) $([A-Z]+)$ %$/)){const k=m[1]+'|'+m[2];
+      if(!bndMap.has(k))bndMap.set(k,{entity:m[1],constraint:m[2],status:m[3],lowerPct:null,upperPct:null});
+      bndMap.get(k).upperPct=num(val);}
+  });
+  const bounds=[...bndMap.values()];
+
+  const penMap=new Map();
+  raw.forEach((val,key)=>{let m;
+    if(m=key.match(/^Softmin penalties sum (\w+):(\w+) $([A-Z]+)$$/)){const k='min|'+m[1]+'|'+m[2];
+      if(!penMap.has(k))penMap.set(k,{kind:'min',entity:m[1],constraint:m[2],status:m[3],sum:0,nonzeroPct:0});penMap.get(k).sum=num(val);}
+    else if(m=key.match(/^Softmin penalties non-zero(\w+):(\w+) $([A-Z]+)$ %$/)){const k='min|'+m[1]+'|'+m[2];
+      if(!penMap.has(k))penMap.set(k,{kind:'min',entity:m[1],constraint:m[2],status:m[3],sum:0,nonzeroPct:0});penMap.get(k).nonzeroPct=num(val);}
+    else if(m=key.match(/^Softmax penalties sum (\w+):(\w+) $([A-Z]+)$$/)){const k='max|'+m[1]+'|'+m[2];
+      if(!penMap.has(k))penMap.set(k,{kind:'max',entity:m[1],constraint:m[2],status:m[3],sum:0,nonzeroPct:0});penMap.get(k).sum=num(val);}
+    else if(m=key.match(/^Softmax penalties non-zero(\w+):(\w+) $([A-Z]+)$ %$/)){const k='max|'+m[1]+'|'+m[2];
+      if(!penMap.has(k))penMap.set(k,{kind:'max',entity:m[1],constraint:m[2],status:m[3],sum:0,nonzeroPct:0});penMap.get(k).nonzeroPct=num(val);}
+  });
+  const penalties=[...penMap.values()].filter(p=>p.sum!==0||p.nonzeroPct!==0);
+
+  return {runid:g.runid,datasetid:g.datasetid,configid:g.configid,
+    label:`Прогон ${g.runid} · датасет ${g.datasetid} · конфиг ${g.configid}`,
+    meta,solve,entities,bounds,penalties,
+    rawRows:[...raw.entries()].map(([k,v])=>({param:k,value:v}))};
+}
+const runKey=r=>r.runid+'|'+r.datasetid+'|'+r.configid;
+
+/* ═══════════════ 5. ВСТРОЕННОЕ ДЕМО ═══════════════ */
+function mkRow(p,v){return {runid:19,'Параметр':p,'Значение':v,datasetid:14,configid:300}}
+const SEED_ROWS=[
+ mkRow('Start time','2026-05-13 12:46:03.628897'),
+ mkRow('Periods','20'),
+ mkRow('Solver','CPLEX'),
+ mkRow('Config',JSON.stringify({periods:20,gap_limit:0.0001,time_limit:10.0,threads_number:8,solver_type:'CPLEX',export_model:'LP',
+   decomposition_by_periods:false,freezable_entities:['sale','production'],
+   map_priority:{stock:0,production:1,movement:2,procurement:3}})),
+ mkRow('Config hash','b7a1ae6aeb6432d2c2784e7d2c6cd871'),
+ mkRow('Included entities','movement; procurement; production; sale; stock'),
+ mkRow('Functional entities','movement; procurement; production; sale; stock'),
+ mkRow('Constraint types','movement_capacity; aggregated_production; frozen_horizon; demand_cons; stock_capacity; wh_capacity'),
+ mkRow('Global cost mutliplier','1.0'),
+ mkRow('Variables','239111'),mkRow('Continuous vars','239111'),mkRow('Constraints','105975'),mkRow('Nodes','0'),
+ mkRow('Result gap %','0.0'),mkRow('Solution','OPTIMAL'),
+ mkRow('Calc time','0:00:01.347885'),mkRow('Solve time','0:00:01.120604'),mkRow('Iterations','10980'),
+ mkRow('Solution value (scaled)','245471805115.01'),mkRow('Sum of variables values','364133177285.53'),
+ mkRow('Objective value','245471805115.01'),mkRow('Deleted variables','0'),mkRow('Deleted constraints','0'),
+ mkRow('Best bound','0'),mkRow('Solver nodes','0'),
+ mkRow('Non-zero values of movement variables','2302 / 217022'),mkRow('Non-zero values of movement variables %','1.06'),mkRow('Value of movement','-9472027378.391085'),
+ mkRow('Non-zero values of procurement variables','503 / 1092'),mkRow('Non-zero values of procurement variables %','46.06'),mkRow('Value of procurement','-44959181015.40663'),
+ mkRow('Non-zero values of production variables','1035 / 6305'),mkRow('Non-zero values of production variables %','16.42'),mkRow('Value of production','-29104851378.00468'),
+ mkRow('Non-zero values of sale variables','167 / 210'),mkRow('Non-zero values of sale variables %','79.52'),mkRow('Value of sale','448269567261.319'),
+ mkRow('Non-zero values of stock variables','253 / 14300'),mkRow('Non-zero values of stock variables %','1.77'),mkRow('Value of stock','-600330203.9840382'),
+ mkRow('Lower bound reached movement:movement_capacity (STRICT) %','70.32'),mkRow('Upper bound reached movement:movement_capacity (STRICT) %','2.58'),
+ mkRow('Lower bound reached production:frozen_horizon (STRICT) %','45.63'),mkRow('Upper bound reached production:frozen_horizon (STRICT) %','19.38'),
+ mkRow('Lower bound reached production:aggregated_production (SOFT) %','37.36'),mkRow('Upper bound reached production:aggregated_production (SOFT) %','9.89'),
+ mkRow('Lower bound reached sale:demand_cons (STRICT) %','20.48'),mkRow('Upper bound reached sale:demand_cons (STRICT) %','59.52'),
+ mkRow('Lower bound reached stock:stock_capacity (STRICT) %','98.23'),mkRow('Upper bound reached stock:stock_capacity (STRICT) %','78.27'),
+ mkRow('Lower bound reached stock:wh_capacity (STRICT) %','94.40'),mkRow('Upper bound reached stock:wh_capacity (STRICT) %','3.30'),
+ mkRow('Softmin penalties sum production:aggregated_production (SOFT)','11866.14'),
+ mkRow('Softmin penalties non-zeroproduction:aggregated_production (SOFT) %','3.30'),
+ mkRow('Softmax penalties sum production:aggregated_production (SOFT)','0.00'),
+ mkRow('Softmax penalties non-zeroproduction:aggregated_production (SOFT) %','0.00'),
+];
+
+/* ═══════════════ 6. СОСТОЯНИЕ ═══════════════ */
+let DS=null; // {runs:[...]}
+let CUR_KEY=null,TAB='ov';
+let HIST_A=0,HIST_B=0;
+
+function initFromRows(rows){
+  const runs=parseOptimizerRows(rows);
+  runs.sort((a,b)=>(a.meta.startTime||'').localeCompare(b.meta.startTime||'')||num(a.runid)-num(b.runid));
+  DS={runs};
+  CUR_KEY=runKey(runs[runs.length-1]);
+  HIST_A=0;HIST_B=runs.length-1;
+}
+function curRun(){if(!DS||!DS.runs.length)return null;
+  return DS.runs.find(r=>runKey(r)===CUR_KEY)||DS.runs[DS.runs.length-1]}
+
+const TABS=[['ov','Обзор'],['ent','Использование сущностей'],['bnd','Ограничения и узкие места'],
+  ['pen','Штрафы (SOFT)'],['hist','История прогонов'],['raw','Данные'],['dq','Качество и аномалии']];
+const TSUB={ov:'Ключевые показатели работы солвера в бизнес-терминах',
+  ent:'Насколько активно оптимизатор использовал каждый блок модели',
+  bnd:'Где план упирается в потолок, а где мощности простаивают',
+  pen:'Мягкие нарушения плановых лимитов и их денежная материальность',
+  hist:'Динамика качества оптимизации между прогонами',
+  raw:'Исходные строки лога optimizer_status',
+  dq:'Автоматические проверки согласованности и надёжности результата'};
+
+/* ═══════════════ 7. РЕЗЮМЕ ═══════════════ */
+function summary(title,blocks){return `<div class="sum"><h4>${title}</h4>`+blocks.map(b=>{
+  const items=b.i.filter(Boolean);
+  return `<div class="sec">${b.t}</div><ul>${items.length?items.map(s=>`<li>${s}</li>`).join(''):'<li>Существенных наблюдений по этому блоку не выявлено.</li>'}</ul>`;
+}).join('')+`</div>`}
+
+/* ═══════════════ 8. ОБЗОР ═══════════════ */
+function tabOV(){
+  const r=curRun();if(!r)return '<div class="empty"><h2>Нет данных</h2><p>Загрузите XLSX с листом optimizer_status.</p></div>';
+  const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
+  const gapOk=r.solve.gapPct<=gapThr;
+  const statusOk=/OPTIMAL/i.test(r.solve.status);
+  const ent=k=>r.entities.find(e=>e.entity===k);
+  const sale=ent('sale'),mv=ent('movement'),pd=ent('production'),pc_=ent('procurement'),st=ent('stock');
+  const K=[
+    ['Статус решения',esc(r.solve.status)||'—',statusOk?'Оптимум найден и подтверждён':'Проверьте лог солвера — решение может быть неполным',statusOk?'pos':'neg'],
+    ['Точность решения (Gap)',pctFmt(r.solve.gapPct),r.meta.gapLimit!=null?`Порог по настройке: ${pctFmt(r.meta.gapLimit)}`:'Расстояние до теоретического оптимума',gapOk?'pos':'neg'],
+    ['Время решения',timeFmt(r.solve.solveTimeSec),`Полный расчёт: ${timeFmt(r.solve.calcTimeSec)} · ${nf(r.solve.iterations)} итераций симплекс-метода`,''],
+    ['Масштаб модели',nf(r.solve.variables)+' переменных',`${nf(r.solve.constraints)} ограничений · горизонт ${r.meta.periods||'—'} период(ов)`,''],
+    ['Покрытие спроса',sale?pctFmt(sale.pct):'—',sale?`${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса получили план продаж`:'Нет данных по продажам',sale&&sale.pct<70?'neg':(sale&&sale.pct<90?'mid':'pos')],
+    ['Использование логистики',mv?pctFmt(mv.pct):'—',mv?`${nf(mv.nonzero)} из ${nf(mv.total)} возможных перемещений задействовано`:'—',''],
+    ['Использование производства',pd?pctFmt(pd.pct):'—',pd?`${nf(pd.nonzero)} из ${nf(pd.total)} комбинаций «завод-рецепт-период» запущено`:'—',''],
+    ['Экономический эффект плана',bn(r.solve.objectiveValue),`Масштабированное значение целевой функции: ${bn(r.solve.solutionValueScaled)}`,'']
+  ];
+  const entVal=r.entities.map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.value,c:CH[ENT_COL[e.entity]]||PAL[0]}));
+  const entPct=r.entities.slice().sort((a,b)=>b.pct-a.pct).map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.pct,
+    c:e.pct>=50?CH.ok:(e.pct>=15?CH.warn:CH.err),
+    tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)} (${pctFmt(e.pct)})<br>Вклад в целевую функцию: ${bn(e.value)}`}));
+  const html=`
+  <div class="kpis">${K.map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  <div class="grid">
+    <div class="card"><h3>Из чего складывается экономический эффект плана</h3><div class="sub">Вклад каждого блока модели в целевую функцию, по модулю</div><canvas id="o1"></canvas></div>
+    <div class="card"><h3>Насколько активно оптимизатор использовал каждый блок</h3><div class="sub">Доля переменных с ненулевым значением в решении</div><canvas id="o2"></canvas></div>
+    <div class="card"><h3>Куда ушло время расчёта</h3><div class="sub">Подготовка модели и матрицы против фактического решения</div><canvas id="o3"></canvas></div>
+    <div class="card"><h3>О прогоне</h3><div class="sub">Мета-параметры настройки оптимизации</div><div id="o4"></div></div>
+  </div>`;
+  setTimeout(()=>{
+    chDonut('#o1',H('#o1',230,0.55),entVal,'Эффект',bn,null);
+    chH('#o2',H('#o2',230,0.5),entPct,v=>nf(v,1)+'%',null);
+    const prep=Math.max(r.solve.calcTimeSec-r.solve.solveTimeSec,0);
+    chBars('#o3',H('#o3',220,0.42),['Подготовка модели','Решение солвером'],
+      [{c:CH.d6,v:[prep,0]},{c:CH.brand,v:[0,r.solve.solveTimeSec]}],
+      v=>nf(v,2)+' с',
+      i=>i===0?`<b>Подготовка модели</b><br>${nf(prep,3)} сек — сборка матрицы ограничений и переменных`
+              :`<b>Решение солвером</b><br>${nf(r.solve.solveTimeSec,3)} сек — собственно оптимизация (CPLEX)`,
+      null,0,1);
+    $('#o4').innerHTML=`<table class="mtbl"><tbody>
+      <tr><td class="mt-k">Начало расчёта</td><td class="mt-v">${esc(r.meta.startTime)||'—'}</td></tr>
+      <tr><td class="mt-k">Солвер</td><td class="mt-v">${esc(r.meta.solver)||'—'}${r.meta.threads?` · ${r.meta.threads} потоков`:''}</td></tr>
+      <tr><td class="mt-k">Горизонт</td><td class="mt-v">${r.meta.periods||'—'} период(ов)</td></tr>
+      <tr><td class="mt-k">Замороженные (защищённые) сущности</td><td class="mt-v">${esc(r.meta.freezable)||'—'}</td></tr>
+      <tr><td class="mt-k">Лимит времени на решение</td><td class="mt-v">${r.meta.timeLimit!=null?r.meta.timeLimit+' сек':'—'}</td></tr>
+      <tr><td class="mt-k">Целевой gap по настройке</td><td class="mt-v">${r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'}</td></tr>
+      <tr><td class="mt-k">Включённые сущности</td><td class="mt-v">${r.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', ')||'—'}</td></tr>
+      <tr><td class="mt-k">Типы ограничений в модели</td><td class="mt-v">${r.meta.constraintTypes.map(consLbl).join(', ')||'—'}</td></tr>
+      <tr><td class="mt-k">Хэш конфигурации</td><td class="mt-v" style="font-size:11px;color:var(--scp-text-3)">${esc(r.meta.configHash)||'—'}</td></tr>
+    </tbody></table>`;
+  },0);
+  const worst=r.entities.slice().sort((a,b)=>a.pct-b.pct)[0];
+  const unmetPct=sale?(100-sale.pct):null;
+  return html+summary('Резюме: что показал прогон оптимизатора',[
+    {t:'Выводы',i:[
+      `Оптимизатор завершил расчёт со статусом <span class="h">${esc(r.solve.status)}</span> за <span class="h">${timeFmt(r.solve.solveTimeSec)}</span> и <span class="h">${nf(r.solve.iterations)}</span> итераций — это ${gapOk?'быстро и уверенно':'с отклонением, требующим проверки'}.`,
+      `Отклонение от теоретического оптимума (gap) составляет <span class="h">${pctFmt(r.solve.gapPct)}</span>${r.meta.gapLimit!=null?`, при настроенном пороге ${pctFmt(r.meta.gapLimit)}`:''} — этому результату ${gapOk?'можно доверять как практически оптимальному':'следует относиться с осторожностью'}.`,
+      sale?`Из ${nf(sale.total)} строк плана спроса план продаж получили <span class="h">${nf(sale.nonzero)}</span> (${pctFmt(sale.pct)}). ${unmetPct>10?`Оставшиеся ${pctFmt(unmetPct)} — это заказы с нулевым выделением, которые стоит разобрать в разрезе причин (мощность, сырьё, маршрут).`:'Доля полностью необслуженных заказов невелика.'}`:'',
+      `Модель охватывает <span class="h">${nf(r.solve.variables)}</span> переменных и <span class="h">${nf(r.solve.constraints)}</span> ограничений на горизонте ${r.meta.periods} периодов — это масштаб, типичный для сетевого SNP-планирования.`]},
+    {t:'Аномалии и риски',i:[
+      worst?`Наименьшая доля использования — у блока «<span class="h">${ENT_LBL[worst.entity]||worst.entity}</span>»: ${pctFmt(worst.pct)}. Для логистики и запасов низкая доля обычно нормальна (комбинаторный простор маршрутов/резервов огромен), но стоит убедиться, что это не следствие отсутствующих данных о мощностях.`:'',
+      (r.solve.deletedVars>0||r.solve.deletedConstraints>0)?`Солвер удалил <span class="h">${nf(r.solve.deletedVars)}</span> переменных и <span class="h">${nf(r.solve.deletedConstraints)}</span> ограничений как избыточные — обычно это техническая оптимизация модели, но при системном повторении стоит проверить логику построения модели.`:'Удалённых переменных или ограничений нет — модель использована полностью, без технической пред-фильтрации.',
+      r.penalties.length?`Есть мягкие нарушения плановых лимитов (SOFT) — подробности на вкладке «Штрафы».`:'Мягких нарушений плановых лимитов (SOFT) не зафиксировано — все гибкие цели выполнены точно.']},
+    {t:'Рекомендации',i:[
+      `Считать результат надёжным для принятия решений при статусе OPTIMAL и gap ниже настроенного порога; при обратном — прежде чем публиковать план, проверить корректность входных данных и лимит времени решения.`,
+      `Регулярно фиксировать эти же показатели по каждому прогону (вкладка «История прогонов»), чтобы видеть, деградирует ли качество оптимизации со временем — рост gap или времени решения при том же масштабе модели — ранний сигнал проблем в данных.`,
+      `Долю необслуженного спроса и узкие места по мощностям разбирать совместно с содержательным S&OP-дашбордом (заказы/операции), чтобы перевести технические проценты в конкретные заказы и клиентов.`]}]);
+}
+
+/* ═══════════════ 9. ИСПОЛЬЗОВАНИЕ СУЩНОСТЕЙ ═══════════════ */
+function entComment(e){
+  if(e.entity==='sale')return e.pct<70?'Значительная доля спроса не получила план продаж — материальный риск для выручки.':(e.pct<90?'Основная часть спроса покрыта, но есть заметный необслуженный остаток.':'Спрос покрыт почти полностью.');
+  if(e.entity==='stock')return e.pct<5?'Модель почти не использует буферные запасы — план работает «в поток», чувствителен к сбоям поставок.':'Запасы используются как рабочий буфер плана.';
+  if(e.entity==='movement')return e.pct<5?'Задействована малая доля возможных маршрутов — либо сеть выбирает узкий набор оптимальных плеч, либо часть направлений структурно недоступна.':'Существенная часть сети маршрутов используется активно.';
+  if(e.entity==='production')return e.pct<15?'Производство запускается по узкому набору связок «завод-рецепт-период» — проверить, не ограничена ли доступность альтернативных мощностей.':'Производственные мощности используются достаточно широко.';
+  if(e.entity==='procurement')return e.pct<30?'Закупки идут по ограниченному кругу поставщиков/материалов — риск концентрации.':'Закупочная база используется широко, признаков концентрации не видно.';
+  return '';
+}
+function tabENT(){
+  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
+  const rows=r.entities.map(e=>({...e,share:e.total}));
+  const totalVars=S(rows,e=>e.total);
+  const html=`
+  <div class="kpis">${rows.map(e=>[`Доля модели: ${ENT_LBL[e.entity]||e.entity}`,pctFmt(e.total?100*e.total/Math.max(totalVars,1):0),
+    `${nf(e.total)} переменных из ${nf(totalVars)} всего`,'']).map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  <div class="grid">
+    <div class="card w"><h3>Доля переменных модели по блокам</h3><div class="sub">Какую часть «сложности» модели формирует каждая сущность</div><canvas id="e1"></canvas></div>
+    <div class="card w"><h3>Реестр использования сущностей</h3><div class="sub">Сортировка и экспорт — для передачи техническим специалистам</div><div id="e2"></div></div>
+  </div>`;
+  setTimeout(()=>{
+    chH('#e1',H('#e1',230,0.5),rows.slice().sort((a,b)=>b.total-a.total).map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.total,
+      c:CH[ENT_COL[e.entity]]||PAL[0],tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>Всего переменных: ${nf(e.total)}<br>Использовано: ${nf(e.nonzero)} (${pctFmt(e.pct)})`})),v=>nf(v),null);
+    dtable('#e2',[
+      {k:'entity',t:'Сущность',left:1,flt:1,v:e=>ENT_LBL[e.entity]||e.entity},
+      {k:'total',t:'Всего переменных',num:1,f:v=>nf(v)},
+      {k:'nonzero',t:'Использовано',num:1,f:v=>nf(v)},
+      {k:'pct',t:'Доля, %',num:1,f:v=>pctFmt(v),cls:v=>v<15?'neg':v<50?'mid':'pos'},
+      {k:'value',t:'Вклад в целевую функцию',num:1,f:v=>bn(v)},
+      {k:'comment',t:'Бизнес-комментарий',left:1,v:e=>entComment(e)}
+    ],rows,{key:'ent_reg',sort:'total',dir:'desc',h:300,csv:1,name:'entities'});
+  },0);
+  const sale=rows.find(e=>e.entity==='sale');
+  return html+summary('Резюме: использование блоков модели',[
+    {t:'Выводы',i:[
+      `Наибольшую долю переменных модели формирует блок «<span class="h">${ENT_LBL[rows.slice().sort((a,b)=>b.total-a.total)[0].entity]}</span>» — это ядро вычислительной сложности задачи.`,
+      sale?`Блок продаж — единственный, где низкая доля использования (${pctFmt(sale.pct)}) прямо означает потери: каждая неиспользованная строка — это заказ без плана.`:'']},
+    {t:'Аномалии',i:rows.filter(e=>e.entity!=='sale'&&e.pct<5).map(e=>
+      `«<span class="h">${ENT_LBL[e.entity]}</span>»: только ${pctFmt(e.pct)} потенциала задействовано — ${entComment(e)}`)},
+    {t:'Рекомендации',i:[
+      `Для сущностей с экстремально низким процентом (логистика, запасы) сверить с бизнес-экспертом: это ожидаемая избирательность оптимальной сети или признак того, что модель не видит часть доступных ресурсов.`,
+      `Регулярно отслеживать процент покрытия спроса как главный KPI качества плана для бизнеса — он напрямую переводится в выручку.`]}]);
+}
+
+/* ═══════════════ 10. ОГРАНИЧЕНИЯ И УЗКИЕ МЕСТА ═══════════════ */
+function bndComment(b){
+  const parts=[];
+  if(b.upperPct!=null&&b.upperPct>=50)parts.push('часто ограничивает решение сверху — вероятный дефицит мощности/ресурса');
+  else if(b.upperPct!=null&&b.upperPct>=15)parts.push('периодически становится узким местом');
+  if(b.lowerPct!=null&&b.lowerPct>=85)parts.push('почти всегда на нижней границе — потенциал сильно недоиспользован');
+  else if(b.lowerPct!=null&&b.lowerPct>=50)parts.push('более половины объектов простаивают у минимума');
+  if(b.status==='OFF')parts.push('ограничение отключено в конфигурации — не влияет на решение');
+  if(!parts.length)parts.push('сбалансировано, системного давления не создаёт');
+  return parts.join('; ');
+}
+function tabBND(){
+  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
+  if(!r.bounds.length)return '<div class="empty"><h2>Нет данных по границам</h2><p>В загруженном файле не найдено строк «Lower/Upper bound reached».</p></div>';
+  const rows=r.bounds.map(b=>({...b,name:`${ENT_LBL[b.entity]||b.entity} · ${consLbl(b.constraint)}`}));
+  const hot=rows.filter(b=>b.upperPct!=null).slice().sort((a,b)=>b.upperPct-a.upperPct);
+  const idle=rows.filter(b=>b.lowerPct!=null).slice().sort((a,b)=>b.lowerPct-a.lowerPct);
+  const K=[
+    ['Ограничений в модели',nf(rows.length),'уникальных пар «сущность · тип ограничения»',''],
+    ['Жёстких (STRICT)',nf(rows.filter(b=>b.status==='STRICT').length),'нарушение недопустимо — solver обязан их выполнить',''],
+    ['Мягких (SOFT)',nf(rows.filter(b=>b.status==='SOFT').length),'могут нарушаться за штраф в целевой функции',''],
+    ['Самое напряжённое сверху',hot[0]?pctFmt(hot[0].upperPct):'—',hot[0]?hot[0].name:'—',hot[0]&&hot[0].upperPct>=50?'neg':'mid'],
+    ['Самое незадействованное',idle[0]?pctFmt(idle[0].lowerPct):'—',idle[0]?idle[0].name:'—',idle[0]&&idle[0].lowerPct>=85?'mid':'']
+  ];
+  const html=`
+  <div class="kpis">${K.map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]||''}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  <div class="grid">
+    <div class="card"><h3>Реальные узкие места</h3><div class="sub">Доля объектов, упирающихся в верхнюю границу — чем выше, тем больше план ограничен ресурсом</div><canvas id="b1"></canvas></div>
+    <div class="card"><h3>Неиспользованный потенциал</h3><div class="sub">Доля объектов на нижней границе (обычно на нуле) — потенциал простаивает</div><canvas id="b2"></canvas></div>
+    <div class="card w"><h3>Реестр ограничений</h3><div class="sub">Сортировка, фильтры, экспорт</div><div id="b3"></div></div>
+  </div>`;
+  setTimeout(()=>{
+    chH('#b1',H('#b1',260,0.5),hot.slice(0,10).map(b=>({k:b.name,v:b.upperPct,
+      c:b.upperPct>=50?CH.err:(b.upperPct>=15?CH.warn:CH.ok),
+      tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Верхняя граница достигнута: ${pctFmt(b.upperPct)}<br>${bndComment(b)}`})),v=>nf(v,1)+'%',null);
+    chH('#b2',H('#b2',260,0.5),idle.slice(0,10).map(b=>({k:b.name,v:b.lowerPct,
+      c:b.lowerPct>=85?CH.warn:CH.d6,
+      tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Нижняя граница достигнута: ${pctFmt(b.lowerPct)}<br>${bndComment(b)}`})),v=>nf(v,1)+'%',null);
+    dtable('#b3',[
+      {k:'name',t:'Сущность · ограничение',left:1,flt:1},
+      {k:'status',t:'Тип',flt:1,f:v=>STATUS_LBL[v]||v},
+      {k:'lowerPct',t:'Нижняя граница, %',num:1,f:v=>pctFmt(v),cls:v=>v>=85?'mid':''},
+      {k:'upperPct',t:'Верхняя граница, %',num:1,f:v=>pctFmt(v),cls:v=>v>=50?'neg':v>=15?'mid':''},
+      {k:'comment',t:'Бизнес-комментарий',left:1,v:b=>bndComment(b)}
+    ],rows,{key:'bnd_reg',sort:'upperPct',dir:'desc',h:300,csv:1,name:'bounds'});
+  },0);
+  return html+summary('Резюме: ограничения и узкие места',[
+    {t:'Выводы',i:[
+      hot[0]?`Наибольшее давление на решение создаёт ограничение «<span class="h">${hot[0].name}</span>» — верхняя граница достигается в ${pctFmt(hot[0].upperPct)} случаев. Это первый кандидат на инвестиции в расширение мощности или на пересмотр приоритетов.`:'',
+      idle[0]?`Наименее используемое ограничение — «<span class="h">${idle[0].name}</span>»: ${pctFmt(idle[0].lowerPct)} объектов стоят на нижней границе. Если это лимит мощности — резерв не задействован; если это минимальный план — солвер систематически предпочитает не производить/не возить сверх нуля.`:'']},
+    {t:'Аномалии',i:rows.filter(b=>b.status==='STRICT'&&b.lowerPct!=null&&b.lowerPct>=90).map(b=>
+      `«<span class="h">${b.name}</span>» (STRICT): ${pctFmt(b.lowerPct)} объектов на нижней границе — почти весь потенциал этого ограничения не используется решением.`)},
+    {t:'Рекомендации',i:[
+      `По ограничениям с высокой верхней границей — обсудить с производством/логистикой возможность расширения мощности именно в этих точках сети: это даст наибольший прирост плана на единицу вложений.`,
+      `По ограничениям с высокой нижней границей у STRICT-типа — проверить, не заужены ли входные лимиты мощности искусственно (например, ошибочно малые значения в справочнике capacity), из-за чего решение вынужденно «упирается в ноль».`]}]);
+}
+
+/* ═══════════════ 11. ШТРАФЫ (SOFT) ═══════════════ */
+function tabPEN(){
+  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
+  if(!r.penalties.length)return '<div class="empty"><h2>Мягких нарушений не обнаружено</h2><p>Все SOFT-ограничения плана выполнены точно, штрафные санкции в целевой функции равны нулю.</p></div>'
+    +summary('Резюме: штрафы',[{t:'Вывод',i:['Отсутствие штрафов — хороший сигнал: план не жертвует мягкими целями (например, минимальным объёмом партии производства) ради общей экономики решения.']}]);
+  const rows=r.penalties.map(p=>({...p,name:`${ENT_LBL[p.entity]||p.entity} · ${consLbl(p.constraint)}`,kindLbl:p.kind==='min'?'Недобор (softmin)':'Перебор (softmax)'}));
+  const totalPen=S(rows,p=>p.sum);
+  const ratioToObj=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
+  const K=[
+    ['Суммарный штраф',nf(totalPen,2),'условных единиц целевой функции',''],
+    ['Доля от эффекта плана',pc(ratioToObj),ratioToObj<0.0001?'финансово незначимо':'заметная величина — стоит внимания',ratioToObj<0.0001?'pos':'mid'],
+    ['Затронутых групп ограничений',nf(rows.length),'уникальных пар «сущность · ограничение»','']
+  ];
+  const html=`
+  <div class="kpis">${K.map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]||''}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  <div class="grid">
+    <div class="card w"><h3>Сумма штрафа по группам</h3><div class="sub">Чем выше столбец, тем дороже обходится нарушение этой мягкой цели</div><canvas id="p1"></canvas></div>
+    <div class="card w"><h3>Реестр мягких нарушений</h3><div class="sub">Сортировка, фильтры, экспорт</div><div id="p2"></div></div>
+  </div>`;
+  setTimeout(()=>{
+    chH('#p1',H('#p1',220,0.45),rows.map(p=>({k:p.name+' ('+p.kindLbl+')',v:p.sum,c:p.kind==='min'?CH.warn:CH.err,
+      tip:`<b>${p.name}</b><br>${p.kindLbl}<br>Сумма штрафа: ${nf(p.sum,2)}<br>Доля затронутых объектов: ${pctFmt(p.nonzeroPct)}`})),v=>nf(v,1),null);
+    dtable('#p2',[
+      {k:'name',t:'Сущность · ограничение',left:1,flt:1},
+      {k:'kindLbl',t:'Тип нарушения',left:1,flt:1},
+      {k:'status',t:'Режим',flt:1,f:v=>STATUS_LBL[v]||v},
+      {k:'sum',t:'Сумма штрафа',num:1,f:v=>nf(v,2)},
+      {k:'nonzeroPct',t:'Доля затронутых объектов, %',num:1,f:v=>pctFmt(v),cls:v=>v>10?'mid':''}
+    ],rows,{key:'pen_reg',sort:'sum',dir:'desc',h:280,csv:1,name:'penalties'});
+  },0);
+  return html+summary('Резюме: штрафы и мягкие нарушения',[
+    {t:'Выводы',i:[
+      `Суммарный штраф по мягким ограничениям — <span class="h">${nf(totalPen,2)}</span>, это ${pc(ratioToObj)} от общего экономического эффекта плана — ${ratioToObj<0.0001?'величина пренебрежимо мала':'заметна и стоит разбора причин'}.`,
+      rows.length?`Наиболее нарушаемая мягкая цель — «<span class="h">${rows[0].name}</span>» (${rows[0].kindLbl}), затронуто ${pctFmt(rows[0].nonzeroPct)} объектов.`:'']},
+    {t:'Рекомендации',i:[
+      `Если материальность штрафов низкая — оставить настройку SOFT без изменений, это осознанный компромисс модели в пользу более выгодного общего решения.`,
+      `Если материальность растёт от прогона к прогону — пересмотреть штрафной коэффициент или сам минимальный/максимальный лимит: либо цель нереалистична, либо штраф слишком мал, чтобы удерживать план в рамках.`]}]);
+}
+
+/* ═══════════════ 12. ИСТОРИЯ ПРОГОНОВ ═══════════════ */
+function tabHIST(){
+  if(!DS||DS.runs.length<1)return '<div class="empty">Нет данных</div>';
+  const runs=DS.runs;
+  if(runs.length<2){
+    return '<div class="empty"><h2>Загружен только один прогон</h2><p>Загрузите ещё один файл optimizer_status (за другую дату/прогон) — здесь появится динамика качества оптимизации во времени и сравнение прогонов A/B.</p></div>';
+  }
+  HIST_A=Math.min(HIST_A,runs.length-1);HIST_B=Math.min(HIST_B,runs.length-1);
+  const labs=runs.map(r=>'#'+r.runid);
+  const gapArr=runs.map(r=>r.solve.gapPct),objArr=runs.map(r=>r.solve.objectiveValue),
+    slvArr=runs.map(r=>r.solve.solveTimeSec),saleArr=runs.map(r=>{const e=r.entities.find(x=>x.entity==='sale');return e?e.pct:0});
+  const html=`
+  <div class="kpis">
+    <div class="kpi"><div class="t">Прогонов в истории</div><div class="v">${nf(runs.length)}</div><div class="s">от ${esc(runs[0].meta.startTime||runs[0].runid)} до ${esc(runs[runs.length-1].meta.startTime||runs[runs.length-1].runid)}</div></div>
+    <div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v ${gapArr[gapArr.length-1]<=gapArr[gapArr.length-2]?'pos':'neg'}">${nf(gapArr[gapArr.length-1]-gapArr[gapArr.length-2],2)} п.п.</div><div class="s">${pctFmt(gapArr[gapArr.length-2])} → ${pctFmt(gapArr[gapArr.length-1])}</div></div>
+    <div class="kpi"><div class="t">Изменение эффекта плана</div><div class="v ${objArr[objArr.length-1]>=objArr[objArr.length-2]?'pos':'neg'}">${bn(objArr[objArr.length-1]-objArr[objArr.length-2])}</div><div class="s">${bn(objArr[objArr.length-2])} → ${bn(objArr[objArr.length-1])}</div></div>
+    <div class="kpi"><div class="t">Изменение покрытия спроса</div><div class="v ${saleArr[saleArr.length-1]>=saleArr[saleArr.length-2]?'pos':'neg'}">${nf(saleArr[saleArr.length-1]-saleArr[saleArr.length-2],1)} п.п.</div><div class="s">${pctFmt(saleArr[saleArr.length-2])} → ${pctFmt(saleArr[saleArr.length-1])}</div></div>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>Отклонение от оптимума по прогонам</h3><div class="sub">Ниже — лучше</div><canvas id="h1"></canvas></div>
+    <div class="card"><h3>Время решения по прогонам</h3><div class="sub">Секунды на полное решение</div><canvas id="h2"></canvas></div>
+    <div class="card"><h3>Экономический эффект плана</h3><div class="sub">Значение целевой функции, млрд</div><canvas id="h3"></canvas></div>
+    <div class="card"><h3>Покрытие спроса</h3><div class="sub">Доля строк спроса с планом продаж, %</div><canvas id="h4"></canvas></div>
+    <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Полный набор ключевых показателей по каждому прогону</div><div id="h5"></div></div>
+    <div class="card w">
+      <h3>Сравнение двух прогонов</h3><div class="sub">Выберите базовый и сравниваемый прогон</div>
+      <div class="frow">
+        <div class="fg"><label>Прогон A (база)</label><select id="histA"></select></div>
+        <div class="fg"><label>Прогон B (сравниваемый)</label><select id="histB"></select></div>
+      </div>
+      <div id="histDelta"></div>
+    </div>
+  </div>`;
+  setTimeout(()=>{
+    chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,v:gapArr,fill:1}],v=>nf(v,3)+'%',
+      i=>`<b>${labs[i]}</b><br>Gap: ${pctFmt(gapArr[i])}<br>Статус: ${esc(runs[i].solve.status)}`,null);
+    chLine('#h2',H('#h2',220,0.4),labs,[{c:CH.d2,v:slvArr,fill:1}],v=>nf(v,2)+' с',
+      i=>`<b>${labs[i]}</b><br>Время решения: ${nf(slvArr[i],3)} сек<br>Итераций: ${nf(runs[i].solve.iterations)}`,null);
+    chBars('#h3',H('#h3',220,0.4),labs,[{c:CH.d3,v:objArr.map(v=>v/1e9)}],v=>nf(v,1)+' млрд',
+      i=>`<b>${labs[i]}</b><br>Эффект плана: ${bn(objArr[i])}`,null);
+    chLine('#h4',H('#h4',220,0.4),labs,[{c:CH.d4,v:saleArr,fill:1}],v=>nf(v,1)+'%',
+      i=>`<b>${labs[i]}</b><br>Покрытие спроса: ${pctFmt(saleArr[i])}`,null);
+    dtable('#h5',[
+      {k:'label',t:'Прогон',left:1,flt:1},
+      {k:'startTime',t:'Дата запуска',left:1,flt:1},
+      {k:'status',t:'Статус',flt:1},
+      {k:'gap',t:'Gap, %',num:1,f:v=>pctFmt(v)},
+      {k:'solveTime',t:'Время решения, с',num:1,f:v=>nf(v,3)},
+      {k:'objective',t:'Эффект плана',num:1,f:v=>bn(v)},
+      {k:'salePct',t:'Покрытие спроса, %',num:1,f:v=>pctFmt(v)},
+      {k:'movePct',t:'Логистика, %',num:1,f:v=>pctFmt(v)},
+      {k:'prodPct',t:'Производство, %',num:1,f:v=>pctFmt(v)}
+    ],runs.map(r=>({label:r.label,startTime:r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
+      objective:r.solve.objectiveValue,salePct:(r.entities.find(e=>e.entity==='sale')||{}).pct||0,
+      movePct:(r.entities.find(e=>e.entity==='movement')||{}).pct||0,prodPct:(r.entities.find(e=>e.entity==='production')||{}).pct||0})),
+      {key:'hist_reg',sort:'startTime',dir:'asc',h:280,csv:1,name:'history'});
+
+    const selA=$('#histA'),selB=$('#histB');
+    selA.innerHTML=runs.map((r,i)=>`<option value="${i}" ${i===HIST_A?'selected':''}>${esc(r.label)}</option>`).join('');
+    selB.innerHTML=runs.map((r,i)=>`<option value="${i}" ${i===HIST_B?'selected':''}>${esc(r.label)}</option>`).join('');
+    const drawDelta=()=>{
+      const A=runs[HIST_A],B=runs[HIST_B];
+      const saleA=(A.entities.find(e=>e.entity==='sale')||{}).pct||0,saleB=(B.entities.find(e=>e.entity==='sale')||{}).pct||0;
+      const rows2=[
+        ['Статус',A.solve.status,B.solve.status,null],
+        ['Gap, %',A.solve.gapPct,B.solve.gapPct,-1],
+        ['Время решения, с',A.solve.solveTimeSec,B.solve.solveTimeSec,-1],
+        ['Эффект плана',A.solve.objectiveValue,B.solve.objectiveValue,1],
+        ['Покрытие спроса, %',saleA,saleB,1]
+      ];
+      $('#histDelta').innerHTML=`<div class="kpis">${rows2.map(x=>{
+        if(x[3]===null)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">${esc(x[1])} → ${esc(x[2])}</div><div class="s">A → B</div></div>`;
+        const d=(x[2]-x[1])*x[3];const isPct=x[0].includes('%');const isMoney=x[0]==='Эффект плана';
+                const fmt=v=>isMoney?bn(v):(isPct?nf(v,2)+' п.п.':nf(v,2));
+        const raw=x[2]-x[1];
+        return `<div class="kpi"><div class="t">${x[0]}</div>
+          <div class="v ${d>=0?'pos':'neg'}">${fmt(raw)}</div>
+          <div class="s">${isMoney?bn(x[1])+' → '+bn(x[2]):(isPct?pctFmt(x[1])+' → '+pctFmt(x[2]):nf(x[1],2)+' → '+nf(x[2],2))}</div></div>`;
+      }).join('')}</div>`;
+    };
+    selA.onchange=()=>{HIST_A=+selA.value;drawDelta()};
+    selB.onchange=()=>{HIST_B=+selB.value;drawDelta()};
+    drawDelta();
+  },0);
+  const last=runs[runs.length-1],prev=runs[runs.length-2];
+  return html+summary('Резюме: история прогонов',[
+    {t:'Выводы',i:[
+      `За ${nf(runs.length)} прогонов gap изменился с ${pctFmt(gapArr[0])} до <span class="h">${pctFmt(gapArr[gapArr.length-1])}</span>.`,
+      `Экономический эффект плана в последнем прогоне: <span class="h">${bn(last.solve.objectiveValue)}</span>, изменение к предыдущему — ${bn(last.solve.objectiveValue-prev.solve.objectiveValue)}.`,
+      `Время решения ${slvArr[slvArr.length-1]>slvArr[0]?'выросло':'снизилось'} с ${timeFmt(slvArr[0])} до <span class="h">${timeFmt(slvArr[slvArr.length-1])}</span> при сопоставимом масштабе модели.`]},
+    {t:'Аномалии',i:[
+      gapArr[gapArr.length-1]>gapArr[gapArr.length-2]*1.5&&gapArr[gapArr.length-2]>0?'Заметный скачок gap в последнем прогоне — возможна деградация исходных данных или изменение конфигурации солвера.':'Существенных скачков gap между соседними прогонами не выявлено.',
+      slvArr[slvArr.length-1]>slvArr[gapArr.length-2]*3?'Резкий рост времени решения — проверить рост размера модели (переменные/ограничения) и лимит времени.':'Время решения стабильно.']},
+    {t:'Рекомендации',i:[
+      'Использовать сравнение A/B перед каждым переходом на новую конфигурацию оптимизатора, чтобы отделить эффект настроек от эффекта входных данных.',
+      'Фиксировать историю показателей на регулярной основе (еженедельно/ежемесячно) — это единственный способ отличить системную деградацию от разовой аномалии.']}]);
+}
+
+/* ═══════════════ 13. ДАННЫЕ (RAW) ═══════════════ */
+function tabRAW(){
+  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
+  const rows=r.rawRows;
+  const html=`
+  <div class="kpis">
+    <div class="kpi"><div class="t">Строк лога</div><div class="v">${nf(rows.length)}</div><div class="s">параметр · значение</div></div>
+    <div class="kpi"><div class="t">Прогон</div><div class="v">#${esc(r.runid)}</div><div class="s">датасет ${esc(r.datasetid)} · конфиг ${esc(r.configid)}</div></div>
+  </div>
+  <div class="card w"><h3>Исходные строки optimizer_status</h3><div class="sub">Поиск, сортировка, экспорт CSV</div><div id="raw1"></div></div>`;
+  setTimeout(()=>{
+    dtable('#raw1',[
+      {k:'param',t:'Параметр',left:1,flt:1},
+      {k:'value',t:'Значение',left:1}
+    ],rows,{key:'raw_rows',sort:'param',dir:'asc',h:520,csv:1,name:'optimizer_status_raw'});
+  },0);
+  return html;
+}
+
+/* ═══════════════ 14. КАЧЕСТВО И АНОМАЛИИ ═══════════════ */
+function tabDQ(){
+  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
+  const ch=[];
+  const add=(sev,tag,msg,rec)=>ch.push({sev,tag,msg,rec});
+
+  const statusOk=/OPTIMAL/i.test(r.solve.status);
+  add(statusOk?'i':'e','Статус решения',
+    statusOk?`Солвер вернул статус ${esc(r.solve.status)} — оптимум найден и подтверждён.`
+      :`Солвер вернул статус ${esc(r.solve.status)} — решение может быть неполным или не оптимальным.`,
+    statusOk?'—':'Не публиковать план без проверки причин: недостаточный лимит времени, некорректные ограничения или несовместные данные.');
+
+  const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
+  const gapOk=r.solve.gapPct<=gapThr;
+  add(gapOk?'i':'w','Точность решения (Gap)',
+    `Gap составил ${pctFmt(r.solve.gapPct)}${r.meta.gapLimit!=null?`, порог настройки — ${pctFmt(r.meta.gapLimit)}`:''}.`,
+    gapOk?'—':'Увеличить лимит времени на решение либо ослабить порог gap, если критично сходимость за приемлемое время.');
+
+  const timeNearLimit=r.meta.timeLimit&&r.solve.solveTimeSec>=r.meta.timeLimit*0.9;
+  add(timeNearLimit?'w':'i','Использование лимита времени',
+    r.meta.timeLimit?`Решение заняло ${nf(r.solve.solveTimeSec,2)} сек из лимита ${r.meta.timeLimit} сек (${pc(r.solve.solveTimeSec/r.meta.timeLimit)}).`
+      :'Лимит времени на решение не задан в конфигурации.',
+    timeNearLimit?'Солвер почти исчерпал лимит времени — вероятно, gap не достиг целевого значения принудительно, а не по сходимости. Увеличить лимит.':'—');
+
+  const sale=r.entities.find(e=>e.entity==='sale');
+  add(sale&&sale.pct<70?'e':(sale&&sale.pct<90?'w':'i'),'Покрытие спроса',
+    sale?`Покрыто ${pctFmt(sale.pct)} спроса (${nf(sale.nonzero)} из ${nf(sale.total)} строк).`:'Данных по блоку продаж нет.',
+    sale&&sale.pct<90?'Проверить причины необслуженного спроса: ограничения мощности, сырья или отсутствие маршрутов до клиента.':'—');
+
+  const delRate=(r.solve.deletedVars+r.solve.deletedConstraints)/Math.max(r.solve.variables+r.solve.constraints,1);
+  add(delRate>0.05?'w':'i','Удалённые переменные и ограничения',
+    (r.solve.deletedVars>0||r.solve.deletedConstraints>0)
+      ?`Солвер удалил ${nf(r.solve.deletedVars)} переменных и ${nf(r.solve.deletedConstraints)} ограничений как избыточные (${pc(delRate)} от размера модели).`
+      :'Удалённых переменных и ограничений нет — модель использована полностью.',
+    delRate>0.05?'Высокая доля удалённых элементов — проверить логику построения модели на избыточные или противоречивые ограничения.':'—');
+
+  const zeroEnt=r.entities.filter(e=>e.total>0&&e.nonzero===0);
+  add(zeroEnt.length?'e':'i','Полностью неиспользуемые блоки',
+    zeroEnt.length?`Блоки без единого ненулевого значения: ${zeroEnt.map(e=>ENT_LBL[e.entity]||e.entity).join(', ')}.`
+      :'Все включённые блоки модели имеют хотя бы одно ненулевое решение.',
+    zeroEnt.length?'Проверить, доступны ли этим сущностям входные данные (мощности, цены, маршруты) — возможна ошибка выгрузки.':'—');
+
+  const cfgOk=r.meta.cfgParsed;
+  add(cfgOk?'i':'w','Конфигурация солвера',
+    cfgOk?`Конфигурация прочитана: солвер ${esc(r.meta.solver)}, ${r.meta.threads||'—'} потоков, лимит gap ${r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'}.`
+      :'Поле «Config» не удалось разобрать как JSON — часть мета-параметров недоступна.',
+    cfgOk?'—':'Проверить формат выгрузки поля Config в исходном файле.');
+
+  const strictLowMax=r.bounds.filter(b=>b.status==='STRICT'&&b.lowerPct!=null&&b.lowerPct>=90);
+  add(strictLowMax.length?'w':'i','Простаивающие жёсткие ограничения',
+    strictLowMax.length?`${strictLowMax.length} жёстких ограничений почти всегда на нижней границе: ${strictLowMax.slice(0,3).map(b=>ENT_LBL[b.entity]+'·'+consLbl(b.constraint)).join(', ')}.`
+      :'Существенно простаивающих жёстких ограничений не выявлено.',
+    strictLowMax.length?'Проверить корректность входных лимитов — возможно, они заужены искусственно.':'—');
+
+  const totalPen=S(r.penalties,p=>p.sum);
+  const penRatio=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
+  add(penRatio>0.01?'w':'i','Материальность штрафов SOFT',
+    r.penalties.length?`Суммарный штраф SOFT составляет ${pc(penRatio)} от экономического эффекта плана.`:'Мягких нарушений (SOFT) не зафиксировано.',
+    penRatio>0.01?'Проверить обоснованность мягких лимитов или штрафных коэффициентов — материальность выше 1% требует внимания.':'—');
+
+  const errs=ch.filter(c=>c.sev==='e').length,warns=ch.filter(c=>c.sev==='w').length,oks=ch.filter(c=>c.sev==='i').length;
+  const score=Math.max(0,Math.round(100-errs*18-warns*7));
+  const SEV={e:['Критично',CH.err],w:['Предупреждение',CH.warn],i:['Норма',CH.ok]};
+
+  const html=`
+  <div class="kpis">
+    <div class="kpi"><div class="t">Индекс надёжности прогона</div><div class="v ${score>=75?'pos':score>=50?'mid':'neg'}">${score} из 100</div><div class="s">${errs} критических, ${warns} предупреждений</div></div>
+    <div class="kpi"><div class="t">Проверок выполнено</div><div class="v">${nf(ch.length)}</div><div class="s">${oks} пройдено успешно</div></div>
+    <div class="kpi"><div class="t">Прогон</div><div class="v">#${esc(r.runid)}</div><div class="s">${esc(r.solve.status)} · gap ${pctFmt(r.solve.gapPct)}</div></div>
+  </div>
+  <div class="grid">
+    <div class="card"><h3>Профиль проверок</h3><div class="sub">Распределение результатов по критичности</div><canvas id="q1"></canvas></div>
+    <div class="card w"><h3>Реестр проверок и рекомендаций</h3><div class="sub">Отсортировано по критичности</div><div id="q2"></div></div>
+  </div>`;
+  setTimeout(()=>{
+    chDonut('#q1',H('#q1',230,0.55),[
+      {k:'Критично',v:errs||0.001,c:CH.err},{k:'Предупреждение',v:warns||0.001,c:CH.warn},{k:'Норма',v:oks||0.001,c:CH.ok}
+    ],'Проверки',v=>nf(Math.round(v))+' шт',null);
+    $('#q2').innerHTML=ch.slice().sort((a,b)=>({e:0,w:1,i:2})[a.sev]-({e:0,w:1,i:2})[b.sev]).map(c=>
+      `<div class="dq ${c.sev}"><span class="tag" style="color:${SEV[c.sev][1]};border-color:${SEV[c.sev][1]}">${SEV[c.sev][0]}</span>
+       <div class="m"><b>${c.tag}.</b> ${c.msg}${c.rec&&c.rec!=='—'?`<br><span style="color:var(--scp-text-3)">Рекомендация: ${c.rec}</span>`:''}</div></div>`).join('');
+  },0);
+
+  const topRec=ch.filter(c=>c.sev==='e').concat(ch.filter(c=>c.sev==='w')).slice(0,4);
+  return html+summary('Резюме: качество и надёжность прогона',[
+    {t:'Общая оценка',i:[
+      `Индекс надёжности прогона — <span class="h">${score} из 100</span>.`,
+      statusOk&&gapOk?'Базовые условия доверия к результату (статус OPTIMAL и gap в пределах порога) выполнены.':'Базовые условия доверия к результату нарушены — использовать план с осторожностью.']},
+    {t:'Приоритетные действия',i:topRec.length?topRec.map((c,i)=>`<b>${i+1}. ${c.tag}</b> — ${c.rec}`):['Критичных или значимых предупреждений не выявлено — прогон можно считать надёжным.']}
+  ]);
+}
+
+/* ═══════════════ 15. РЕНДЕР И ИНИЦИАЛИЗАЦИЯ ═══════════════ */
+function go(tab){TAB=tab;render()}
+
+function render(){
+  if(!DS||!DS.runs.length){
+    $('#nav').innerHTML='';
+    $('#runbar').innerHTML='';
+    $('#pgTitle').textContent='Данные не загружены';
+    $('#pgSub').textContent='';
+    $('#main').innerHTML='<div class="empty"><h2>Данные не загружены</h2><p>Нажмите кнопку загрузки в шапке и выберите XLSX с листом <code>optimizer_status</code>.</p></div>';
+    $('#stat').innerHTML='Нет активного прогона';
+    return;
+  }
+  $('#nav').innerHTML=TABS.map(([k,n])=>
+    `<button class="${TAB===k?'on':''}" data-t="${k}"><span class="dot"></span><b>${n}</b></button>`).join('');
+  $$('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+
+  const cur=TABS.find(t=>t[0]===TAB)||TABS[0];
+  $('#pgTitle').textContent=cur[1];
+  $('#pgSub').textContent=TSUB[TAB]||'';
+
+  $('#runbar').innerHTML=`<span class="runbar-lbl">Активный прогон</span>
+    <select id="runSel">${DS.runs.map(r=>`<option value="${runKey(r)}" ${runKey(r)===CUR_KEY?'selected':''}>${esc(r.label)}</option>`).join('')}</select>
+    <span class="tag">${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])} в истории</span>`;
+  const sel=$('#runSel');
+  if(sel)sel.onchange=()=>{CUR_KEY=sel.value;render()};
+
+  const V={ov:tabOV,ent:tabENT,bnd:tabBND,pen:tabPEN,hist:tabHIST,raw:tabRAW,dq:tabDQ};
+  try{$('#main').innerHTML=(V[TAB]||tabOV)()}
+  catch(err){$('#main').innerHTML=`<div class="empty"><h2 class="neg">Ошибка отрисовки блока</h2><p>${esc(err.message)}</p></div>`;console.error(err)}
+
+  const r=curRun();
+  if(r)$('#stat').innerHTML=`${esc(r.label)}<br>${esc(r.solve.status)} · gap ${pctFmt(r.solve.gapPct)} · ${timeFmt(r.solve.solveTimeSec)}`;
+}
+
+/* ── Загрузка XLSX ── */
+async function loadFiles(fileList){
+  if(typeof XLSX==='undefined'){
+    alert('Парсер XLSX недоступен: нет доступа к CDN SheetJS.');
+    return;
+  }
+  const files=Array.from(fileList);
+  if(!files.length)return;
+  $('#stat').innerHTML=`Чтение ${files.length} файл(ов)...`;
+
+  const readOne=file=>new Promise((resolve,reject)=>{
+    const fr=new FileReader();
+    fr.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:true});resolve({file,wb})}
+      catch(err){reject(err)}};
+    fr.onerror=()=>reject(new Error(`Ошибка чтения ${file.name}`));
+    fr.readAsArrayBuffer(file);
+  });
+
+  try{
+    const results=await Promise.all(files.map(readOne));
+    let allRows=[];
+    for(const {wb} of results){
+      const sheetName=wb.SheetNames.find(n=>/optimizer_status/i.test(n))||wb.SheetNames[0];
+      const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{defval:'',raw:true});
+      allRows=allRows.concat(rows);
+    }
+    if(!allRows.length)throw new Error('В файле не найдено строк с данными');
+    const parsed=parseOptimizerRows(allRows);
+    if(!parsed.length)throw new Error('Не удалось распознать ни одного прогона optimizer_status. Проверьте столбцы runid/Параметр/Значение/datasetid/configid.');
+
+    if(!DS)DS={runs:[]};
+    const existKeys=new Set(DS.runs.map(runKey));
+    parsed.forEach(p=>{if(!existKeys.has(runKey(p))){DS.runs.push(p);existKeys.add(runKey(p))}});
+    DS.runs.sort((a,b)=>(a.meta.startTime||'').localeCompare(b.meta.startTime||'')||num(a.runid)-num(b.runid));
+    CUR_KEY=runKey(DS.runs[DS.runs.length-1]);
+    HIST_A=Math.max(0,DS.runs.length-2);HIST_B=DS.runs.length-1;
+    render();
+    $('#stat').innerHTML=`<span class="pos">Загружено:</span> ${nf(parsed.length)} прогон(ов) из файла(ов)<br>Всего в истории: ${nf(DS.runs.length)}`;
+  }catch(err){
+    $('#stat').innerHTML=`<span class="neg">Ошибка: ${esc(err.message)}</span>`;
+    alert('Ошибка загрузки файла:\n\n'+err.message);
+  }
+}
+
+/* ── Обработчики UI ── */
+const bTheme=$('#bThemeToggle');
+if(bTheme)bTheme.onclick=()=>{
+  THEME=(THEME==='light')?'dark':'light';
+  localStorage.setItem('snp_opt_theme',THEME);
+  syncThemeTokens();
+  if(DS)render();
+};
+$('#bLoad').onclick=()=>$('#fIn').click();
+$('#fIn').onchange=e=>{if(e.target.files&&e.target.files.length){loadFiles(e.target.files);e.target.value=''}};
+$('#bReset').onclick=()=>{
+  if(!confirm('Очистить все загруженные прогоны и вернуться к демо-набору?'))return;
+  initFromRows(SEED_ROWS);TAB='ov';render();
+};
+const toggleRail=()=>{
+  const app=$('#app'),min=app.classList.toggle('min');
+  $('#railToggle').textContent=min?'›':'‹ Свернуть панель';
+  setTimeout(()=>{if(DS)render()},220);
+};
+$('#railToggle').onclick=toggleRail;
+const hdrToggle=$('#bRailToggleHdr');
+if(hdrToggle)hdrToggle.onclick=toggleRail;
+
+let RT,lastW=0;
+function redraw(force){
+  const el=document.getElementById('main');
+  const w=el?el.clientWidth:innerWidth;
+  if(!force&&Math.abs(w-lastW)<16)return;
+  lastW=w;clearTimeout(RT);
+  RT=setTimeout(()=>{if(DS)render()},200);
+}
+window.addEventListener('resize',()=>redraw(true));
+if(window.ResizeObserver){
+  const ro=new ResizeObserver(()=>redraw(false));
+  ro.observe(document.getElementById('main'));
+}
+window.addEventListener('keydown',e=>{if(e.key==='Escape')dtpHide()});
+
+/* ── Старт на демо-наборе ── */
+initFromRows(SEED_ROWS);
+render();
+</script>
+</body>
+</html>
