@@ -173,6 +173,33 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
   .rail-nav button{border-left:0;border-bottom:4px solid transparent}
   .rail-nav button.on{border-left:0;border-bottom-color:var(--scp-accent)}
 }
+
+/* §5 enhancements */
+#dtpop[role="dialog"]{outline:none}
+.dtp-i:focus-within{background:var(--scp-accent-bg)}
+.meta-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--scp-text-3)}
+.meta-bar .tag{font-weight:400}
+.hdr-actions .sep{width:1px;height:22px;background:var(--scp-line-2);margin:0 2px}
+.icon-btn.on{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.report-box{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m);padding:16px 18px;margin-bottom:12px}
+.report-box h3{margin:0 0 6px;font:600 15px/20px 'Open Sans',sans-serif}
+.report-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.csv-sep-wrap{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--scp-text-3)}
+.csv-sep-wrap select{padding:4px 8px;font-size:12px}
+canvas[role="img"]{outline:none}
+@media print{
+  body{background:#fff!important;color:#000!important}
+  .rail,.hdr-actions,.runbar,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,body.drag::after{display:none!important}
+  .app{display:block}
+  .wrap{width:100%}
+  header{border:0;padding:0 0 12px}
+  main{padding:0}
+  .card,.kpi,.sum,.dq{break-inside:avoid;box-shadow:none}
+  canvas{max-width:100%}
+  a[href]::after{content:''}
+}
+
 </style>
 </head>
 <body>
@@ -205,6 +232,13 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </button>
         <input type="file" id="fIn" accept=".xlsx,.xls" multiple style="display:none">
+        <button class="icon-btn" id="bReport" data-tip="Скачать HTML-отчёт по активному прогону" aria-label="Скачать HTML-отчёт по активному прогону">
+          <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        </button>
+        <button class="icon-btn" id="bPrint" data-tip="Печать текущего экрана" aria-label="Печать текущего экрана">
+          <svg viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        </button>
+        <span class="sep" aria-hidden="true"></span>
         <button class="icon-btn d" id="bReset" data-tip="Очистить все загруженные прогоны" aria-label="Очистить все загруженные прогоны">
           <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
         </button>
@@ -247,6 +281,19 @@ function toast(msg,type='ok',ms=4200){
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 let THEME=lsGet('snp_opt_theme')||'light';
+/* CSV separator: ';' for RU Excel, ',' for US/intl */
+let CSV_SEP=lsGet('snp_opt_csv_sep')||';';
+function csvSep(){return CSV_SEP==='auto'?(String(1.1).includes(',')?',':';'):(CSV_SEP||';')}
+function setCsvSep(v){CSV_SEP=v||';';lsSet('snp_opt_csv_sep',CSV_SEP)}
+function csvEscape(v,sep){const s=String(v==null?'':v);return (s.includes('"')||s.includes(sep)||/[\r\n]/.test(s))?'"'+s.replace(/"/g,'""')+'"':s}
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function nowStamp(){const d=new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'_'+p(d.getHours())+p(d.getMinutes())}
+
 let PAL=[];let CH={};
 function syncThemeTokens(){
   const isDark=(THEME==='dark');
@@ -270,9 +317,41 @@ function rgba(hex,a){const h=hex.replace('#','');const r=parseInt(h.slice(0,2),1
   return `rgba(${r},${g},${b},${a})`}
 
 /* ═══════════════ 2. УНИВЕРСАЛЬНАЯ ТАБЛИЦА ═══════════════ */
-const TBL={};let DTP=null;
-function dtp(){if(!DTP){DTP=document.createElement('div');DTP.id='dtpop';DTP.onclick=e=>e.stopPropagation();document.body.appendChild(DTP)}return DTP}
-function dtpHide(){if(DTP)DTP.style.display='none'}
+const TBL={};let DTP=null;let DTP_PREV_FOCUS=null;let DTP_TRAP=null;
+function dtp(){
+  if(!DTP){
+    DTP=document.createElement('div');DTP.id='dtpop';
+    DTP.setAttribute('role','dialog');DTP.setAttribute('aria-modal','true');
+    DTP.setAttribute('aria-label','Фильтр столбца');
+    DTP.onclick=e=>e.stopPropagation();
+    document.body.appendChild(DTP);
+  }
+  return DTP;
+}
+function dtpHide(){
+  if(!DTP||DTP.style.display==='none')return;
+  DTP.style.display='none';
+  DTP.removeAttribute('aria-labelledby');
+  if(DTP_TRAP){document.removeEventListener('keydown',DTP_TRAP,true);DTP_TRAP=null}
+  const back=DTP_PREV_FOCUS;DTP_PREV_FOCUS=null;
+  if(back&&typeof back.focus==='function'){try{back.focus()}catch(e){}}
+}
+function dtpFocusables(root){
+  return [...root.querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])')]
+    .filter(el=>!el.disabled&&el.offsetParent!==null);
+}
+function dtpTrapOn(){
+  if(DTP_TRAP)document.removeEventListener('keydown',DTP_TRAP,true);
+  DTP_TRAP=e=>{
+    if(e.key==='Escape'){e.preventDefault();dtpHide();return}
+    if(e.key!=='Tab'||!DTP||DTP.style.display==='none')return;
+    const list=dtpFocusables(DTP);if(!list.length)return;
+    const first=list[0],last=list[list.length-1];
+    if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}
+    else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}
+  };
+  document.addEventListener('keydown',DTP_TRAP,true);
+}
 function dtable(sel,cols,rows,opts){
   opts=opts||{};const host=$(sel);if(!host)return;
   const key=(opts.key||sel).replace(/[^A-Za-z0-9_]/g,'');
@@ -297,24 +376,30 @@ function dtable(sel,cols,rows,opts){
     const actC=cols.filter(c=>st.flt[c.k]&&st.flt[c.k].length);const nAct=actC.length+(st.q?1:0);
     host.innerHTML=`<div class="dt">
       <div class="dt-bar">
-        <input class="dt-q" type="text" placeholder="Поиск по таблице" value="${esc(st.q)}">
+        <input class="dt-q" type="text" placeholder="Поиск по таблице" value="${esc(st.q)}" aria-label="Поиск по таблице">
         <span class="dt-info">${nf(out.length)} из ${nf(data.length)}${pg?` · стр. ${st.pg} из ${tp}`:''}</span>
-        ${actC.map(c=>`<span class="dt-chip" data-cf="${c.k}">${esc(c.t)}: ${st.flt[c.k].length} ✕</span>`).join('')}
+        ${actC.map(c=>`<span class="dt-chip" data-cf="${c.k}" role="button" tabindex="0">${esc(c.t)}: ${st.flt[c.k].length} ✕</span>`).join('')}
         <span style="flex:1"></span>
-        ${opts.csv?`<button class="dt-btn" data-csv="1">Экспорт CSV</button>`:''}
-        <button class="dt-btn ${nAct?'':'off'}" data-clr="1" ${nAct?'':'disabled'}>Сбросить</button>
+        ${opts.csv?`<span class="csv-sep-wrap" title="Разделитель CSV"><label for="csvsep_${key}">CSV</label>
+          <select id="csvsep_${key}" data-csvsep="1" aria-label="Разделитель CSV">
+            <option value=";" ${CSV_SEP===';'?'selected':''}>; (RU)</option>
+            <option value="," ${CSV_SEP===','?'selected':''}>, (US)</option>
+            <option value="auto" ${CSV_SEP==='auto'?'selected':''}>авто</option>
+          </select></span>
+          <button class="dt-btn" data-csv="1" type="button">Экспорт CSV</button>`:''}
+        <button class="dt-btn ${nAct?'':'off'}" data-clr="1" type="button" ${nAct?'':'disabled'}>Сбросить</button>
       </div>
       <div class="scr" style="max-height:${opts.h||340}px"><table><thead><tr>
         ${cols.map(c=>{const on=st.sort===c.k,fon=st.flt[c.k]&&st.flt[c.k].length;
-          return `<th class="dt-th${c.left?' l':''}"><span class="dt-t" data-sk="${c.k}">${esc(c.t)}
-            <span class="dt-ar">${on?(st.dir==='asc'?'▲':'▼'):'↕'}</span></span>${
-            c.flt?`<span class="dt-fn${fon?' on':''}" data-fk="${c.k}">▾</span>`:''}</th>`}).join('')}
+          return `<th class="dt-th${c.left?' l':''}" scope="col"><span class="dt-t" data-sk="${c.k}" role="button" tabindex="0">${esc(c.t)}
+            <span class="dt-ar" aria-hidden="true">${on?(st.dir==='asc'?'▲':'▼'):'↕'}</span></span>${
+            c.flt?`<span class="dt-fn${fon?' on':''}" data-fk="${c.k}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label="Фильтр: ${esc(c.t)}">▾</span>`:''}</th>`}).join('')}
       </tr></thead><tbody>
         ${slice.length?slice.map(d=>`<tr>${cols.map(c=>`<td class="${c.cls?(c.cls(d[c.k],d._r)||''):''}${c.left?' l':''}">${cell(c,d)}</td>`).join('')}</tr>`).join('')
           :`<tr><td colspan="${cols.length}" style="text-align:center;padding:26px;color:var(--scp-text-3)">Ничего не найдено</td></tr>`}
       </tbody></table></div>
-      ${pg&&tp>1?`<div class="dt-pgs"><button class="dt-btn" data-pg="1">«</button><button class="dt-btn" data-pg="${st.pg-1}">Назад</button>
-        <span>${st.pg} из ${tp}</span><button class="dt-btn" data-pg="${st.pg+1}">Вперёд</button><button class="dt-btn" data-pg="${tp}">»</button></div>`:''}
+      ${pg&&tp>1?`<div class="dt-pgs"><button class="dt-btn" data-pg="1" type="button">«</button><button class="dt-btn" data-pg="${st.pg-1}" type="button">Назад</button>
+        <span>${st.pg} из ${tp}</span><button class="dt-btn" data-pg="${st.pg+1}" type="button">Вперёд</button><button class="dt-btn" data-pg="${tp}" type="button">»</button></div>`:''}
     </div>`;
     const qi=host.querySelector('.dt-q');
     qi.oninput=()=>{const p=qi.selectionStart;st.q=qi.value;st.pg=1;draw();const n=host.querySelector('.dt-q');n.focus();n.selectionStart=n.selectionEnd=p};
@@ -324,32 +409,71 @@ function dtable(sel,cols,rows,opts){
     host.querySelectorAll('[data-cf]').forEach(e=>e.onclick=()=>{st.flt[e.dataset.cf]=[];st.pg=1;draw()});
     const clr=host.querySelector('[data-clr]');if(clr)clr.onclick=()=>{st.q='';st.flt={};st.pg=1;draw()};
     host.querySelectorAll('[data-pg]').forEach(e=>e.onclick=()=>{st.pg=+e.dataset.pg;draw()});
+    const sepEl=host.querySelector('[data-csvsep]');
+    if(sepEl)sepEl.onchange=()=>{setCsvSep(sepEl.value)};
     const cb=host.querySelector('[data-csv]');
-    if(cb)cb.onclick=()=>{const lines=[cols.map(c=>c.t).join(';')].concat(out.map(d=>cols.map(c=>`"${plain(c,d).replace(/"/g,'""')}"`).join(';')));
+    if(cb)cb.onclick=()=>{
+      const sep=csvSep();
+      const lines=[cols.map(c=>csvEscape(c.t,sep)).join(sep)].concat(
+        out.map(d=>cols.map(c=>csvEscape(plain(c,d),sep)).join(sep)));
       const b=new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
-      const url=URL.createObjectURL(b),a=document.createElement('a');
-      a.href=url;a.download=(opts.name||'table')+'_'+new Date().toISOString().slice(0,10)+'.csv';
-      document.body.appendChild(a);a.click();a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url),1000);
-      toast('CSV-файл «'+a.download+'» подготовлен к скачиванию.','ok',3000)};
+      const name=(opts.name||'table')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+      downloadBlob(b,name);
+      toast('CSV «'+name+'» (разделитель «'+sep+'») подготовлен.','ok',3000);
+    };
   }
   function openFlt(anchor,k){
     const c=cols.find(z=>z.k===k),P=dtp(),vals=uqv(c);let fq='';
-    const build=()=>{const list=vals.filter(v=>!fq||v.toLowerCase().includes(fq));const cur=st.flt[k]||[];
-      P.innerHTML=`<div class="dtp-h"><span>${esc(c.t)}</span><span class="dtp-x">✕</span></div>
-        <input class="dtp-q" type="text" placeholder="Поиск значения" value="${esc(fq)}">
-        <div class="dtp-a"><button data-all="1">Выбрать все</button><button data-non="1">Снять все</button></div>
-        <div class="dtp-l">${list.map(v=>{const on=cur.includes(v);
-          return `<label class="dtp-i${on?' on':''}"><input type="checkbox" ${on?'checked':''} data-v="${esc(v)}"><span>${esc(v===''?'(пусто)':v)}</span></label>`}).join('')||'<div class="dtp-e">нет значений</div>'}</div>`;
-      P.querySelector('.dtp-x').onclick=dtpHide;
-      const fi=P.querySelector('.dtp-q');
-      fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();build();const n=P.querySelector('.dtp-q');n.value=fq?fi.value:'';n.focus();n.selectionStart=n.selectionEnd=p};
-      P.querySelector('[data-all]').onclick=()=>{st.flt[k]=list.slice();st.pg=1;draw();build()};
-      P.querySelector('[data-non]').onclick=()=>{st.flt[k]=[];st.pg=1;draw();build()};
-      P.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{const s=new Set(st.flt[k]||[]);i.checked?s.add(i.dataset.v):s.delete(i.dataset.v);st.flt[k]=[...s];st.pg=1;draw();build()});
-    };build();P.style.display='block';const r=anchor.getBoundingClientRect();
+    DTP_PREV_FOCUS=document.activeElement;
+    P.setAttribute('aria-label','Фильтр: '+(c.t||k));
+    const build=(keepFocus)=>{
+      const activeVal=keepFocus&&document.activeElement&&document.activeElement.dataset
+        ?document.activeElement.dataset.v:null;
+      const list=vals.filter(v=>!fq||v.toLowerCase().includes(fq));const cur=st.flt[k]||[];
+      /* Incremental update: rebuild list DOM only, keep search input focused */
+      let listEl=P.querySelector('.dtp-l');
+      let fi=P.querySelector('.dtp-q');
+      if(!P.querySelector('.dtp-h')){
+        P.innerHTML=`<div class="dtp-h" id="dtp-title"><span>${esc(c.t)}</span><button type="button" class="dtp-x" aria-label="Закрыть фильтр">✕</button></div>
+          <input class="dtp-q" type="text" placeholder="Поиск значения" value="${esc(fq)}" aria-label="Поиск значения фильтра">
+          <div class="dtp-a"><button type="button" data-all="1">Выбрать все</button><button type="button" data-non="1">Снять все</button></div>
+          <div class="dtp-l" role="group" aria-label="Значения"></div>`;
+        listEl=P.querySelector('.dtp-l');fi=P.querySelector('.dtp-q');
+        P.querySelector('.dtp-x').onclick=dtpHide;
+        fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();build(false);const n=P.querySelector('.dtp-q');n.focus();n.selectionStart=n.selectionEnd=p};
+        P.querySelector('[data-all]').onclick=()=>{st.flt[k]=list.slice();st.pg=1;draw();build(true)};
+        P.querySelector('[data-non]').onclick=()=>{st.flt[k]=[];st.pg=1;draw();build(true)};
+      } else {
+        /* refresh all/none handlers with current list */
+        P.querySelector('[data-all]').onclick=()=>{st.flt[k]=list.slice();st.pg=1;draw();build(true)};
+        P.querySelector('[data-non]').onclick=()=>{st.flt[k]=[];st.pg=1;draw();build(true)};
+      }
+      listEl.innerHTML=list.map(v=>{const on=cur.includes(v);
+        return `<label class="dtp-i${on?' on':''}"><input type="checkbox" ${on?'checked':''} data-v="${esc(v)}"><span>${esc(v===''?'(пусто)':v)}</span></label>`}).join('')||'<div class="dtp-e">нет значений</div>';
+      listEl.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
+        const s=new Set(st.flt[k]||[]);
+        i.checked?s.add(i.dataset.v):s.delete(i.dataset.v);
+        st.flt[k]=[...s];st.pg=1;
+        /* update only table body via draw, keep popup; restore checkbox focus */
+        const was=i.dataset.v;
+        draw();
+        build(true);
+        const again=P.querySelector(`input[data-v="${CSS.escape?CSS.escape(was):was.replace(/"/g,'\\"')}"]`);
+        if(again)again.focus();
+      });
+      if(keepFocus&&activeVal){
+        const again=P.querySelector(`input[data-v="${activeVal.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"]`);
+        if(again)again.focus();
+      }
+    };
+    build(false);
+    P.style.display='block';
+    const r=anchor.getBoundingClientRect();
     P.style.left=Math.max(8,Math.min(r.left-12,innerWidth-272))+'px';
     P.style.top=Math.min(r.bottom+6,Math.max(8,innerHeight-370))+'px';
+    dtpTrapOn();
+    const fi0=P.querySelector('.dtp-q');if(fi0)fi0.focus();
+    anchor.setAttribute('aria-expanded','true');
   }
   draw();
 }
@@ -358,10 +482,16 @@ window.addEventListener('keydown',e=>{if(e.key==='Escape')dtpHide()});
 
 /* ═══════════════ 3. ГРАФИЧЕСКИЙ ДВИЖОК ═══════════════ */
 const TIP=$('#tip');const FNT='Open Sans, sans-serif';
-function cv(id,h){const c=$(id);if(!c)return null;
+function cv(id,h,ariaLabel){const c=$(id);if(!c)return null;
   const r=Math.max(1,Math.min(devicePixelRatio||1,3));
   const w=Math.max(c.clientWidth||(c.parentElement?c.parentElement.clientWidth-36:0)||600,260);
   c.width=Math.round(w*r);c.height=Math.round(h*r);c.style.width='100%';c.style.height=h+'px';
+  c.setAttribute('role','img');
+  if(ariaLabel)c.setAttribute('aria-label',ariaLabel);
+  else if(!c.getAttribute('aria-label')){
+    const card=c.closest('.card');const h3=card&&card.querySelector('h3');
+    c.setAttribute('aria-label',h3?('График: '+h3.textContent):'График');
+  }
   const x=c.getContext('2d');x.setTransform(r,0,0,r,0,0);x.clearRect(0,0,w,h);x.font='12px '+FNT;c._h=[];
   return {c,x,w,h}}
 function H(id,base,ratio=0.5,min=180,max=430){const c=$(id);if(!c)return base;
@@ -584,6 +714,9 @@ let CUR_KEY=null,TAB='ov';
 let HIST_A=0,HIST_B=0;
 // Ключи прогонов, выбранных пользователем на вкладке «История прогонов»
 let SEL_HIST=new Set();
+/* Метаданные последней загрузки / сессии */
+let LOAD_META={source:'demo',files:[],sheetNote:'',loadedAt:null,persisted:false};
+let IS_DEMO=true;
 
 // Дефолт: последние 2 прогона (графики остаются читаемыми при большом числе прогонов)
 function resetHistSel(runs){
@@ -591,12 +724,102 @@ function resetHistSel(runs){
   runs.slice(-2).forEach(r=>SEL_HIST.add(runKey(r)));
   HIST_A=0;HIST_B=1;
 }
-function initFromRows(rows){
+function initFromRows(rows,meta){
   const runs=parseOptimizerRows(rows);
   runs.sort((a,b)=>(a.meta.startTime||'').localeCompare(b.meta.startTime||'')||num(a.runid)-num(b.runid));
   DS={runs};
   CUR_KEY=runKey(runs[runs.length-1]);
   resetHistSel(DS.runs);
+  if(meta)LOAD_META=Object.assign({},LOAD_META,meta);
+  else LOAD_META={source:'demo',files:[],sheetNote:'',loadedAt:new Date().toISOString(),persisted:false};
+  IS_DEMO=LOAD_META.source==='demo';
+}
+
+/* ── IndexedDB: персистентность истории прогонов ── */
+const IDB_NAME='snp_opt_insight',IDB_STORE='session',IDB_VER=1;
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    if(!window.indexedDB){reject(new Error('IndexedDB недоступен'));return}
+    const req=indexedDB.open(IDB_NAME,IDB_VER);
+    req.onupgradeneeded=()=>{const db=req.result;if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE)};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error||new Error('IndexedDB open failed'));
+  });
+}
+function idbGet(key){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readonly');
+    const rq=tx.objectStore(IDB_STORE).get(key);
+    rq.onsuccess=()=>resolve(rq.result);
+    rq.onerror=()=>reject(rq.error);
+  })).catch(()=>null);
+}
+function idbSet(key,val){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).put(val,key);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  })).catch(()=>false);
+}
+function idbDel(key){
+  return idbOpen().then(db=>new Promise((resolve,reject)=>{
+    const tx=db.transaction(IDB_STORE,'readwrite');
+    tx.objectStore(IDB_STORE).delete(key);
+    tx.oncomplete=()=>resolve(true);
+    tx.onerror=()=>reject(tx.error);
+  })).catch(()=>false);
+}
+/** Сериализация прогонов: raw Map → plain object entries */
+function serializeRuns(runs){
+  return runs.map(r=>({
+    runid:r.runid,datasetid:r.datasetid,configid:r.configid,label:r.label,
+    meta:r.meta,solve:r.solve,entities:r.entities,bounds:r.bounds,penalties:r.penalties,
+    rawRows:r.rawRows
+  }));
+}
+function persistSession(){
+  if(!DS||!DS.runs.length||IS_DEMO)return Promise.resolve(false);
+  const payload={
+    v:1,savedAt:new Date().toISOString(),
+    runs:serializeRuns(DS.runs),
+    curKey:CUR_KEY,tab:TAB,
+    selHist:[...SEL_HIST],histA:HIST_A,histB:HIST_B,
+    loadMeta:LOAD_META
+  };
+  return idbSet('current',payload).then(ok=>{
+    LOAD_META.persisted=!!ok;
+    if(ok){LOAD_META.savedAt=payload.savedAt}
+    return ok;
+  });
+}
+function clearPersistedSession(){return idbDel('current')}
+async function restoreSession(){
+  const payload=await idbGet('current');
+  if(!payload||!payload.runs||!payload.runs.length)return false;
+  DS={runs:payload.runs};
+  CUR_KEY=payload.curKey||runKey(DS.runs[DS.runs.length-1]);
+  TAB=payload.tab||'ov';
+  SEL_HIST=new Set(payload.selHist||[]);
+  if(!SEL_HIST.size)resetHistSel(DS.runs);
+  HIST_A=payload.histA||0;HIST_B=payload.histB||1;
+  LOAD_META=Object.assign({source:'session',files:[],sheetNote:'',loadedAt:payload.savedAt,persisted:true},payload.loadMeta||{});
+  LOAD_META.persisted=true;IS_DEMO=false;
+  return true;
+}
+function loadMetaHtml(){
+  const m=LOAD_META||{};
+  const when=m.loadedAt?new Date(m.loadedAt).toLocaleString('ru-RU'):'—';
+  const files=(m.files&&m.files.length)?m.files.join(', '):(m.source==='demo'?'демо-набор':(m.source==='session'?'сохранённая сессия':'—'));
+  const note=m.sheetNote?` · ${esc(m.sheetNote)}`:'';
+  const saved=m.persisted&&m.savedAt?` · сохранено ${esc(new Date(m.savedAt).toLocaleString('ru-RU'))}`:'';
+  return `<div class="meta-bar" id="loadMetaBar">
+    <span class="tag">Источник: ${esc(files)}</span>
+    <span class="tag">Загружено: ${esc(when)}</span>
+    ${note?`<span class="tag">${note}</span>`:''}
+    ${saved?`<span class="tag pos">${saved}</span>`:''}
+    ${!IS_DEMO?`<button type="button" class="dt-btn" id="bSaveSession" title="Сохранить историю прогонов в браузере">💾 Сохранить сессию</button>`:''}
+  </div>`;
 }
 function curRun(){if(!DS||!DS.runs.length)return null;
   return DS.runs.find(r=>runKey(r)===CUR_KEY)||DS.runs[DS.runs.length-1]}
@@ -992,20 +1215,25 @@ function tabHIST(){
         P.querySelector('.dtp-x').onclick=dtpHide;
         const fi=P.querySelector('.dtp-q');
         fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();rebuild();const n=P.querySelector('.dtp-q');n.value=fq?fi.value:'';n.focus();n.selectionStart=n.selectionEnd=p};
-        P.querySelector('[data-all]').onclick=()=>{list.forEach(r=>SEL_HIST.add(runKey(r)));rebuild();drawAll()};
-        P.querySelector('[data-non]').onclick=()=>{SEL_HIST.clear();rebuild();drawAll()};
+        P.querySelector('[data-all]').onclick=()=>{list.forEach(r=>SEL_HIST.add(runKey(r)));if(!IS_DEMO)persistSession();rebuild();drawAll()};
+        P.querySelector('[data-non]').onclick=()=>{SEL_HIST.clear();if(!IS_DEMO)persistSession();rebuild();drawAll()};
         P.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
           const k=i.dataset.k;
           if(i.checked)SEL_HIST.add(k);else SEL_HIST.delete(k);
           i.closest('.dtp-i').classList.toggle('on',i.checked);
+          if(!IS_DEMO)persistSession();
           drawAll();updateChip();
         });
       };
       rebuild();
       P.style.display='block';
+      P.setAttribute('aria-label','Выбор прогонов для анализа');
+      DTP_PREV_FOCUS=document.activeElement;
       const r=anchor.getBoundingClientRect();
       P.style.left=Math.max(8,Math.min(r.left-12,innerWidth-272))+'px';
       P.style.top=Math.min(r.bottom+6,Math.max(8,innerHeight-370))+'px';
+      dtpTrapOn();
+      const fi0=P.querySelector('.dtp-q');if(fi0)fi0.focus();
     };
 
     btn.onclick=e=>{e.stopPropagation();openPicker(btn)};
@@ -1127,7 +1355,7 @@ function tabDQ(){
 }
 
 /* ═══════════════ 15. РЕНДЕР И ИНИЦИАЛИЗАЦИЯ ═══════════════ */
-function go(tab){TAB=tab;render()}
+function go(tab){TAB=tab;if(!IS_DEMO)persistSession();render()}
 
 function render(){
   if(!DS||!DS.runs.length){
@@ -1148,10 +1376,18 @@ function render(){
   $('#pgSub').textContent=TSUB[TAB]||'';
 
   $('#runbar').innerHTML=`<span class="runbar-lbl">Активный прогон</span>
-    <select id="runSel">${DS.runs.map(r=>`<option value="${runKey(r)}" ${runKey(r)===CUR_KEY?'selected':''}>${esc(r.label)}</option>`).join('')}</select>
-    <span class="tag">${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])} в истории</span>`;
+    <select id="runSel" aria-label="Активный прогон">${DS.runs.map(r=>`<option value="${runKey(r)}" ${runKey(r)===CUR_KEY?'selected':''}>${esc(r.label)}</option>`).join('')}</select>
+    <span class="tag">${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])} в истории</span>
+    ${loadMetaHtml()}`;
   const sel=$('#runSel');
-  if(sel)sel.onchange=()=>{CUR_KEY=sel.value;render()};
+  if(sel)sel.onchange=()=>{CUR_KEY=sel.value;if(!IS_DEMO)persistSession();render()};
+  const bSave=$('#bSaveSession');
+  if(bSave)bSave.onclick=async()=>{
+    bSave.disabled=true;bSave.textContent='Сохранение…';
+    const ok=await persistSession();
+    toast(ok?'Сессия сохранена в браузере (IndexedDB) — переживёт перезагрузку.':'Не удалось сохранить сессию (IndexedDB недоступен).',ok?'ok':'err');
+    render();
+  };
 
   const V={ov:tabOV,ent:tabENT,bnd:tabBND,pen:tabPEN,hist:tabHIST,raw:tabRAW,dq:tabDQ};
   try{$('#main').innerHTML=(V[TAB]||tabOV)()}
@@ -1191,16 +1427,29 @@ async function loadFiles(fileList){
     const parsed=parseOptimizerRows(allRows);
     if(!parsed.length)throw new Error('Не удалось распознать ни одного прогона optimizer_status. Проверьте столбцы runid/Параметр/Значение/datasetid/configid.');
 
-    if(!DS)DS={runs:[]};
+    const wasDemo=IS_DEMO||!DS;
+    if(!DS||IS_DEMO)DS={runs:[]};
+    if(wasDemo)IS_DEMO=false;
     const existKeys=new Set(DS.runs.map(runKey));
     let added=0;
     parsed.forEach(p=>{if(!existKeys.has(runKey(p))){DS.runs.push(p);existKeys.add(runKey(p));added++}});
     DS.runs.sort((a,b)=>(a.meta.startTime||'').localeCompare(b.meta.startTime||'')||num(a.runid)-num(b.runid));
     CUR_KEY=runKey(DS.runs[DS.runs.length-1]);
     resetHistSel(DS.runs);
+    const sheetNote=fallbackSheets.length
+      ?('лист optimizer_status не найден — прочитан первый лист ('+fallbackSheets.join(', ')+')')
+      :'лист optimizer_status';
+    LOAD_META={
+      source:'file',
+      files:files.map(f=>f.name),
+      sheetNote,
+      loadedAt:new Date().toISOString(),
+      persisted:false
+    };
+    const okSave=await persistSession();
     render();
     const dup=parsed.length-added;
-    const msg=`Добавлено прогонов: ${added} из ${parsed.length}${dup?` · повторных (уже в истории): ${dup}`:''}`;
+    const msg=`Добавлено прогонов: ${added} из ${parsed.length}${dup?` · повторных (уже в истории): ${dup}`:''}${okSave?' · сессия сохранена':''}`;
     $('#stat').innerHTML=`<span class="pos">Загружено:</span> ${nf(added)} из ${nf(parsed.length)} прогон(ов)<br>Всего в истории: ${nf(DS.runs.length)}`;
     toast(msg + (fallbackSheets.length?` · В файле «${fallbackSheets.join('», «')}» лист optimizer_status не найден — прочитан первый лист.`:''),dup||fallbackSheets.length?'warn':'ok',6000);
   }catch(err){
@@ -1221,9 +1470,11 @@ if(bTheme)bTheme.onclick=()=>{
 };
 $('#bLoad').onclick=()=>$('#fIn').click();
 $('#fIn').onchange=e=>{if(e.target.files&&e.target.files.length){loadFiles(e.target.files);e.target.value=''}};
-$('#bReset').onclick=()=>{
+$('#bReset').onclick=async()=>{
   if(!confirm('Очистить все загруженные прогоны и вернуться к демо-набору?'))return;
-  initFromRows(SEED_ROWS);TAB='ov';render();
+  await clearPersistedSession();
+  initFromRows(SEED_ROWS,{source:'demo',files:[],sheetNote:'',loadedAt:new Date().toISOString(),persisted:false});
+  TAB='ov';IS_DEMO=true;render();
   toast('История очищена — показан демонстрационный прогон.','ok');
 };
 
@@ -1257,9 +1508,79 @@ if(window.ResizeObserver){
 }
 window.addEventListener('keydown',e=>{if(e.key==='Escape')dtpHide()});
 
-/* ── Старт на демо-наборе ── */
-initFromRows(SEED_ROWS);
-render();
+/* ── HTML-отчёт и печать ── */
+function buildReportHtml(r){
+  if(!r)return '';
+  const sale=r.entities.find(e=>e.entity==='sale');
+  const rows=[
+    ['Прогон',r.label],
+    ['Статус',r.solve.status],
+    ['Gap',pctFmt(r.solve.gapPct)],
+    ['Время решения',timeFmt(r.solve.solveTimeSec)],
+    ['Полный расчёт',timeFmt(r.solve.calcTimeSec)],
+    ['Переменных',nf(r.solve.variables)],
+    ['Ограничений',nf(r.solve.constraints)],
+    ['Эффект плана',bn(r.solve.objectiveValue)],
+    ['Покрытие спроса',sale?pctFmt(sale.pct):'—'],
+    ['Сущностей',nf(r.entities.length)],
+    ['Ограничений (границы)',nf(r.bounds.length)],
+    ['Штрафов SOFT',nf(r.penalties.length)],
+    ['Источник',(LOAD_META.files||[]).join(', ')||LOAD_META.source||'—'],
+    ['Загружено',LOAD_META.loadedAt?new Date(LOAD_META.loadedAt).toLocaleString('ru-RU'):'—'],
+  ];
+  const entRows=r.entities.map(e=>`<tr><td>${esc(ENT_LBL[e.entity]||e.entity)}</td><td>${nf(e.total)}</td><td>${nf(e.nonzero)}</td><td>${pctFmt(e.pct)}</td><td>${bn(e.value)}</td></tr>`).join('');
+  const bndRows=r.bounds.map(b=>`<tr><td>${esc((ENT_LBL[b.entity]||b.entity)+' · '+consLbl(b.constraint))}</td><td>${esc(STATUS_LBL[b.status]||b.status)}</td><td>${pctFmt(b.lowerPct)}</td><td>${pctFmt(b.upperPct)}</td></tr>`).join('');
+  const penRows=r.penalties.map(p=>`<tr><td>${esc((ENT_LBL[p.entity]||p.entity)+' · '+consLbl(p.constraint))}</td><td>${p.kind==='min'?'softmin':'softmax'}</td><td>${nf(p.sum,2)}</td><td>${pctFmt(p.nonzeroPct)}</td></tr>`).join('');
+  return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Отчёт · ${esc(r.label)}</title>
+<style>
+body{font:14px/1.45 'Segoe UI',system-ui,sans-serif;color:#222;max-width:920px;margin:32px auto;padding:0 20px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 10px;border-bottom:1px solid #ddd;padding-bottom:6px}
+.sub{color:#666;font-size:12px;margin-bottom:18px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px}
+th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}th{background:#f5f5f7}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}
+.kpi div{border:1px solid #e2e2e8;border-radius:8px;padding:10px 12px}.kpi b{display:block;font-size:18px;margin-top:4px}
+.foot{margin-top:28px;font-size:11px;color:#888}
+@media print{body{margin:0;max-width:none}}
+</style></head><body>
+<h1>SNP Optimizer Insight — отчёт</h1>
+<div class="sub">Сформирован ${new Date().toLocaleString('ru-RU')} · In.Plan</div>
+<div class="kpi">${rows.slice(0,8).map(x=>`<div>${esc(x[0])}<b>${esc(String(x[1]))}</b></div>`).join('')}</div>
+<h2>Метаданные</h2>
+<table><tbody>${rows.map(x=>`<tr><th style="width:40%">${esc(x[0])}</th><td>${esc(String(x[1]))}</td></tr>`).join('')}</tbody></table>
+<h2>Сущности</h2>
+<table><thead><tr><th>Сущность</th><th>Всего</th><th>Использовано</th><th>Доля</th><th>Вклад</th></tr></thead>
+<tbody>${entRows||'<tr><td colspan="5">нет данных</td></tr>'}</tbody></table>
+<h2>Ограничения (границы)</h2>
+<table><thead><tr><th>Ограничение</th><th>Тип</th><th>Нижняя, %</th><th>Верхняя, %</th></tr></thead>
+<tbody>${bndRows||'<tr><td colspan="4">нет данных</td></tr>'}</tbody></table>
+<h2>Штрафы SOFT</h2>
+<table><thead><tr><th>Ограничение</th><th>Вид</th><th>Сумма</th><th>Доля объектов</th></tr></thead>
+<tbody>${penRows||'<tr><td colspan="4">мягких нарушений нет</td></tr>'}</tbody></table>
+<div class="foot">Сгенерировано приложением SNP Optimizer Insight. Данные — из лога optimizer_status.</div>
+</body></html>`;
+}
+function downloadReport(){
+  const r=curRun();
+  if(!r){toast('Нет активного прогона для отчёта.','warn');return}
+  const html=buildReportHtml(r);
+  const name='snp_report_'+r.runid+'_'+nowStamp()+'.html';
+  downloadBlob(new Blob([html],{type:'text/html;charset=utf-8'}),name);
+  toast('Отчёт «'+name+'» подготовлен к скачиванию.','ok');
+}
+const bReport=$('#bReport');if(bReport)bReport.onclick=downloadReport;
+const bPrint=$('#bPrint');if(bPrint)bPrint.onclick=()=>window.print();
+
+/* ── Старт: восстановление сессии или демо ── */
+(async function boot(){
+  let restored=false;
+  try{restored=await restoreSession()}catch(e){restored=false}
+  if(!restored){
+    initFromRows(SEED_ROWS,{source:'demo',files:[],sheetNote:'',loadedAt:new Date().toISOString(),persisted:false});
+  }
+  render();
+  if(restored)toast('Восстановлена сохранённая сессия ('+DS.runs.length+' '+plural(DS.runs.length,['прогон','прогона','прогонов'])+').','ok',4500);
+})();
 </script>
 </body>
 </html>
