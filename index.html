@@ -177,8 +177,9 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
 /* §5 enhancements */
 #dtpop[role="dialog"]{outline:none}
 .dtp-i:focus-within{background:var(--scp-accent-bg)}
-.meta-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--scp-text-3)}
+.meta-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--scp-text-3);flex:1 1 100%;margin-top:4px;padding-top:6px;border-top:1px dashed var(--scp-line)}
 .meta-bar .tag{font-weight:400}
+.runbar{align-content:center}
 .hdr-actions .sep{width:1px;height:22px;background:var(--scp-line-2);margin:0 2px}
 .icon-btn.on{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
@@ -300,6 +301,7 @@ function syncThemeTokens(){
   document.documentElement.setAttribute('data-theme',THEME);
   const sun=$('#iconSun'),moon=$('#iconMoon');
   if(sun&&moon){sun.style.display=isDark?'block':'none';moon.style.display=isDark?'none':'block'}
+  const bt=$('#bThemeToggle');if(bt)bt.setAttribute('aria-pressed',isDark?'true':'false');
   PAL=isDark?['#647ae8','#38bdf8','#2dd468','#fb9e38','#f84b5c','#a78bfa','#2dd4bf','#e879f9']
             :['#2d3f8f','#1b98b8','#1ba84c','#ea8520','#e0243b','#7c5cd6','#0d9488','#c026a3'];
   CH=isDark?{grid:'#2d2d3a',axis:'#8f92a4',lab:'#c4c6d4',txt:'#f1f2f6',sub:'#9a9cb0',
@@ -332,7 +334,9 @@ function dtpHide(){
   if(!DTP||DTP.style.display==='none')return;
   DTP.style.display='none';
   DTP.removeAttribute('aria-labelledby');
+  DTP.removeAttribute('data-col-key');
   if(DTP_TRAP){document.removeEventListener('keydown',DTP_TRAP,true);DTP_TRAP=null}
+  document.querySelectorAll('.dt-fn[aria-expanded="true"]').forEach(el=>el.setAttribute('aria-expanded','false'));
   const back=DTP_PREV_FOCUS;DTP_PREV_FOCUS=null;
   if(back&&typeof back.focus==='function'){try{back.focus()}catch(e){}}
 }
@@ -403,10 +407,11 @@ function dtable(sel,cols,rows,opts){
     </div>`;
     const qi=host.querySelector('.dt-q');
     qi.oninput=()=>{const p=qi.selectionStart;st.q=qi.value;st.pg=1;draw();const n=host.querySelector('.dt-q');n.focus();n.selectionStart=n.selectionEnd=p};
-    host.querySelectorAll('.dt-t').forEach(e=>e.onclick=()=>{const k=e.dataset.sk;
-      if(st.sort===k)st.dir=st.dir==='asc'?'desc':'asc';else{st.sort=k;st.dir='desc'}draw()});
-    host.querySelectorAll('.dt-fn').forEach(e=>e.onclick=ev=>{ev.stopPropagation();openFlt(e,e.dataset.fk)});
-    host.querySelectorAll('[data-cf]').forEach(e=>e.onclick=()=>{st.flt[e.dataset.cf]=[];st.pg=1;draw()});
+    const actKey=(el,fn)=>{el.onclick=fn;el.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();fn(ev)}}};
+    host.querySelectorAll('.dt-t').forEach(e=>actKey(e,()=>{const k=e.dataset.sk;
+      if(st.sort===k)st.dir=st.dir==='asc'?'desc':'asc';else{st.sort=k;st.dir='desc'}draw()}));
+    host.querySelectorAll('.dt-fn').forEach(e=>actKey(e,ev=>{if(ev&&ev.stopPropagation)ev.stopPropagation();openFlt(e,e.dataset.fk)}));
+    host.querySelectorAll('[data-cf]').forEach(e=>actKey(e,()=>{st.flt[e.dataset.cf]=[];st.pg=1;draw()}));
     const clr=host.querySelector('[data-clr]');if(clr)clr.onclick=()=>{st.q='';st.flt={};st.pg=1;draw()};
     host.querySelectorAll('[data-pg]').forEach(e=>e.onclick=()=>{st.pg=+e.dataset.pg;draw()});
     const sepEl=host.querySelector('[data-csvsep]');
@@ -423,58 +428,54 @@ function dtable(sel,cols,rows,opts){
     };
   }
   function openFlt(anchor,k){
-    const c=cols.find(z=>z.k===k),P=dtp(),vals=uqv(c);let fq='';
-    DTP_PREV_FOCUS=document.activeElement;
+    const c=cols.find(z=>z.k===k);if(!c)return;
+    const P=dtp(),vals=uqv(c);let fq='';
+    DTP_PREV_FOCUS=anchor||document.activeElement;
     P.setAttribute('aria-label','Фильтр: '+(c.t||k));
-    const build=(keepFocus)=>{
-      const activeVal=keepFocus&&document.activeElement&&document.activeElement.dataset
-        ?document.activeElement.dataset.v:null;
-      const list=vals.filter(v=>!fq||v.toLowerCase().includes(fq));const cur=st.flt[k]||[];
-      /* Incremental update: rebuild list DOM only, keep search input focused */
-      let listEl=P.querySelector('.dtp-l');
-      let fi=P.querySelector('.dtp-q');
-      if(!P.querySelector('.dtp-h')){
-        P.innerHTML=`<div class="dtp-h" id="dtp-title"><span>${esc(c.t)}</span><button type="button" class="dtp-x" aria-label="Закрыть фильтр">✕</button></div>
-          <input class="dtp-q" type="text" placeholder="Поиск значения" value="${esc(fq)}" aria-label="Поиск значения фильтра">
-          <div class="dtp-a"><button type="button" data-all="1">Выбрать все</button><button type="button" data-non="1">Снять все</button></div>
-          <div class="dtp-l" role="group" aria-label="Значения"></div>`;
-        listEl=P.querySelector('.dtp-l');fi=P.querySelector('.dtp-q');
-        P.querySelector('.dtp-x').onclick=dtpHide;
-        fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();build(false);const n=P.querySelector('.dtp-q');n.focus();n.selectionStart=n.selectionEnd=p};
-        P.querySelector('[data-all]').onclick=()=>{st.flt[k]=list.slice();st.pg=1;draw();build(true)};
-        P.querySelector('[data-non]').onclick=()=>{st.flt[k]=[];st.pg=1;draw();build(true)};
-      } else {
-        /* refresh all/none handlers with current list */
-        P.querySelector('[data-all]').onclick=()=>{st.flt[k]=list.slice();st.pg=1;draw();build(true)};
-        P.querySelector('[data-non]').onclick=()=>{st.flt[k]=[];st.pg=1;draw();build(true)};
-      }
-      listEl.innerHTML=list.map(v=>{const on=cur.includes(v);
-        return `<label class="dtp-i${on?' on':''}"><input type="checkbox" ${on?'checked':''} data-v="${esc(v)}"><span>${esc(v===''?'(пусто)':v)}</span></label>`}).join('')||'<div class="dtp-e">нет значений</div>';
-      listEl.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
-        const s=new Set(st.flt[k]||[]);
-        i.checked?s.add(i.dataset.v):s.delete(i.dataset.v);
-        st.flt[k]=[...s];st.pg=1;
-        /* update only table body via draw, keep popup; restore checkbox focus */
-        const was=i.dataset.v;
-        draw();
-        build(true);
-        const again=P.querySelector(`input[data-v="${CSS.escape?CSS.escape(was):was.replace(/"/g,'\\"')}"]`);
-        if(again)again.focus();
+    P.dataset.colKey=k;
+    /* Always rebuild shell so title/handlers match the column */
+    P.innerHTML=`<div class="dtp-h" id="dtp-title"><span>${esc(c.t)}</span><button type="button" class="dtp-x" aria-label="Закрыть фильтр">✕</button></div>
+      <input class="dtp-q" type="text" placeholder="Поиск значения" value="" aria-label="Поиск значения фильтра">
+      <div class="dtp-a"><button type="button" data-all="1">Выбрать все</button><button type="button" data-non="1">Снять все</button></div>
+      <div class="dtp-l" role="group" aria-label="Значения"></div>`;
+    P.querySelector('.dtp-x').onclick=e=>{e.stopPropagation();dtpHide()};
+    const fi=P.querySelector('.dtp-q');
+    const listEl=P.querySelector('.dtp-l');
+    const fillList=()=>{
+      const list=vals.filter(v=>!fq||v.toLowerCase().includes(fq));
+      const cur=st.flt[k]||[];
+      listEl.innerHTML=list.map(v=>{
+        const on=cur.includes(v);
+        return `<label class="dtp-i${on?' on':''}"><input type="checkbox" ${on?'checked':''} data-v="${esc(v)}"><span>${esc(v===''?'(пусто)':v)}</span></label>`;
+      }).join('')||'<div class="dtp-e">нет значений</div>';
+      listEl.querySelectorAll('input[type=checkbox]').forEach(i=>{
+        i.onchange=()=>{
+          const s=new Set(st.flt[k]||[]);
+          i.checked?s.add(i.dataset.v):s.delete(i.dataset.v);
+          st.flt[k]=[...s];st.pg=1;
+          const was=i.dataset.v, caret=fi.selectionStart;
+          draw();
+          /* popup stays open; re-fill list and restore focus without full shell rebuild */
+          fillList();
+          const again=listEl.querySelector('input[data-v="'+was.replace(/\\/g,'\\\\').replace(/"/g,'\\"')+'"]');
+          if(again)again.focus();
+          else{fi.focus();fi.selectionStart=fi.selectionEnd=caret}
+        };
       });
-      if(keepFocus&&activeVal){
-        const again=P.querySelector(`input[data-v="${activeVal.replace(/\\/g,'\\\\').replace(/"/g,'\\"')}"]`);
-        if(again)again.focus();
-      }
+      P.querySelector('[data-all]').onclick=()=>{st.flt[k]=list.slice();st.pg=1;draw();fillList()};
+      P.querySelector('[data-non]').onclick=()=>{st.flt[k]=[];st.pg=1;draw();fillList()};
     };
-    build(false);
+    fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();fillList();fi.focus();fi.selectionStart=fi.selectionEnd=p};
+    fillList();
     P.style.display='block';
     const r=anchor.getBoundingClientRect();
     P.style.left=Math.max(8,Math.min(r.left-12,innerWidth-272))+'px';
     P.style.top=Math.min(r.bottom+6,Math.max(8,innerHeight-370))+'px';
     dtpTrapOn();
-    const fi0=P.querySelector('.dtp-q');if(fi0)fi0.focus();
-    anchor.setAttribute('aria-expanded','true');
+    fi.focus();
+    if(anchor&&anchor.setAttribute)anchor.setAttribute('aria-expanded','true');
   }
+
   draw();
 }
 document.addEventListener('click',()=>dtpHide());
@@ -818,7 +819,7 @@ function loadMetaHtml(){
     <span class="tag">Загружено: ${esc(when)}</span>
     ${note?`<span class="tag">${note}</span>`:''}
     ${saved?`<span class="tag pos">${saved}</span>`:''}
-    ${!IS_DEMO?`<button type="button" class="dt-btn" id="bSaveSession" title="Сохранить историю прогонов в браузере">💾 Сохранить сессию</button>`:''}
+    ${!IS_DEMO?`<button type="button" class="dt-btn" id="bSaveSession" title="Сохранить историю прогонов в браузере (IndexedDB)">Сохранить сессию</button>`:''}
   </div>`;
 }
 function curRun(){if(!DS||!DS.runs.length)return null;
@@ -1439,9 +1440,11 @@ async function loadFiles(fileList){
     const sheetNote=fallbackSheets.length
       ?('лист optimizer_status не найден — прочитан первый лист ('+fallbackSheets.join(', ')+')')
       :'лист optimizer_status';
+    const prevFiles=(LOAD_META&&LOAD_META.files&&!wasDemo)?LOAD_META.files:[];
+    const mergedFiles=[...new Set(prevFiles.concat(files.map(f=>f.name)))];
     LOAD_META={
       source:'file',
-      files:files.map(f=>f.name),
+      files:mergedFiles,
       sheetNote,
       loadedAt:new Date().toISOString(),
       persisted:false
@@ -1468,9 +1471,9 @@ if(bTheme)bTheme.onclick=()=>{
   syncThemeTokens();
   if(DS)render();
 };
-$('#bLoad').onclick=()=>$('#fIn').click();
-$('#fIn').onchange=e=>{if(e.target.files&&e.target.files.length){loadFiles(e.target.files);e.target.value=''}};
-$('#bReset').onclick=async()=>{
+const bLoad=$('#bLoad');if(bLoad)bLoad.onclick=()=>{const f=$('#fIn');if(f)f.click()};
+const fIn=$('#fIn');if(fIn)fIn.onchange=e=>{if(e.target.files&&e.target.files.length){loadFiles(e.target.files);e.target.value=''}};
+const bReset=$('#bReset');if(bReset)bReset.onclick=async()=>{
   if(!confirm('Очистить все загруженные прогоны и вернуться к демо-набору?'))return;
   await clearPersistedSession();
   initFromRows(SEED_ROWS,{source:'demo',files:[],sheetNote:'',loadedAt:new Date().toISOString(),persisted:false});
@@ -1489,7 +1492,7 @@ const toggleRail=()=>{
   $('#railToggle').textContent=min?'›':'‹ Свернуть панель';
   setTimeout(()=>{if(DS)render()},220);
 };
-$('#railToggle').onclick=toggleRail;
+const railT=$('#railToggle');if(railT)railT.onclick=toggleRail;
 const hdrToggle=$('#bRailToggleHdr');
 if(hdrToggle)hdrToggle.onclick=toggleRail;
 
