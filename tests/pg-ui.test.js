@@ -5,13 +5,15 @@
  * Проверяется полный сценарий без живого Postgres и браузера:
  * открытие модалки → подключение → мультивыбор схем → выбор прогонов →
  * загрузка в дашборд, плюс ветки ошибок (401, недоступный backend, 405 от
- * чужого статического сервера) и поле «адрес backend» (включая file://).
+ * чужого статического сервера) и поле «адрес backend» (включая file://),
+ * запасной автоподбор status/message и ручной мэппинг для экзотики.
  */
 'use strict';
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
 const { JSDOM } = require('jsdom');
+const { COL_CANDIDATES } = require('../server.js');
 
 const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 const COLS = ['runid', 'parameter', 'value', 'datasetid', 'configid'];
@@ -35,10 +37,22 @@ function runRows(schema, runid) {
   ];
 }
 
-/** Столбцы «неправильной» таблицы: ни Параметр, ни Значение (реальный случай). */
+/** Столбцы «неправильной» таблицы в боевой базе: status/message (реальный случай). */
 const ODD_COLS = ['status', 'runid', 'datasetid', 'message', 'update_date_time', 'configid', 'change_author', 'sys_id'];
+/** Ещё более экзотичная таблица: не угадывается даже запасной автоподбор. */
+const EXOTIC_COLS = ['state', 'runid', 'datasetid', 'note', 'update_date_time', 'configid', 'change_author', 'sys_id'];
 
-/** Подмена fetch: режимы {down, authFail, http405, odd} переключаются на лету. */
+/** Автоподбор сервера (зеркало suggestColumns в server.js по COL_CANDIDATES). */
+function suggestLike(cols) {
+  const lower = new Map((cols || []).map(c => [String(c).toLowerCase(), String(c)]));
+  const out = {};
+  for (const k of Object.keys(COL_CANDIDATES)) {
+    out[k] = COL_CANDIDATES[k].map(c => lower.get(c)).find(Boolean) || null;
+  }
+  return out;
+}
+
+/** Подмена fetch: режимы {down, authFail, http405, odd, oddManual} переключаются на лету. */
 function apiFetch(mode, log) {
   return async (url, opts) => {
     const u = String(url);
@@ -50,33 +64,41 @@ function apiFetch(mode, log) {
       // 405 + HTML-тело, не JSON
       return { ok: false, status: 405, json: async () => { throw new Error('HTML body, не JSON'); } };
     }
-    if (mode.odd) {
+    if (mode.odd || mode.oddManual) {
       // Схема, где optimizer_status назвал столбцы по-своему.
-      const mapped = body.columns || {};
-      const okMap = !!(mapped.param && mapped.value);
+      const colsUsed = mode.oddManual ? EXOTIC_COLS : ODD_COLS;
+      const auto = suggestLike(colsUsed);
+      const given = body.columns || {};
+      // как mapColumns в server.js: пользовательский ключ важнее автоподбора
+      const eff = {};
+      Object.keys(auto).forEach(k => { eff[k] = (k in given) ? (given[k] || '') : (auto[k] || ''); });
+      const okMap = !!(eff.param && eff.value);
       if (u.endsWith('/api/pg/schemas')) {
         return {
           ok: true,
           status: 200,
           json: async () => ({
             schemas: [{
-              schema: 'public_1841', table: 'optimizer_status', columns: ODD_COLS, rows: 500,
+              schema: 'public_1841', table: 'optimizer_status', columns: colsUsed, rows: 500,
               ok: okMap, needsMapping: !okMap,
               error: okMap ? null : 'Схема «public_1841»: не удалось определить столбцы: Параметр/parameter, Значение/value.',
-              mapped: { run: 'runid', param: mapped.param || null, value: mapped.value || null, ds: 'datasetid', cfg: 'configid' }
+              mapped: { run: eff.run, param: eff.param || null, value: eff.value || null, ds: eff.ds, cfg: eff.cfg }
             }]
           })
         };
       }
       if (u.endsWith('/api/pg/columns')) {
+        const sampleRow = mode.oddManual
+          ? { state: 'Solution', runid: '7', datasetid: '14', note: 'OPTIMAL', update_date_time: '2026-06-01', configid: '300', change_author: 'etl', sys_id: '1' }
+          : { status: 'Solution', runid: '7', datasetid: '14', message: 'OPTIMAL', update_date_time: '2026-06-01', configid: '300', change_author: 'etl', sys_id: '1' };
         return {
           ok: true,
           status: 200,
           json: async () => ({
-            schema: 'public_1841', table: 'optimizer_status', columns: ODD_COLS,
-            suggested: { run: 'runid', param: null, value: null, ds: 'datasetid', cfg: 'configid' },
-            missing: ['param', 'value'],
-            sample: [{ status: 'Solution', runid: '7', datasetid: '14', message: 'OPTIMAL', update_date_time: '2026-06-01', configid: '300', change_author: 'etl', sys_id: '1' }]
+            schema: 'public_1841', table: 'optimizer_status', columns: colsUsed,
+            suggested: auto,
+            missing: ['param', 'value'].filter(k => !auto[k]),
+            sample: [sampleRow]
           })
         };
       }
@@ -256,7 +278,7 @@ function setCheck(dom, el, checked) {
   ok(q(doc, '#pgModal').hidden === true, 'overlay click closes');
   dom.window.close();
 
-  console.log('7. Ошибка 401 — текст в модалке, остаёмся на шаге 1');
+  console.log('7. Ошибка 401 — текст в модалке c подсказками про подстановку/пробелы, остаёмся на шаге 1');
   {
     const m2 = { authFail: true };
     const d2 = makeDom(apiFetch(m2, []));
@@ -267,7 +289,11 @@ function setCheck(dom, el, checked) {
     q(doc2, '#pgPass').value = 'wrong';
     q(doc2, '#pgConnect').click();
     await waitFor(d2, d => q(d, '#pgErr1').classList.contains('show'), 'auth error shown');
-    ok(q(doc2, '#pgErr1').textContent.includes('логин или пароль'), 'friendly 401 text');
+    const err7 = q(doc2, '#pgErr1').textContent;
+    ok(err7.includes('логин или пароль'), 'friendly 401 text');
+    ok(/сохранённые данные|менеджер/i.test(err7), '401: подсказка про автоподстановку браузера');
+    ok(err7.includes('пробел'), '401: подсказка про пробелы при копировании');
+    ok(err7.includes('глаз'), '401: подсказка про кнопку просмотра пароля');
     ok(q(doc2, '#pgStep1').hidden === false, 'still on step 1');
     d2.window.close();
   }
@@ -335,7 +361,7 @@ function setCheck(dom, el, checked) {
     d6.window.close();
   }
 
-  console.log('12. Мэппинг столбцов: таблица со status/message вместо Параметр/Значение');
+  console.log('12. Таблица status/message: мэппинг подбирается сам, схема сразу доступна');
   {
     const m7 = { odd: true };
     const log7 = [];
@@ -346,19 +372,54 @@ function setCheck(dom, el, checked) {
     q(doc7, '#pgUser').value = 'analyst';
     q(doc7, '#pgPass').value = 'x';
     q(doc7, '#pgConnect').click();
-    await waitFor(d7, d => q(d, '#pgStep2').hidden === false, 'step 2 (odd schema)');
+    await waitFor(d7, d => q(d, '#pgStep2').hidden === false, 'step 2 (status/message schema)');
+
+    ok(q(doc7, '#pgSchemasList .pg-item.bad') === null, 'схема не помечена недоступной');
+    ok(/доступно: 1/.test(q(doc7, '#pgSchemasInfo').textContent), 'в сводке «доступно: 1»: ' + q(doc7, '#pgSchemasInfo').textContent);
+    ok(/автоматически/.test(q(doc7, '#pgMapState').textContent), 'мэппинг подобран автоматически');
+    ok(q(doc7, '#pgMap').open === false, 'блок мэппинга не раскрывается — вмешательство не нужно');
+    ok(q(doc7, '#pgMap_param').value === 'status', 'Параметр → status');
+    ok(q(doc7, '#pgMap_value').value === 'message', 'Значение → message');
+    ok(q(doc7, '#pgToRuns').textContent.includes('(1)'), 'схема предвыбрана без действий пользователя');
+
+    q(doc7, '#pgToRuns').click();
+    await waitFor(d7, d => q(d, '#pgStep3').hidden === false, 'step 3 with auto mapping');
+    const runsReq = log7.filter(e => e.url.endsWith('/api/pg/runs')).pop();
+    ok(!runsReq.body.columns, 'при автоподборе columns в запрос не добавляется');
+
+    q(doc7, '#pgDoLoad').click();
+    await waitFor(d7, d => q(d, '#pgModal').hidden === true, 'loaded with auto mapping');
+    const loadReq = log7.filter(e => e.url.endsWith('/api/pg/load')).pop();
+    ok(!loadReq.body.columns, 'и в /api/pg/load columns не уходит');
+    ok(qa(doc7, '#runSel option').some(o => o.textContent.includes('public_1841')), 'прогон из схемы со status/message попал в дашборд');
+    d7.window.close();
+  }
+
+  console.log('13. Мэппинг столбцов вручную: экзотические имена (state/note)');
+  {
+    const m7 = { oddManual: true };
+    const log7 = [];
+    const d7 = makeDom(apiFetch(m7, log7));
+    const doc7 = d7.window.document;
+    await waitFor(d7, d => q(d, '#runSel'), 'boot 7m');
+    q(doc7, '#bPg').click();
+    q(doc7, '#pgUser').value = 'analyst';
+    q(doc7, '#pgPass').value = 'x';
+    q(doc7, '#pgConnect').click();
+    await waitFor(d7, d => q(d, '#pgStep2').hidden === false, 'step 2 (exotic schema)');
 
     ok(q(doc7, '#pgMap') !== null, 'блок «Мэппинг столбцов» есть на шаге 2');
     ok(q(doc7, '#pgMap').open === true, 'блок раскрыт автоматически, раз мэппинг неполный');
     ok(/нужно указать/.test(q(doc7, '#pgMapState').textContent), 'статус мэппинга предупреждает: ' + q(doc7, '#pgMapState').textContent);
     ok(q(doc7, '#pgSchemasList .pg-item.bad') !== null, 'схема помечена недоступной до мэппинга');
     ok(/Мэппинг столбцов/.test(q(doc7, '#pgSchemasList').textContent), 'подсказка про мэппинг в описании схемы');
+    ok(/Ничего отметить нельзя/.test(q(doc7, '#pgSchemasInfo').textContent), 'при «доступно: 0» сводка объясняет причину и решение');
 
     // селекты заполнены реальными столбцами таблицы
     const selParam = q(doc7, '#pgMap_param');
     ok(selParam !== null, 'селект для «Параметр» отрисован');
     const optVals = [...selParam.options].map(o => o.value);
-    ok(ODD_COLS.every(c => optVals.includes(c)), 'в списке все столбцы таблицы: ' + optVals.join(','));
+    ok(EXOTIC_COLS.every(c => optVals.includes(c)), 'в списке все столбцы таблицы: ' + optVals.join(','));
     ok(q(doc7, '#pgMap_run').value === 'runid', 'runid подобран автоматически');
     ok(q(doc7, '#pgMap_ds').value === 'datasetid', 'datasetid подобран автоматически');
     ok(selParam.value === '', '«Параметр» не угадан — пусто');
@@ -372,38 +433,44 @@ function setCheck(dom, el, checked) {
     // образцы строк помогают понять, какой столбец за что отвечает
     q(doc7, '#pgMapSample').click();
     await waitFor(d7, d => q(d, '#pgMapSampleBox').hidden === false && q(d, '#pgMapSampleBox').textContent.includes('Solution'), 'sample rows');
-    ok(/message/.test(q(doc7, '#pgMapSampleBox').textContent), 'в образцах видны имена столбцов');
+    ok(/note/.test(q(doc7, '#pgMapSampleBox').textContent), 'в образцах видны имена столбцов');
     ok(log7.some(e => e.url.endsWith('/api/pg/columns')), 'образцы запрошены через /api/pg/columns');
 
     // задаём мэппинг вручную
     const setSel = (id, v) => { const el = q(doc7, id); el.value = v; el.dispatchEvent(new d7.window.Event('change', { bubbles: true })); };
-    setSel('#pgMap_param', 'status');
-    setSel('#pgMap_value', 'message');
+    setSel('#pgMap_param', 'state');
+    setSel('#pgMap_value', 'note');
     ok(/задан вручную/.test(q(doc7, '#pgMapState').textContent), 'статус: мэппинг задан вручную');
     ok(q(doc7, '#pgSchemasList .pg-item.bad') === null, 'схема стала доступной после мэппинга');
+    ok(q(doc7, '#pgToRuns').textContent.includes('(1)'), 'единственная ставшая доступной схема отметилась сама');
+
+    // «Выбрать все» работает и для схем, починенных ручным мэппингом (не по s.ok)
+    q(doc7, '#pgSchemasNone').click();
+    ok(q(doc7, '#pgToRuns').textContent.includes('(0)'), 'Снять все');
+    q(doc7, '#pgSchemasAll').click();
+    ok(q(doc7, '#pgToRuns').textContent.includes('(1)'), 'Выбрать все отмечает схему с ручным мэппингом');
 
     // теперь шаги проходят, и мэппинг уходит в каждый запрос
-    setCheck(d7, q(doc7, '#pgSchemasList input'), true);
     q(doc7, '#pgToRuns').click();
     await waitFor(d7, d => q(d, '#pgStep3').hidden === false, 'step 3 with mapping');
     const runsReq = log7.filter(e => e.url.endsWith('/api/pg/runs')).pop();
-    ok(runsReq.body.columns && runsReq.body.columns.param === 'status' && runsReq.body.columns.value === 'message',
+    ok(runsReq.body.columns && runsReq.body.columns.param === 'state' && runsReq.body.columns.value === 'note',
       'мэппинг ушёл в /api/pg/runs: ' + JSON.stringify(runsReq.body.columns));
 
     q(doc7, '#pgDoLoad').click();
     await waitFor(d7, d => q(d, '#pgModal').hidden === true, 'loaded with mapping');
     const loadReq = log7.filter(e => e.url.endsWith('/api/pg/load')).pop();
-    ok(loadReq.body.columns.param === 'status', 'мэппинг ушёл и в /api/pg/load');
+    ok(loadReq.body.columns.param === 'state', 'мэппинг ушёл и в /api/pg/load');
     ok(qa(doc7, '#runSel option').some(o => o.textContent.includes('public_1841')), 'прогон из «неправильной» схемы попал в дашборд');
 
     // мэппинг запоминается между сессиями
     const saved7 = JSON.parse(d7.window.localStorage.getItem('snp_opt_pg') || '{}');
-    ok(saved7.cols && saved7.cols.param === 'status' && saved7.cols.value === 'message', 'мэппинг сохранён в localStorage');
+    ok(saved7.cols && saved7.cols.param === 'state' && saved7.cols.value === 'note', 'мэппинг сохранён в localStorage');
     ok(!JSON.stringify(saved7).includes('"password"'), 'пароль по-прежнему не сохраняется');
     d7.window.close();
   }
 
-  console.log('13. Кнопка «Сбросить на авто» возвращает автоподбор');
+  console.log('14. Кнопка «Сбросить на авто» возвращает автоподбор');
   {
     const d8 = makeDom(apiFetch({}, []));
     const doc8 = d8.window.document;
@@ -424,6 +491,67 @@ function setCheck(dom, el, checked) {
     ok(/автоматически/.test(q(doc8, '#pgMapState').textContent), 'сброс вернул авто');
     ok(q(doc8, '#pgMap_value').value === 'value', 'значение вернулось к автоподбору');
     d8.window.close();
+  }
+
+  console.log('15. Поле «адрес backend» — нормализация вставленного значения');
+  async function connectWithBackend(backendValue) {
+    const log15 = [];
+    const d15 = makeDom(apiFetch({}, log15));
+    const doc15 = d15.window.document;
+    await waitFor(d15, d => q(d, '#runSel'), 'boot backend');
+    q(doc15, '#bPg').click();
+    q(doc15, '#pgUser').value = 'analyst';
+    q(doc15, '#pgPass').value = 'x';
+    q(doc15, '#pgBackend').value = backendValue;
+    q(doc15, '#pgConnect').click();
+    await waitFor(
+      d15,
+      d => q(d, '#pgStep2').hidden === false || q(d, '#pgErr1').classList.contains('show'),
+      'step 2 or step-1 error'
+    );
+    return { d15, doc15, log15 };
+  }
+  {
+    // markdown-ссылка из мессенджера/заметок: берём сам URL
+    const { d15, doc15, log15 } = await connectWithBackend('[http://localhost:3000](http://localhost:3000)');
+    ok(q(doc15, '#pgStep2').hidden === false, 'markdown-вставка принята');
+    ok(log15.some(e => e.url === 'http://localhost:3000/api/pg/schemas'),
+      'из markdown извлечён чистый URL: ' + JSON.stringify(log15.map(e => e.url)));
+    d15.window.close();
+  }
+  {
+    // адрес без схемы: подставляем http://
+    const { d15, doc15, log15 } = await connectWithBackend('localhost:3000');
+    ok(log15.some(e => e.url === 'http://localhost:3000/api/pg/schemas'), 'без схемы дописан http://');
+    d15.window.close();
+  }
+  {
+    // заведомый мусор: понятная ошибка на шаге 1, запрос не уходит
+    const { d15, doc15, log15 } = await connectWithBackend('куда-то не туда');
+    ok(q(doc15, '#pgErr1').classList.contains('show'), 'показана ошибка про адрес backend');
+    ok(/http:\/\//.test(q(doc15, '#pgErr1').textContent), 'в ошибке сказано, какого формата ждём');
+    ok(!log15.length, 'при кривом адресе запросы не уходят');
+    ok(q(doc15, '#pgStep1').hidden === false, 'остаёмся на шаге 1');
+    d15.window.close();
+  }
+
+  console.log('16. Кнопка «глаз» показывает/скрывает пароль');
+  {
+    const d16 = makeDom(apiFetch({}, []));
+    const doc16 = d16.window.document;
+    await waitFor(d16, d => q(d, '#runSel'), 'boot eye');
+    q(doc16, '#bPg').click();
+    const pass = q(doc16, '#pgPass');
+    const eye = q(doc16, '#pgPassEye');
+    ok(eye !== null, 'кнопка «глаз» отрисована');
+    ok(pass.type === 'password', 'пароль скрыт по умолчанию');
+    pass.value = 's e c';
+    eye.click();
+    ok(pass.type === 'text', 'по клику пароль виден — сразу видны пробелы/раскладка');
+    ok(eye.getAttribute('aria-label') === 'Скрыть пароль', 'aria-label переключён');
+    eye.click();
+    ok(pass.type === 'password', 'повторный клик снова скрывает');
+    d16.window.close();
   }
 
   console.log('\n' + '─'.repeat(40));

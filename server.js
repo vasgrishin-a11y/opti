@@ -114,10 +114,14 @@ function normalizeSelection(v) {
         в теле запроса как `columns` и имеет приоритет над догадкой.
    Обязательны только run/param/value; datasetid/configid необязательны
    (если их нет, прогон определяется одним runid).                        */
+/* status (имя параметра) и message (его значение) — реальный вид таблицы
+   optimizer_status в «боевой» базе (см. REVIEW.md). Они идут ПОСЛЕДНИМИ в
+   списках: если есть нормальные названия (Параметр/parameter/Значение/value),
+   они важнее — запасные срабатывают только когда больше нечего взять. */
 const COL_CANDIDATES = {
   run: ['runid', 'run_id', 'run', 'id_run', 'прогон'],
-  param: ['параметр', 'parameter', 'param', 'metric', 'показатель', 'attribute', 'атрибут'],
-  value: ['значение', 'value', 'val', 'значения'],
+  param: ['параметр', 'parameter', 'param', 'metric', 'показатель', 'attribute', 'атрибут', 'status'],
+  value: ['значение', 'value', 'val', 'значения', 'message'],
   ds: ['datasetid', 'dataset_id', 'dataset', 'датасет'],
   cfg: ['configid', 'config_id', 'config', 'конфиг']
 };
@@ -294,7 +298,10 @@ function friendlyPgError(err, conn) {
   const code = err && err.code;
   const where = conn && conn.host ? ` (${conn.host}:${conn.port || ''})` : '';
   if (code === '28P01' || code === '28P04' || code === '28000') {
-    return new HttpError(401, 'Неверный логин или пароль — Postgres отклонил аутентификацию.');
+    // Называем логин: так сразу видно, если в поле подставились не те данные
+    // (например, менеджер паролей браузера — у него для каждого сайта свои).
+    const who = conn && conn.user ? ` пользователя «${conn.user}»` : '';
+    return new HttpError(401, `Неверный логин или пароль — Postgres отклонил аутентификацию${who}.`);
   }
   if (code === '3D000') {
     return new HttpError(400, `База данных «${conn && conn.database}» не существует или недоступна.`);
@@ -322,7 +329,8 @@ function friendlyPgError(err, conn) {
     return new HttpError(502, `Соединение с сервером${where} разорвано. Проверьте хост/порт и режим SSL.`);
   }
   if (/password authentication failed/i.test(raw)) {
-    return new HttpError(401, 'Неверный логин или пароль — Postgres отклонил аутентификацию.');
+    const who = conn && conn.user ? ` пользователя «${conn.user}»` : '';
+    return new HttpError(401, `Неверный логин или пароль — Postgres отклонил аутентификацию${who}.`);
   }
   if (/database .* does not exist/i.test(raw)) {
     return new HttpError(400, `База данных «${conn && conn.database}» не существует или недоступна.`);

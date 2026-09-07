@@ -216,8 +216,17 @@ canvas[role="img"]{outline:none}
 .pg-form label{font-size:11px;color:var(--scp-text-3);font-weight:600;text-transform:uppercase;display:block;margin-bottom:4px}
 .pg-form input,.pg-form select{width:100%;background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:8px 10px;font:400 13px 'Open Sans',sans-serif}
 .pg-form input:focus,.pg-form select:focus{outline:none;border-color:var(--scp-accent)}
+.pg-pass{display:flex;align-items:stretch}
+.pg-pass input{flex:1;min-width:0;border-radius:var(--r-s) 0 0 var(--r-s)}
+.pg-eye{flex:0 0 36px;width:36px;display:flex;align-items:center;justify-content:center;background:var(--scp-surface);color:var(--scp-text-3);border:1px solid var(--scp-ctrl);border-left:none;border-radius:0 var(--r-s) var(--r-s) 0;cursor:pointer;padding:0}
+.pg-eye:hover{color:var(--scp-accent);border-color:var(--scp-accent)}
+.pg-eye:focus-visible{outline:2px solid var(--scp-accent);outline-offset:-2px}
+.pg-eye.on{color:var(--scp-accent)}
+.pg-eye svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pg-eye .x{display:none}
+.pg-eye.on .x{display:block}
 .pg-hint{font-size:12px;color:var(--scp-text-3);margin-top:10px;line-height:17px}
-.pg-err{display:none;background:var(--scp-err-bg);color:var(--scp-err);border:1px solid var(--scp-err);border-radius:var(--r-m);padding:10px 12px;font-size:13px;margin-top:12px;line-height:18px}
+.pg-err{display:none;background:var(--scp-err-bg);color:var(--scp-err);border:1px solid var(--scp-err);border-radius:var(--r-m);padding:10px 12px;font-size:13px;margin-top:12px;line-height:18px;white-space:pre-wrap}
 .pg-err.show{display:block}
 .pg-info{font-size:13px;color:var(--scp-text-2);margin:0 0 10px;line-height:19px}
 .pg-list{border:1px solid var(--scp-line);border-radius:var(--r-m);max-height:300px;overflow-y:auto;padding:6px}
@@ -331,7 +340,14 @@ canvas[role="img"]{outline:none}
           <div><label for="pgPort">Порт</label><input id="pgPort" type="number" min="1" max="65535" step="1"></div>
           <div><label for="pgDb">База данных</label><input id="pgDb" type="text" autocomplete="off" spellcheck="false"></div>
           <div><label for="pgUser">Логин</label><input id="pgUser" type="text" autocomplete="username"></div>
-          <div><label for="pgPass">Пароль</label><input id="pgPass" type="password" autocomplete="current-password"></div>
+          <div><label for="pgPass">Пароль</label>
+            <div class="pg-pass">
+              <input id="pgPass" type="password" autocomplete="current-password">
+              <button class="pg-eye" id="pgPassEye" type="button" tabindex="-1" aria-label="Показать пароль" title="Показать пароль — проверить, что именно уходит на сервер (пробелы, раскладка, подстановка менеджера паролей)">
+                <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8"/><circle cx="12" cy="12" r="3"/><line class="x" x1="4" y1="20" x2="20" y2="4"/></svg>
+              </button>
+            </div>
+          </div>
           <div class="full"><label for="pgSsl">Режим SSL</label>
             <select id="pgSsl">
               <option value="auto">Авто (сначала SSL, иначе без него)</option>
@@ -1799,8 +1815,8 @@ const PG_LS='snp_opt_pg';
    опознаётся одним runid). Держим синхронно с COL_* в server.js. */
 const PG_COL_FIELDS=[
   {k:'run',label:'Прогон (runid)',req:true,hint:'runid / run_id',cands:['runid','run_id','run','id_run','прогон']},
-  {k:'param',label:'Параметр',req:true,hint:'Параметр / parameter',cands:['параметр','parameter','param','metric','показатель','attribute','атрибут']},
-  {k:'value',label:'Значение',req:true,hint:'Значение / value',cands:['значение','value','val','значения']},
+  {k:'param',label:'Параметр',req:true,hint:'Параметр / parameter / status',cands:['параметр','parameter','param','metric','показатель','attribute','атрибут','status']},
+  {k:'value',label:'Значение',req:true,hint:'Значение / value / message',cands:['значение','value','val','значения','message']},
   {k:'ds',label:'Датасет (необяз.)',req:false,hint:'datasetid',cands:['datasetid','dataset_id','dataset','датасет']},
   {k:'cfg',label:'Конфиг (необяз.)',req:false,hint:'configid',cands:['configid','config_id','config','конфиг']}
 ];
@@ -1814,9 +1830,20 @@ function pgBody(extra){
   return b;
 }
 /* Адрес backend: пусто = тот же адрес, что и дашборд (запрос относительный).
-   При file:// по умолчанию http://localhost:3000 — где работает npm start. */
-function pgBackendBase(){const el=$('#pgBackend');const v=el?String(el.value||'').trim():'';
-  return v.replace(/\/+$/,'')}
+   При file:// по умолчанию http://localhost:3000 — где работает npm start.
+   Поле часто заполняют вставкой из мессенджера/заметок, поэтому значение
+   нормализуется: из markdown-ссылки «[http://…](http://…)» и прочего текста
+   вытаскивается сам URL, адресу без схемы («localhost:3000») подставляется
+   http://, хвостовые «/» убираются. */
+function pgBackendBase(){
+  const el=$('#pgBackend');let v=el?String(el.value||'').trim():'';
+  if(v){
+    const m=v.match(/https?:\/\/[^\s)\]"'<>,;]+/i);
+    if(m)v=m[0];
+    else if(/^[^\s/:]+(:\d+)?$/.test(v))v='http://'+v;
+  }
+  return v.replace(/\/+$/,'');
+}
 function pgDefaultBackend(){return location.protocol==='file:'?'http://localhost:3000':''}
 async function pgApi(path,body){
   const base=pgBackendBase(),url=base+path;
@@ -1828,11 +1855,12 @@ async function pgApi(path,body){
       :'Сервер недоступен. Запустите backend командой «npm start» и откройте дашборд через http://localhost:3000.');
   }
   let data=null;try{data=await res.json()}catch(e){}
+  const pgErr=(m,s)=>{const err=new Error(m);err.status=s;return err};
   if(!res.ok){
     if(res.status===405||res.status===404){
-      throw new Error('Backend не найден (HTTP '+res.status+' на '+(base||location.origin)+'). Запрос не дошёл до сервера «npm start» — он ушёл на обычный статический сервер, который не умеет обращаться к Postgres. Решение: откройте дашборд через http://localhost:3000 (после npm start), либо укажите адрес запущенного backend в поле «Дополнительно: адрес backend» на шаге 1.');
+      throw pgErr('Backend не найден (HTTP '+res.status+' на '+(base||location.origin)+'). Запрос не дошёл до сервера «npm start» — он ушёл на обычный статический сервер, который не умеет обращаться к Postgres. Решение: откройте дашборд через http://localhost:3000 (после npm start), либо укажите адрес запущенного backend в поле «Дополнительно: адрес backend» на шаге 1.',res.status);
     }
-    throw new Error((data&&data.error)||('Ошибка сервера: '+res.status+' (ответ не JSON — вероятно, запрос пришёл не на backend «npm start»)'));
+    throw pgErr((data&&data.error)||('Ошибка сервера: '+res.status+' (ответ не JSON — вероятно, запрос пришёл не на backend «npm start»)'),res.status);
   }
   return data||{};
 }
@@ -1882,6 +1910,11 @@ async function pgConnect(){
   if(!Number.isInteger(port)||port<1||port>65535){pgShowErr(1,'Порт должен быть целым числом от 1 до 65535.');return}
   if(!database){pgShowErr(1,'Заполните поле «База данных».');return}
   if(!user){pgShowErr(1,'Введите логин.');return}
+  const bbase=pgBackendBase();
+  if(bbase&&!/^https?:\/\//i.test(bbase)){
+    pgShowErr(1,'Адрес backend должен начинаться с http:// или https:// (например, http://localhost:3000) — сейчас в поле «Дополнительно»: «'+$('#pgBackend').value.trim()+'».');
+    return;
+  }
   const conn={host,port,database,user,password,ssl};
   pgBusy(true,'Подключение к Postgres…');
   try{
@@ -1899,7 +1932,19 @@ async function pgConnect(){
     }
     PG.selS=new Set(PG.schemas.filter(s=>pgSchemaUsable(s)).map(s=>s.schema));
     pgBusy(false,'');pgSetStep(2);
-  }catch(e){PG.conn=null;pgBusy(false,'');pgShowErr(1,e.message||String(e))}
+  }catch(e){
+    PG.conn=null;pgBusy(false,'');
+    let msg=e.message||String(e);
+    /* 401: тело запроса одинаково при любом источнике страницы, поэтому при
+       «пароль верный, но не пускает» почти всегда виноваты САМИ поля: менеджер
+       паролей браузера хранит логины отдельно для каждого сайта (у ссылки с
+       GitHub Pages и у localhost:3000 — разные записи) или в скопированный
+       пароль попал пробел/не та раскладка. */
+    if(e&&e.status===401){
+      msg+='\nПроверьте: браузер мог подставить в «Логин»/«Пароль» свои сохранённые данные — для каждого сайта они свои (у страницы с GitHub и у http://localhost:3000 — разные); в пароле, скопированном из документа, часто есть пробел в начале или в конце; раскладка клавиатуры. Кнопка «глаз» рядом с полем «Пароль» показывает, что именно отправляется.';
+    }
+    pgShowErr(1,msg);
+  }
 }
 /* ── Мэппинг столбцов: какой столбец таблицы = какое поле лога ──
    Нужен, когда optimizer_status в базе назвал столбцы по-своему
@@ -1947,8 +1992,11 @@ function pgRenderMap(){
   grid.querySelectorAll('select').forEach(sel=>sel.onchange=()=>{
     const cur=pgEffectiveMap();
     PG.cols=Object.assign({},cur,{[sel.dataset.f]:sel.value});
-    // схемы, ставшие недоступными при новом мэппинге, снимаем с выбора
+    // схемы, ставшие недоступными при новом мэппинге, снимаем с выбора;
+    // если же мэппинг наконец подошёл и ни одна схема не выбрана — отмечаем
+    // все пригодные (как при первом входе), чтобы не остаться с «(0)»
     PG.schemas.forEach(s=>{if(!pgSchemaUsable(s))PG.selS.delete(s.schema)});
+    if(!PG.selS.size)PG.schemas.forEach(s=>{if(pgSchemaUsable(s))PG.selS.add(s.schema)});
     pgRemember();pgRenderMap();pgRenderSchemas();
   });
   const st=$('#pgMapState');
@@ -1991,8 +2039,9 @@ function pgRenderSchemas(){
   const q=(($('#pgSchemaQ')||{}).value||'').toLowerCase();
   const list=$('#pgSchemasList');if(!list)return;
   const okN=PG.schemas.filter(s=>pgSchemaUsable(s)).length;
-  $('#pgSchemasInfo').textContent=
-    `Таблица optimizer_status найдена в схемах: ${PG.schemas.length} (доступно: ${okN}). Отметьте нужные схемы — прогоны загрузятся из каждой отмеченной.`;
+  $('#pgSchemasInfo').textContent=okN
+    ?`Таблица optimizer_status найдена в схемах: ${PG.schemas.length} (доступно: ${okN}). Отметьте нужные схемы — прогоны загрузятся из каждой отмеченной.`
+    :`Таблица optimizer_status найдена в схемах: ${PG.schemas.length} (доступно: 0). Ничего отметить нельзя, потому что дашборд не видит в таблице столбцов с именем параметра и его значением — укажите их в блоке «Мэппинг столбцов» выше (раскрыт автоматически), и схемы станут доступными.`;
   const items=PG.schemas.filter(s=>!q||String(s.schema).toLowerCase().includes(q));
   list.innerHTML=items.map(s=>{
     const usable=pgSchemaUsable(s),on=PG.selS.has(s.schema)&&usable;
@@ -2129,13 +2178,27 @@ async function pgLoad(){
   ov.addEventListener('click',e=>{if(e.target===ov)pgClose()});
   ov.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();pgClose()}});
   $('#pgConnect').onclick=pgConnect;
+  /* «Глаз» у пароля: показать, что реально уходит на сервер — диагностика
+     «пароль точно верный, но Postgres не пускает» (пробелы при вставке,
+     подстановка менеджера паролей, раскладка). */
+  const eye=$('#pgPassEye');
+  if(eye)eye.onclick=()=>{
+    const p=$('#pgPass');if(!p)return;
+    const show=p.type==='password';
+    p.type=show?'text':'password';
+    eye.classList.toggle('on',show);
+    const t=show?'Скрыть пароль':'Показать пароль';
+    eye.setAttribute('aria-label',t);eye.title=t;
+    try{p.focus({preventScroll:true})}catch(e){p.focus()}
+  };
   ['pgHost','pgPort','pgDb','pgUser','pgPass','pgBackend'].forEach(id=>{const el=document.getElementById(id);
     if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();pgConnect()}})});
   $('#pgBack2').onclick=()=>pgSetStep(1);
   $('#pgBack3').onclick=()=>pgSetStep(2);
   $('#pgToRuns').onclick=pgFetchRuns;
   $('#pgDoLoad').onclick=pgLoad;
-  $('#pgSchemasAll').onclick=()=>{PG.schemas.filter(s=>s.ok).forEach(s=>PG.selS.add(s.schema));pgRenderSchemas()};
+  // не s.ok (серверный флаг до ручного мэппинга), а действующее право выбора
+  $('#pgSchemasAll').onclick=()=>{PG.schemas.filter(s=>pgSchemaUsable(s)).forEach(s=>PG.selS.add(s.schema));pgRenderSchemas()};
   $('#pgSchemasNone').onclick=()=>{PG.selS.clear();pgRenderSchemas()};
   $('#pgRunsAll').onclick=()=>{PG.runs.forEach(r=>PG.selR.add(pgRunKey(r)));pgRenderRuns()};
   $('#pgRunsNone').onclick=()=>{PG.selR.clear();pgRenderRuns()};
