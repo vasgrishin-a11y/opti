@@ -29,6 +29,7 @@
   --scp-ok:#2dd468;--scp-ok-bg:#143823;--scp-err:#f84b5c;--scp-err-bg:#42171c;--scp-warn:#fb9e38;--scp-warn-bg:#41290f;
   --scp-n-50:#292936;--scp-n-100:#313140;
 }
+[data-theme="dark"] tbody tr:hover,[data-theme="dark"] .dt tbody tr:nth-child(even):hover{background:var(--scp-accent-bg)}
 [data-theme="dark"] .dq.e{background:var(--scp-err-bg)} [data-theme="dark"] .dq.w{background:var(--scp-warn-bg)}
 [data-theme="dark"] .dq.i{background:var(--scp-ok-bg)} [data-theme="dark"] #tip{background:#15151c;border:1px solid var(--scp-line-2)}
 *{box-sizing:border-box}
@@ -72,14 +73,26 @@ h1{font:600 26px/32px 'Open Sans',sans-serif;margin:0;color:var(--scp-text)}
 .stat{font-size:12px;color:var(--scp-text-3);text-align:right;white-space:nowrap;align-self:center}
 .runbar{background:var(--scp-surface);border-bottom:1px solid var(--scp-line-2);padding:8px 32px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:52px}
 .runbar-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--scp-text-3)}
-select{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:7px 10px;font:400 13px 'Open Sans',sans-serif}
+select{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:7px 10px;font:400 13px 'Open Sans',sans-serif;max-width:100%;text-overflow:ellipsis}
+#runSel{max-width:min(430px,60vw);font-weight:600}
 select:focus{outline:none;border-color:var(--scp-accent)}
 main{padding:20px 32px 72px;flex:1}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:12px;margin-bottom:16px}
-.kpi{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m);padding:14px 16px}
-.kpi .t{font-size:13px;color:var(--scp-text-2)}
-.kpi .v{font:700 26px/32px 'Open Sans',sans-serif;color:var(--scp-text);margin-top:6px;letter-spacing:-.3px}
+.kpi{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m);padding:13px 16px 12px;position:relative;overflow:hidden;transition:box-shadow .15s,border-color .15s}
+.kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--scp-line-2)}
+.kpi.pos-b::before{background:var(--scp-ok)} .kpi.neg-b::before{background:var(--scp-err)} .kpi.mid-b::before{background:var(--scp-warn)} .kpi.acc-b::before{background:var(--scp-accent)}
+.kpi:hover{border-color:var(--scp-menu-bd);box-shadow:0 2px 10px #00000014}
+.kpi .t{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--scp-text-3)}
+.kpi .v{font:700 25px/31px 'Open Sans',sans-serif;color:var(--scp-text);margin-top:6px;letter-spacing:-.3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kpi .s{font-size:12px;color:var(--scp-text-3);margin-top:3px}
+.kd{font-size:12px;margin-top:5px;font-weight:600}
+.kd.g{color:var(--scp-ok)} .kd.b{color:var(--scp-err)} .kd.n{color:var(--scp-text-3);font-weight:400}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:9999px;border:1px solid var(--scp-line-2);background:var(--scp-n-50);color:var(--scp-text-2);white-space:nowrap}
+.pill i{width:7px;height:7px;border-radius:50%;display:inline-block;background:var(--scp-n-300)}
+.pill.ok{background:var(--scp-ok-bg);border-color:transparent;color:#0d7a3c} .pill.ok i{background:var(--scp-ok)}
+.pill.err{background:var(--scp-err-bg);border-color:transparent;color:#a01824} .pill.err i{background:var(--scp-err)}
+.pill.warn{background:var(--scp-warn-bg);border-color:transparent;color:#8a5a00} .pill.warn i{background:var(--scp-warn)}
+[data-theme="dark"] .pill.ok{color:#7ce8a8}[data-theme="dark"] .pill.err{color:#ffa4ae}[data-theme="dark"] .pill.warn{color:#ffcf8f}
 .grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(440px,1fr))}
 .card{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m);padding:16px 18px 12px;min-width:0}
 .card.w{grid-column:1/-1}
@@ -91,7 +104,8 @@ canvas{width:100%;display:block;cursor:pointer}
 table{width:100%;border-collapse:collapse;font-size:14px}
 th,td{padding:0 8px;height:32px;text-align:right;border-bottom:1px solid var(--scp-line);white-space:nowrap;line-height:16px}
 th{height:36px;color:var(--scp-text-2);font-size:13px;font-weight:600;position:sticky;top:0;background:var(--scp-surface);z-index:2}
-tbody tr:hover{background:var(--scp-b-50)}
+.dt tbody tr:nth-child(even){background:var(--scp-n-50)}
+tbody tr:hover,.dt tbody tr:nth-child(even):hover{background:var(--scp-b-50)}
 .scr{max-height:340px;overflow:auto;border:1px solid var(--scp-line);border-radius:var(--r-s)}
 .pos{color:var(--scp-ok)}.neg{color:var(--scp-err)}.mid{color:#c47512}
 .dt-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
@@ -106,6 +120,7 @@ tbody tr:hover{background:var(--scp-b-50)}
 .dt th.dt-th{padding-right:18px;white-space:nowrap}
 .dt td,.dt th{text-align:right}
 .dt td.l,.dt th.dt-th.l{text-align:left}
+.dt td.wr{white-space:normal;line-height:17px;font-size:12.5px;color:var(--scp-text-2);min-width:220px;max-width:460px;height:auto;padding-top:6px;padding-bottom:6px;vertical-align:top;overflow-wrap:anywhere}
 .dt .dt-t{cursor:pointer;user-select:none}
 .dt .dt-t:hover{color:var(--scp-accent)}
 .dt-ar{color:var(--scp-n-300);margin-left:5px;font-size:9px}
@@ -416,7 +431,13 @@ canvas[role="img"]{outline:none}
 /* ═══════════════ 1. УТИЛИТЫ ═══════════════ */
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
 const nf=(v,d=0)=>(isFinite(v)?v:0).toLocaleString('ru-RU',{minimumFractionDigits:d,maximumFractionDigits:d});
-const bn=v=>nf(v/1e9,2)+' млрд',mln=v=>nf(v/1e6,1)+' млн',pc=v=>nf((isFinite(v)?v:0)*100,1)+'%';
+/* Адаптивный денежный формат: тыс / млн / млрд — чтобы не было «0,00 млрд» */
+const bn=v=>{const a=Math.abs(isFinite(v)?v:0);
+  if(a>=1e9)return nf(v/1e9,2)+' млрд';
+  if(a>=1e6)return nf(v/1e6,1)+' млн';
+  if(a>=1e4)return nf(v/1e3,0)+' тыс';
+  return nf(v,a>=100?0:2)};
+const mln=v=>nf(v/1e6,1)+' млн',pc=v=>nf((isFinite(v)?v:0)*100,1)+'%';
 const pctFmt=v=>(v==null||!isFinite(v))?'—':nf(v,2)+'%';
 const S=(a,f)=>a.reduce((s,o)=>s+(f(o)||0),0);
 const uq=(a,f)=>[...new Set(a.map(f).filter(x=>x!==''&&x!=null))].sort();
@@ -555,11 +576,11 @@ function dtable(sel,cols,rows,opts){
       </div>
       <div class="scr" style="max-height:${opts.h||340}px"><table><thead><tr>
         ${cols.map(c=>{const on=st.sort===c.k,fon=st.flt[c.k]&&st.flt[c.k].length;
-          return `<th class="dt-th${c.left?' l':''}" scope="col"><span class="dt-t" data-sk="${c.k}" role="button" tabindex="0">${esc(c.t)}
+          return `<th class="dt-th${c.left?' l':''}" scope="col"${c.tt?` title="${esc(c.tt)}"`:''}><span class="dt-t" data-sk="${c.k}" role="button" tabindex="0">${esc(c.t)}
             <span class="dt-ar" aria-hidden="true">${on?(st.dir==='asc'?'▲':'▼'):'↕'}</span></span>${
             c.flt?`<span class="dt-fn${fon?' on':''}" data-fk="${c.k}" role="button" tabindex="0" aria-haspopup="dialog" aria-expanded="false" aria-label="Фильтр: ${esc(c.t)}">▾</span>`:''}</th>`}).join('')}
       </tr></thead><tbody>
-        ${slice.length?slice.map(d=>`<tr>${cols.map(c=>`<td class="${c.cls?(c.cls(d[c.k],d._r)||''):''}${c.left?' l':''}">${cell(c,d)}</td>`).join('')}</tr>`).join('')
+        ${slice.length?slice.map(d=>`<tr>${cols.map(c=>`<td class="${c.cls?(c.cls(d[c.k],d._r)||''):''}${c.left?' l':''}${c.wrap?' wr':''}">${cell(c,d)}</td>`).join('')}</tr>`).join('')
           :`<tr><td colspan="${cols.length}" style="text-align:center;padding:26px;color:var(--scp-text-3)">Ничего не найдено</td></tr>`}
       </tbody></table></div>
       ${pg&&tp>1?`<div class="dt-pgs"><button class="dt-btn" data-pg="1" type="button">«</button><button class="dt-btn" data-pg="${st.pg-1}" type="button">Назад</button>
@@ -688,13 +709,37 @@ function chBars(id,h,labs,ser,fmt,tips,cb,rot,showLab){const g=cv(id,h);if(!g)re
     x.fillStyle=s.c;x.fillRect(bx,h-p.b-hh,iw-3,hh);
     if(lab&&s.v[i]>0)barLab(x,fmt(s.v[i]),bx+(iw-3)/2,h-p.b-hh-3)});
     reg(c,p.l+bw*i,p.t,bw,h-p.t-p.b,tips(i),cb?()=>cb(i):null)});bind(c)}
+/* Обрезка подписи по фактической ширине, а не по числу символов */
+function fitLabel(x,s,maxW){s=String(s);if(x.measureText(s).width<=maxW)return s;
+  while(s.length>1&&x.measureText(s+'…').width>maxW)s=s.slice(0,-1);return s+'…'}
 function chH(id,h,items,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
-  const p={l:150,r:96,t:8,b:8},max=Math.max(...items.map(i=>Math.abs(i.v)),1),row=(h-p.t-p.b)/Math.max(items.length,1);
+  const p={l:Math.round(Math.min(250,Math.max(150,w*0.3))),r:96,t:8,b:8},max=Math.max(...items.map(i=>Math.abs(i.v)),1),row=(h-p.t-p.b)/Math.max(items.length,1);
   items.forEach((it,i)=>{const y=p.t+i*row,bh=Math.min(row-6,24),bw=(w-p.l-p.r)*Math.abs(it.v)/max;
     x.fillStyle=it.c||PAL[i%PAL.length];x.fillRect(p.l,y+(row-bh)/2,Math.max(bw,1),bh);
     x.fillStyle=CH.lab;x.font='11.5px '+FNT;x.textAlign='right';x.textBaseline='middle';
-    const nm=String(it.k).length>21?String(it.k).slice(0,20)+'…':it.k;x.fillText(nm,p.l-8,y+row/2);
+    const nm=fitLabel(x,it.k,p.l-16);x.fillText(nm,p.l-8,y+row/2);
     x.fillStyle=CH.txt;x.font='600 11.5px '+FNT;x.textAlign='left';x.fillText(fmt(it.v),p.l+bw+7,y+row/2);
+    reg(c,0,y,w,row,it.tip||`<b>${it.k}</b><br>${fmt(it.v)}`,cb?()=>cb(it):null)});bind(c)}
+/* Горизонтальные бары со знаком: доходы вправо, затраты влево от нулевой оси */
+function chHS(id,h,items,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
+  const p={l:Math.round(Math.min(230,Math.max(150,w*0.28))),r:14,t:8,b:8},row=(h-p.t-p.b)/Math.max(items.length,1);
+  const maxPos=Math.max(...items.map(i=>Math.max(i.v,0)),0),maxNeg=Math.max(...items.map(i=>Math.max(-i.v,0)),0);
+  const span=maxPos+maxNeg||1,zero=p.l+(w-p.l-p.r)*(maxNeg/span);
+  x.strokeStyle=CH.line;x.lineWidth=1;x.beginPath();x.moveTo(zero,p.t);x.lineTo(zero,h-p.b);x.stroke();
+  items.forEach((it,i)=>{const y=p.t+i*row,bh=Math.min(row-6,24),bw=(w-p.l-p.r)*Math.abs(it.v)/span;
+    x.fillStyle=it.c||PAL[i%PAL.length];
+    if(it.v>=0)x.fillRect(zero,y+(row-bh)/2,Math.max(bw,1.5),bh);
+    else x.fillRect(zero-Math.max(bw,1.5),y+(row-bh)/2,Math.max(bw,1.5),bh);
+    x.fillStyle=CH.lab;x.font='11.5px '+FNT;x.textAlign='right';x.textBaseline='middle';
+    const nm=fitLabel(x,it.k,p.l-16);x.fillText(nm,p.l-8,y+row/2);
+    x.fillStyle=CH.txt;x.font='600 11px '+FNT;
+    const lbl=fmt(it.v);
+    if(it.v>=0){x.textAlign='left';const tx=zero+bw+6;
+      if(tx+x.measureText(lbl).width>w-4){x.textAlign='right';x.fillStyle=onFill(it.c||PAL[i%PAL.length]);x.fillText(lbl,zero+bw-6,y+row/2)}
+      else x.fillText(lbl,tx,y+row/2)}
+    else{x.textAlign='right';const tx=zero-bw-6;
+      if(tx-x.measureText(lbl).width<p.l+2){x.textAlign='left';x.fillStyle=onFill(it.c||PAL[i%PAL.length]);x.fillText(lbl,zero-bw+6,y+row/2)}
+      else x.fillText(lbl,tx,y+row/2)}
     reg(c,0,y,w,row,it.tip||`<b>${it.k}</b><br>${fmt(it.v)}`,cb?()=>cb(it):null)});bind(c)}
 function chDonut(id,h,parts,title,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
   const narrow=w<360;const lgW=narrow?0:Math.min(180,w*0.4);const area=w-lgW;
@@ -859,6 +904,28 @@ function buildRun(g){
     rawRows:[...raw.entries()].map(([k,v])=>({param:k,value:v}))};
 }
 const runKey=r=>(r.schema?r.schema+'|':'')+r.runid+'|'+r.datasetid+'|'+r.configid;
+/* Короткое имя прогона для интерфейса: без «датасет · конфиг» (они выводятся
+   отдельными тегами). Полное имя (r.label) остаётся в отчётах и экспортах. */
+const runShort=r=>(r.schema?r.schema+' · ':'')+'Прогон '+r.runid+(r.meta&&r.meta.alias?' · '+r.meta.alias:'');
+const runDate=r=>{const s=(r.meta&&r.meta.startTime)||'';const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+  return m?`${m[3]}.${m[2]}.${m[1]} ${m[4]}:${m[5]}`:s};
+const statusPill=st=>{const ok=/OPTIMAL/i.test(st||'');
+  return `<span class="pill ${st?(ok?'ok':'err'):''}" title="Статус решения солвера"><i></i>${esc(st||'статус неизвестен')}</span>`};
+/* KPI-карточка: [заголовок, значение, подпись, тон(pos/mid/neg/acc), деньги/дельта(html, опц.)] */
+const kpiCard=k=>`<div class="kpi ${k[3]?k[3]+'-b':''}"><div class="t">${k[0]}</div><div class="v ${k[3]&&k[3]!=='acc'?k[3]:''}" title="${String(k[1]).replace(/<[^>]*>/g,'')}">${k[1]}</div>${k[4]||''}<div class="s">${k[2]}</div></div>`;
+const kpis=arr=>`<div class="kpis">${arr.map(kpiCard).join('')}</div>`;
+/* Дельта к предыдущему прогону: goodUp=true — рост это хорошо */
+function kDelta(cur,prev,goodUp,fmt){
+  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev))return '';
+  const d=cur-prev;if(Math.abs(d)<1e-9)return '<div class="kd n">— без изменений к прошлому прогону</div>';
+  const good=goodUp?d>0:d<0;
+  return `<div class="kd ${good?'g':'b'}">${d>0?'▲':'▼'} ${fmt(Math.abs(d))} к прошлому прогону</div>`;
+}
+function prevRun(){
+  if(!DS||DS.runs.length<2)return null;
+  const i=DS.runs.findIndex(r=>runKey(r)===CUR_KEY);
+  return i>0?DS.runs[i-1]:null;
+}
 
 /* ═══════════════ 5. ВСТРОЕННОЕ ДЕМО ═══════════════ */
 function mkRow(p,v){return {runid:19,'Параметр':p,'Значение':v,datasetid:14,configid:300}}
@@ -1039,33 +1106,40 @@ function tabOV(){
   const statusOk=/OPTIMAL/i.test(r.solve.status);
   const ent=k=>r.entities.find(e=>e.entity===k);
   const sale=ent('sale'),mv=ent('movement'),pd=ent('production'),pc_=ent('procurement'),st=ent('stock');
+  const pr=prevRun();
+  const pSale=pr?(pr.entities.find(e=>e.entity==='sale')||{}).pct:null;
   const K=[
     ['Статус решения',esc(r.solve.status)||'—',statusOk?'Оптимум найден и подтверждён':'Проверьте лог солвера — решение может быть неполным',statusOk?'pos':'neg'],
     ['Точность решения (Gap)',gapKnown?pctFmt(r.solve.gapPct):'—',
       gapKnown?(r.meta.gapLimit!=null?`Порог по настройке: ${pctFmt(r.meta.gapLimit)}`:'Расстояние до теоретического оптимума')
               :'В логе нет строки «Result gap %» — обычно это линейная (LP) модель, где gap не определён',
-      gapKnown?(gapOk?'pos':'neg'):''],
-    ['Время решения',timeFmt(r.solve.solveTimeSec),`Полный расчёт: ${timeFmt(r.solve.calcTimeSec)} · ${nf(r.solve.iterations)} итераций симплекс-метода`,''],
-    ['Масштаб модели',nf(r.solve.variables)+' переменных',`${nf(r.solve.constraints)} ограничений · горизонт ${r.meta.periods||'—'} период(ов)`,''],
-    ['Покрытие спроса',sale?pctFmt(sale.pct):'—',sale?`${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса получили план продаж`:'Нет данных по продажам',sale&&sale.pct<70?'neg':(sale&&sale.pct<90?'mid':'pos')],
-    ['Использование логистики',mv?pctFmt(mv.pct):'—',mv?`${nf(mv.nonzero)} из ${nf(mv.total)} возможных перемещений задействовано`:'—',''],
-    ['Использование производства',pd?pctFmt(pd.pct):'—',pd?`${nf(pd.nonzero)} из ${nf(pd.total)} комбинаций «завод-рецепт-период» запущено`:'—',''],
-    ['Экономический эффект плана',bn(r.solve.objectiveValue),`Масштабированное значение целевой функции: ${bn(r.solve.solutionValueScaled)}`,'']
+      gapKnown?(gapOk?'pos':'neg'):'',
+      pr?kDelta(r.solve.gapPct,pr.solve.gapPct,false,v=>nf(v,2)+' п.п.'):''],
+    ['Экономический эффект плана',bn(r.solve.objectiveValue),'Значение целевой функции — суммарная «экономика» плана','acc',
+      pr?kDelta(r.solve.objectiveValue,pr.solve.objectiveValue,true,bn):''],
+    ['Покрытие спроса',sale?pctFmt(sale.pct):'—',sale?`${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса получили план продаж`:'Нет данных по продажам',sale&&sale.pct<70?'neg':(sale&&sale.pct<90?'mid':'pos'),
+      (pr&&sale)?kDelta(sale.pct,pSale,true,v=>nf(v,1)+' п.п.'):''],
+    ['Время решения',timeFmt(r.solve.solveTimeSec),`Полный расчёт: ${timeFmt(r.solve.calcTimeSec)} · ${nf(r.solve.iterations)} итераций`,'',
+      pr?kDelta(r.solve.solveTimeSec,pr.solve.solveTimeSec,false,v=>nf(v,1)+' с'):''],
+    ['Масштаб модели',nf(r.solve.variables),`переменных · ${nf(r.solve.constraints)} ограничений · горизонт ${r.meta.periods||'—'} период(ов)`,''],
+    ['Использование производства',pd?pctFmt(pd.pct):'—',pd?`${nf(pd.nonzero)} из ${nf(pd.total)} комбинаций «завод-рецепт-период» запущено`:'—','']
   ];
-  const entVal=r.entities.map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.value,c:CH[ENT_COL[e.entity]]||PAL[0]}));
+  const entVal=r.entities.slice().sort((a,b)=>b.value-a.value).map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.value,
+    c:e.value>=0?CH.ok:CH.err,
+    tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>${e.value>=0?'Доход':'Затраты'}: ${bn(e.value)}<br>Задействовано ${nf(e.nonzero)} из ${nf(e.total)} переменных`}));
   const entPct=r.entities.slice().sort((a,b)=>b.pct-a.pct).map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.pct,
     c:e.pct>=50?CH.ok:(e.pct>=15?CH.warn:CH.err),
     tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)} (${pctFmt(e.pct)})<br>Вклад в целевую функцию: ${bn(e.value)}`}));
   const html=`
-  <div class="kpis">${K.map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  ${kpis(K)}
   <div class="grid">
-    <div class="card"><h3>Из чего складывается экономический эффект плана</h3><div class="sub">Вклад каждого блока модели в целевую функцию, по модулю</div><canvas id="o1"></canvas></div>
+    <div class="card"><h3>Из чего складывается экономический эффект плана</h3><div class="sub">Доходы — вправо (зелёное), затраты — влево (красное); итог — их разница</div><canvas id="o1"></canvas></div>
     <div class="card"><h3>Насколько активно оптимизатор использовал каждый блок</h3><div class="sub">Доля переменных с ненулевым значением в решении</div><canvas id="o2"></canvas></div>
     <div class="card"><h3>Куда ушло время расчёта</h3><div class="sub">Подготовка модели и матрицы против фактического решения</div><canvas id="o3"></canvas></div>
     <div class="card"><h3>О прогоне</h3><div class="sub">Мета-параметры настройки оптимизации</div><div id="o4"></div></div>
   </div>`;
   setTimeout(()=>{
-    chDonut('#o1',H('#o1',230,0.55),entVal,'Эффект',bn,null);
+    chHS('#o1',H('#o1',230,0.5),entVal,bn,null);
     chH('#o2',H('#o2',230,0.5),entPct,v=>nf(v,1)+'%',null);
     const prep=Math.max(r.solve.calcTimeSec-r.solve.solveTimeSec,0);
     chBars('#o3',H('#o3',220,0.42),['Подготовка модели','Решение солвером'],
@@ -1076,7 +1150,8 @@ function tabOV(){
       null,0,1);
     const fnDiff=r.meta.functionalEntities.length&&
       r.meta.functionalEntities.join(',')!==r.meta.includedEntities.join(',');
-    $('#o4').innerHTML=`<table class="mtbl"><tbody>
+    const o4=$('#o4');if(!o4)return;
+    o4.innerHTML=`<table class="mtbl"><tbody>
       ${r.meta.alias?`<tr><td class="mt-k">Имя прогона (Alias)</td><td class="mt-v">${esc(r.meta.alias)}</td></tr>`:''}
       <tr><td class="mt-k">Начало расчёта</td><td class="mt-v">${esc(r.meta.startTime)||'—'}</td></tr>
       <tr><td class="mt-k">Солвер</td><td class="mt-v">${esc(r.meta.solver)||'—'}${r.meta.threads?` · ${r.meta.threads} потоков`:''}</td></tr>
@@ -1126,8 +1201,9 @@ function tabENT(){
   if(!rows.length)return '<div class="empty"><h2>Нет данных по сущностям</h2><p>В логе загруженного прогона не найдено строк «Non-zero values ...».</p></div>';
   const totalVars=S(rows,e=>e.total);
   const html=`
-  <div class="kpis">${rows.map(e=>[`Доля модели: ${ENT_LBL[e.entity]||e.entity}`,pctFmt(e.total?100*e.total/Math.max(totalVars,1):0),
-    `${nf(e.total)} переменных из ${nf(totalVars)} всего`,'']).map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  ${kpis(rows.map(e=>[ENT_LBL[e.entity]||e.entity,pctFmt(e.pct),
+    `задействовано ${nf(e.nonzero)} из ${nf(e.total)} · ${pctFmt(e.total?100*e.total/Math.max(totalVars,1):0)} объёма модели`,
+    e.entity==='sale'?(e.pct<70?'neg':e.pct<90?'mid':'pos'):'']))}
   <div class="grid">
     <div class="card w"><h3>Доля переменных модели по блокам</h3><div class="sub">Какую часть «сложности» модели формирует каждая сущность</div><canvas id="e1"></canvas></div>
     <div class="card w"><h3>Реестр использования сущностей</h3><div class="sub">Сортировка и экспорт — для передачи техническим специалистам</div><div id="e2"></div></div>
@@ -1137,11 +1213,11 @@ function tabENT(){
       c:CH[ENT_COL[e.entity]]||PAL[0],tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>Всего переменных: ${nf(e.total)}<br>Использовано: ${nf(e.nonzero)} (${pctFmt(e.pct)})`})),v=>nf(v),null);
     dtable('#e2',[
       {k:'entity',t:'Сущность',left:1,flt:1,v:e=>ENT_LBL[e.entity]||e.entity},
-      {k:'total',t:'Всего переменных',num:1,f:v=>nf(v)},
-      {k:'nonzero',t:'Использовано',num:1,f:v=>nf(v)},
-      {k:'pct',t:'Доля, %',num:1,f:v=>pctFmt(v),cls:v=>v<15?'neg':v<50?'mid':'pos'},
-      {k:'value',t:'Вклад в целевую функцию',num:1,f:v=>bn(v)},
-      {k:'comment',t:'Бизнес-комментарий',left:1,v:e=>entComment(e)}
+      {k:'total',t:'Всего',tt:'Всего переменных этого блока в модели',num:1,f:v=>nf(v)},
+      {k:'nonzero',t:'В работе',tt:'Переменные с ненулевым значением в решении',num:1,f:v=>nf(v)},
+      {k:'pct',t:'Доля, %',tt:'Доля задействованных переменных',num:1,f:v=>pctFmt(v),cls:v=>v<15?'neg':v<50?'mid':'pos'},
+      {k:'value',t:'Вклад',tt:'Вклад блока в целевую функцию (экономический эффект)',num:1,f:v=>bn(v)},
+      {k:'comment',t:'Комментарий',left:1,wrap:1,v:e=>entComment(e)}
     ],rows,{key:'ent_reg',sort:'total',dir:'desc',h:300,csv:1,name:'entities'});
   },0);
   const sale=rows.find(e=>e.entity==='sale');
@@ -1175,13 +1251,13 @@ function tabBND(){
   const idle=rows.filter(b=>b.lowerPct!=null).slice().sort((a,b)=>b.lowerPct-a.lowerPct);
   const K=[
     ['Ограничений в модели',nf(rows.length),'уникальных пар «сущность · тип ограничения»',''],
-    ['Жёстких (STRICT)',nf(rows.filter(b=>b.status==='STRICT').length),'нарушение недопустимо — solver обязан их выполнить',''],
+    ['Жёстких (STRICT)',nf(rows.filter(b=>b.status==='STRICT').length),'нарушение недопустимо — солвер обязан их выполнить',''],
     ['Мягких (SOFT)',nf(rows.filter(b=>b.status==='SOFT').length),'могут нарушаться за штраф в целевой функции',''],
-    ['Самое напряжённое сверху',hot[0]?pctFmt(hot[0].upperPct):'—',hot[0]?hot[0].name:'—',hot[0]&&hot[0].upperPct>=50?'neg':'mid'],
-    ['Самое незадействованное',idle[0]?pctFmt(idle[0].lowerPct):'—',idle[0]?idle[0].name:'—',idle[0]&&idle[0].lowerPct>=85?'mid':'']
+    ['Главное узкое место',hot[0]?pctFmt(hot[0].upperPct):'—',hot[0]?hot[0].name:'—',hot[0]&&hot[0].upperPct>=50?'neg':'mid'],
+    ['Наибольший простой',idle[0]?pctFmt(idle[0].lowerPct):'—',idle[0]?idle[0].name:'—',idle[0]&&idle[0].lowerPct>=85?'mid':'']
   ];
   const html=`
-  <div class="kpis">${K.map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]||''}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  ${kpis(K)}
   <div class="grid">
     <div class="card"><h3>Реальные узкие места</h3><div class="sub">Доля объектов, упирающихся в верхнюю границу — чем выше, тем больше план ограничен ресурсом</div><canvas id="b1"></canvas></div>
     <div class="card"><h3>Неиспользованный потенциал</h3><div class="sub">Доля объектов на нижней границе (обычно на нуле) — потенциал простаивает</div><canvas id="b2"></canvas></div>
@@ -1195,11 +1271,11 @@ function tabBND(){
       c:b.lowerPct>=85?CH.warn:CH.d6,
       tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Нижняя граница достигнута: ${pctFmt(b.lowerPct)}<br>${bndComment(b)}`})),v=>nf(v,1)+'%',null);
     dtable('#b3',[
-      {k:'name',t:'Сущность · ограничение',left:1,flt:1},
-      {k:'status',t:'Тип',flt:1,f:v=>STATUS_LBL[v]||v},
-      {k:'lowerPct',t:'Нижняя граница, %',num:1,f:v=>pctFmt(v),cls:v=>v>=85?'mid':''},
-      {k:'upperPct',t:'Верхняя граница, %',num:1,f:v=>pctFmt(v),cls:v=>v>=50?'neg':v>=15?'mid':''},
-      {k:'comment',t:'Бизнес-комментарий',left:1,v:b=>bndComment(b)}
+      {k:'name',t:'Ограничение',left:1,flt:1},
+      {k:'status',t:'Тип',tt:'Жёсткое (STRICT) — нарушать нельзя; мягкое (SOFT) — можно за штраф',flt:1,f:v=>STATUS_LBL[v]||v},
+      {k:'lowerPct',t:'У минимума, %',tt:'Доля объектов на нижней границе — потенциал простаивает',num:1,f:v=>pctFmt(v),cls:v=>v>=85?'mid':''},
+      {k:'upperPct',t:'У потолка, %',tt:'Доля объектов на верхней границе — ресурс исчерпан, узкое место',num:1,f:v=>pctFmt(v),cls:v=>v>=50?'neg':v>=15?'mid':''},
+      {k:'comment',t:'Комментарий',left:1,wrap:1,v:b=>bndComment(b)}
     ],rows,{key:'bnd_reg',sort:'upperPct',dir:'desc',h:300,csv:1,name:'bounds'});
   },0);
   return html+summary('Резюме: ограничения и узкие места',[
@@ -1224,10 +1300,10 @@ function tabPEN(){
   const K=[
     ['Суммарный штраф',nf(totalPen,2),'условных единиц целевой функции',''],
     ['Доля от эффекта плана',pc(ratioToObj),ratioToObj<0.0001?'финансово незначимо':'заметная величина — стоит внимания',ratioToObj<0.0001?'pos':'mid'],
-    ['Затронутых групп ограничений',nf(rows.length),'уникальных пар «сущность · ограничение»','']
+    ['Затронуто групп',nf(rows.length),'уникальных пар «сущность · ограничение»','']
   ];
   const html=`
-  <div class="kpis">${K.map(k=>`<div class="kpi"><div class="t">${k[0]}</div><div class="v ${k[3]||''}">${k[1]}</div><div class="s">${k[2]}</div></div>`).join('')}</div>
+  ${kpis(K)}
   <div class="grid">
     <div class="card w"><h3>Сумма штрафа по группам</h3><div class="sub">Чем выше столбец, тем дороже обходится нарушение этой мягкой цели</div><canvas id="p1"></canvas></div>
     <div class="card w"><h3>Реестр мягких нарушений</h3><div class="sub">Сортировка, фильтры, экспорт</div><div id="p2"></div></div>
@@ -1236,11 +1312,11 @@ function tabPEN(){
     chH('#p1',H('#p1',220,0.45),rows.map(p=>({k:p.name+' ('+p.kindLbl+')',v:p.sum,c:p.kind==='min'?CH.warn:CH.err,
       tip:`<b>${p.name}</b><br>${p.kindLbl}<br>Сумма штрафа: ${nf(p.sum,2)}<br>Доля затронутых объектов: ${pctFmt(p.nonzeroPct)}`})),v=>nf(v,1),null);
     dtable('#p2',[
-      {k:'name',t:'Сущность · ограничение',left:1,flt:1},
-      {k:'kindLbl',t:'Тип нарушения',left:1,flt:1},
+      {k:'name',t:'Ограничение',left:1,flt:1},
+      {k:'kindLbl',t:'Нарушение',tt:'Недобор — план ниже мягкого минимума; перебор — выше мягкого максимума',left:1,flt:1},
       {k:'status',t:'Режим',flt:1,f:v=>STATUS_LBL[v]||v},
-      {k:'sum',t:'Сумма штрафа',num:1,f:v=>nf(v,2)},
-      {k:'nonzeroPct',t:'Доля затронутых объектов, %',num:1,f:v=>pctFmt(v),cls:v=>v>10?'mid':''}
+      {k:'sum',t:'Штраф',tt:'Сумма штрафа в условных единицах целевой функции',num:1,f:v=>nf(v,2)},
+      {k:'nonzeroPct',t:'Затронуто, %',tt:'Доля объектов с ненулевым штрафом',num:1,f:v=>pctFmt(v),cls:v=>v>10?'mid':''}
     ],rows,{key:'pen_reg',sort:'sum',dir:'desc',h:280,csv:1,name:'penalties'});
   },0);
   return html+summary('Резюме: штрафы и мягкие нарушения',[
@@ -1302,7 +1378,7 @@ function tabHIST(){
       const s=sel();
       btn.classList.toggle('on',s.length>0);
       btn.textContent=s.length===0?'Прогоны не выбраны'
-        :(s.length===1?s[0].label:`Выбрано прогонов: ${s.length}`);
+        :(s.length===1?runShort(s[0]):`Выбрано прогонов: ${s.length}`);
       info.textContent=`из ${nf(runs.length)} доступных · кликните чип для выбора`;
     };
 
@@ -1328,17 +1404,17 @@ function tabHIST(){
       const multi=s.length>=2;
       const gapDeltaOk=multi&&gapKnownArr[gapKnownArr.length-1]&&gapKnownArr[gapKnownArr.length-2];
 
-      const kpis=`
-        <div class="kpis">
-          <div class="kpi"><div class="t">Прогонов выбрано</div><div class="v">${nf(s.length)}</div><div class="s">из ${nf(runs.length)} доступных в истории</div></div>
-          ${multi?`
-          ${gapDeltaOk
-            ?`<div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v ${gapArr[gapArr.length-1]<=gapArr[gapArr.length-2]?'pos':'neg'}">${nf(gapArr[gapArr.length-1]-gapArr[gapArr.length-2],2)} п.п.</div><div class="s">${pctFmt(gapArr[gapArr.length-2])} → ${pctFmt(gapArr[gapArr.length-1])}</div></div>`
-            :`<div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v">—</div><div class="s">gap не рассчитывался хотя бы в одном из двух прогонов (LP-модель)</div></div>`}
-          <div class="kpi"><div class="t">Изменение эффекта плана</div><div class="v ${objArr[objArr.length-1]>=objArr[objArr.length-2]?'pos':'neg'}">${bn(objArr[objArr.length-1]-objArr[objArr.length-2])}</div><div class="s">${bn(objArr[objArr.length-2])} → ${bn(objArr[objArr.length-1])}</div></div>
-          <div class="kpi"><div class="t">Изменение покрытия спроса</div><div class="v ${saleArr[saleArr.length-1]>=saleArr[saleArr.length-2]?'pos':'neg'}">${nf(saleArr[saleArr.length-1]-saleArr[saleArr.length-2],1)} п.п.</div><div class="s">${pctFmt(saleArr[saleArr.length-2])} → ${pctFmt(saleArr[saleArr.length-1])}</div></div>`
-          :`<div class="kpi"><div class="t">Режим</div><div class="v">Один прогон</div><div class="s">выберите ≥2 прогона — появятся графики динамики и сравнение A/B</div></div>`}
-        </div>`;
+      const kpiHtml=multi?kpis([
+          ['Прогонов выбрано',nf(s.length),`из ${nf(runs.length)} доступных в истории`,'acc'],
+          gapDeltaOk
+            ?['Изменение gap',nf(gapArr[gapArr.length-1]-gapArr[gapArr.length-2],2)+' п.п.',`${pctFmt(gapArr[gapArr.length-2])} → ${pctFmt(gapArr[gapArr.length-1])} · последний к предыдущему`,gapArr[gapArr.length-1]<=gapArr[gapArr.length-2]?'pos':'neg']
+            :['Изменение gap','—','gap не рассчитывался хотя бы в одном из двух прогонов (LP-модель)',''],
+          ['Изменение эффекта плана',bn(objArr[objArr.length-1]-objArr[objArr.length-2]),`${bn(objArr[objArr.length-2])} → ${bn(objArr[objArr.length-1])}`,objArr[objArr.length-1]>=objArr[objArr.length-2]?'pos':'neg'],
+          ['Изменение покрытия спроса',nf(saleArr[saleArr.length-1]-saleArr[saleArr.length-2],1)+' п.п.',`${pctFmt(saleArr[saleArr.length-2])} → ${pctFmt(saleArr[saleArr.length-1])}`,saleArr[saleArr.length-1]>=saleArr[saleArr.length-2]?'pos':'neg']
+        ]):kpis([
+          ['Прогонов выбрано',nf(s.length),`из ${nf(runs.length)} доступных в истории`,'acc'],
+          ['Режим','Один прогон','выберите ≥2 прогона — появятся графики динамики и сравнение A/B','']
+        ]);
       const charts=multi?`
         <div class="grid">
           <div class="card"><h3>Отклонение от оптимума по прогонам</h3><div class="sub">${anyGap?(allGap?'Ниже — лучше':'Ниже — лучше · у части прогонов gap не рассчитывался'):'Gap не рассчитывался ни в одном выбранном прогоне'}</div>${anyGap?'<canvas id="h1"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных о gap: в логе этих прогонов нет строки «Result gap %» — типично для линейных (LP) моделей.</div>'}</div>
@@ -1356,7 +1432,7 @@ function tabHIST(){
           <div id="histDelta"></div>
         </div>`:'';
 
-      body.innerHTML=kpis+charts+`
+      body.innerHTML=kpiHtml+charts+`
         <div class="grid" style="margin-top:12px">
           <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Только выбранные прогоны · поиск, сортировка, экспорт</div><div id="h5"></div></div>
           ${abCard}
@@ -1374,24 +1450,24 @@ function tabHIST(){
       }
 
       dtable('#h5',[
-        {k:'label',t:'Прогон',left:1,flt:1},
-        {k:'startTime',t:'Дата запуска',left:1,flt:1},
+        {k:'label',t:'Прогон',left:1,flt:1,f:(v,r0)=>`<span title="${esc(r0.full)}">${esc(v)}</span>`},
+        {k:'startTime',t:'Запуск',tt:'Дата и время начала расчёта',left:1,flt:1},
         {k:'status',t:'Статус',flt:1},
-        {k:'gap',t:'Gap, %',num:1,f:v=>pctFmt(v)},
-        {k:'solveTime',t:'Время решения, с',num:1,f:v=>nf(v,3)},
-        {k:'objective',t:'Эффект плана',num:1,f:v=>bn(v)},
-        {k:'salePct',t:'Покрытие спроса, %',num:1,f:v=>pctFmt(v)},
-        {k:'movePct',t:'Логистика, %',num:1,f:v=>pctFmt(v)},
-        {k:'prodPct',t:'Производство, %',num:1,f:v=>pctFmt(v)}
-      ],s.map(r=>({label:r.label,startTime:r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
+        {k:'gap',t:'Gap, %',tt:'Отклонение от теоретического оптимума — меньше значит лучше',num:1,f:v=>pctFmt(v)},
+        {k:'solveTime',t:'Решение, с',tt:'Время решения солвером, секунды',num:1,f:v=>nf(v,2)},
+        {k:'objective',t:'Эффект плана',tt:'Значение целевой функции',num:1,f:v=>bn(v)},
+        {k:'salePct',t:'Спрос, %',tt:'Покрытие спроса — доля строк спроса с планом продаж',num:1,f:v=>pctFmt(v),cls:v=>v<70?'neg':v<90?'mid':'pos'},
+        {k:'movePct',t:'Логистика, %',tt:'Доля задействованных перемещений',num:1,f:v=>pctFmt(v)},
+        {k:'prodPct',t:'Производство, %',tt:'Доля задействованных производственных комбинаций',num:1,f:v=>pctFmt(v)}
+      ],s.map(r=>({label:runShort(r),full:r.label,startTime:runDate(r)||r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
         objective:r.solve.objectiveValue,salePct:(r.entities.find(e=>e.entity==='sale')||{}).pct||0,
         movePct:(r.entities.find(e=>e.entity==='movement')||{}).pct||0,prodPct:(r.entities.find(e=>e.entity==='production')||{}).pct||0})),
         {key:'hist_reg',sort:'startTime',dir:'asc',h:280,csv:1,name:'history'});
 
       if(multi){
         const selA=$('#histA'),selB=$('#histB');
-        selA.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_A?'selected':''}>${esc(r.label)}</option>`).join('');
-        selB.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_B?'selected':''}>${esc(r.label)}</option>`).join('');
+        selA.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_A?'selected':''}>${esc(runShort(r))}${runDate(r)?' — '+esc(runDate(r)):''}</option>`).join('');
+        selB.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_B?'selected':''}>${esc(runShort(r))}${runDate(r)?' — '+esc(runDate(r)):''}</option>`).join('');
         const drawDelta=()=>{
           const A=s[HIST_A],B=s[HIST_B];
           const saleA=(A.entities.find(e=>e.entity==='sale')||{}).pct||0,saleB=(B.entities.find(e=>e.entity==='sale')||{}).pct||0;
@@ -1402,16 +1478,14 @@ function tabHIST(){
             ['Эффект плана',A.solve.objectiveValue,B.solve.objectiveValue,1],
             ['Покрытие спроса, %',saleA,saleB,1]
           ];
-          $('#histDelta').innerHTML=`<div class="kpis">${rows2.map(x=>{
-            if(x[3]===null)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">${esc(x[1])} → ${esc(x[2])}</div><div class="s">A → B</div></div>`;
-            if(x.length>4&&x[4]===false)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">—</div><div class="s">не рассчитывался хотя бы в одном прогоне</div></div>`;
+          $('#histDelta').innerHTML=kpis(rows2.map(x=>{
+            if(x[3]===null)return [x[0],`${esc(x[1])} → ${esc(x[2])}`,'A → B',''];
+            if(x.length>4&&x[4]===false)return [x[0],'—','не рассчитывался хотя бы в одном прогоне',''];
             const d=(x[2]-x[1])*x[3];const isPct=x[0].includes('%');const isMoney=x[0]==='Эффект плана';
             const fmt=v=>isMoney?bn(v):(isPct?nf(v,2)+' п.п.':nf(v,2));
             const raw=x[2]-x[1];
-            return `<div class="kpi"><div class="t">${x[0]}</div>
-              <div class="v ${d>=0?'pos':'neg'}">${fmt(raw)}</div>
-              <div class="s">${isMoney?bn(x[1])+' → '+bn(x[2]):(isPct?pctFmt(x[1])+' → '+pctFmt(x[2]):nf(x[1],2)+' → '+nf(x[2],2))}</div></div>`;
-          }).join('')}</div>`;
+            return [x[0],fmt(raw),(isMoney?bn(x[1])+' → '+bn(x[2]):(isPct?pctFmt(x[1])+' → '+pctFmt(x[2]):nf(x[1],2)+' → '+nf(x[2],2))),d>=0?'pos':'neg'];
+          }));
         };
         selA.onchange=()=>{HIST_A=+selA.value;drawDelta()};
         selB.onchange=()=>{HIST_B=+selB.value;drawDelta()};
@@ -1423,12 +1497,12 @@ function tabHIST(){
     const openPicker=(anchor)=>{
       const P=dtp();let fq='';
       const rebuild=()=>{
-        const list=runs.filter(r=>!fq||r.label.toLowerCase().includes(fq));
+        const list=runs.filter(r=>!fq||(r.label+' '+runShort(r)).toLowerCase().includes(fq));
         P.innerHTML=`<div class="dtp-h"><span>Выбор прогонов для анализа</span><span class="dtp-x">✕</span></div>
           <input class="dtp-q" type="text" placeholder="Поиск прогона" value="${esc(fq)}">
           <div class="dtp-a"><button data-all="1">Выбрать все</button><button data-non="1">Снять все</button></div>
           <div class="dtp-l">${list.map(r=>{const on=SEL_HIST.has(runKey(r));
-            return `<label class="dtp-i${on?' on':''}"><input type="checkbox" ${on?'checked':''} data-k="${esc(runKey(r))}"><span>${esc(r.label)}</span></label>`}).join('')||'<div class="dtp-e">ничего не найдено</div>'}</div>`;
+            return `<label class="dtp-i${on?' on':''}" title="${esc(r.label)}"><input type="checkbox" ${on?'checked':''} data-k="${esc(runKey(r))}"><span>${esc(runShort(r))}${runDate(r)?' — '+esc(runDate(r)):''}</span></label>`}).join('')||'<div class="dtp-e">ничего не найдено</div>'}</div>`;
         P.querySelector('.dtp-x').onclick=dtpHide;
         const fi=P.querySelector('.dtp-q');
         fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();rebuild();const n=P.querySelector('.dtp-q');n.value=fq?fi.value:'';n.focus();n.selectionStart=n.selectionEnd=p};
@@ -1465,15 +1539,15 @@ function tabRAW(){
   const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
   const rows=r.rawRows;
   const html=`
-  <div class="kpis">
-    <div class="kpi"><div class="t">Строк лога</div><div class="v">${nf(rows.length)}</div><div class="s">параметр · значение</div></div>
-    <div class="kpi"><div class="t">Прогон</div><div class="v">#${esc(r.runid)}</div><div class="s">датасет ${esc(r.datasetid)} · конфиг ${esc(r.configid)}</div></div>
-  </div>
+  ${kpis([
+    ['Строк лога',nf(rows.length),'параметр · значение','acc'],
+    ['Прогон','#'+esc(r.runid),`датасет ${esc(r.datasetid)||'—'} · конфиг ${esc(r.configid)||'—'}${r.meta.alias?' · '+esc(r.meta.alias):''}`,'']
+  ])}
   <div class="card w"><h3>Исходные строки optimizer_status</h3><div class="sub">Поиск, сортировка, экспорт CSV</div><div id="raw1"></div></div>`;
   setTimeout(()=>{
     dtable('#raw1',[
       {k:'param',t:'Параметр',left:1,flt:1},
-      {k:'value',t:'Значение',left:1}
+      {k:'value',t:'Значение',left:1,wrap:1}
     ],rows,{key:'raw_rows',sort:'param',dir:'asc',h:520,csv:1,name:'optimizer_status_raw'});
   },0);
   return html;
@@ -1556,11 +1630,11 @@ function tabDQ(){
   const SEV={e:['Критично',CH.err],w:['Предупреждение',CH.warn],i:['Норма',CH.ok]};
 
   const html=`
-  <div class="kpis">
-    <div class="kpi"><div class="t">Индекс надёжности прогона</div><div class="v ${score>=75?'pos':score>=50?'mid':'neg'}">${score} из 100</div><div class="s">${errs} критических, ${warns} предупреждений</div></div>
-    <div class="kpi"><div class="t">Проверок выполнено</div><div class="v">${nf(ch.length)}</div><div class="s">${oks} пройдено успешно</div></div>
-    <div class="kpi"><div class="t">Прогон</div><div class="v">#${esc(r.runid)}</div><div class="s">${esc(r.solve.status)} · gap ${pctFmt(r.solve.gapPct)}</div></div>
-  </div>
+  ${kpis([
+    ['Индекс надёжности прогона',score+' из 100',`${errs} критических, ${warns} предупреждений`,score>=75?'pos':score>=50?'mid':'neg'],
+    ['Проверок выполнено',nf(ch.length),`${oks} пройдено успешно`,'acc'],
+    ['Прогон','#'+esc(r.runid),`${esc(r.solve.status)} · gap ${pctFmt(r.solve.gapPct)}`,'']
+  ])}
   <div class="grid">
     <div class="card"><h3>Профиль проверок</h3><div class="sub">Распределение результатов по критичности</div><canvas id="q1"></canvas></div>
     <div class="card w"><h3>Реестр проверок и рекомендаций</h3><div class="sub">Отсортировано по критичности</div><div id="q2"></div></div>
@@ -1604,8 +1678,13 @@ function render(){
   $('#pgTitle').textContent=cur[1];
   $('#pgSub').textContent=TSUB[TAB]||'';
 
+  const rCur=DS.runs.find(r=>runKey(r)===CUR_KEY)||DS.runs[DS.runs.length-1];
+  const rDate=rCur?runDate(rCur):'';
   $('#runbar').innerHTML=`<span class="runbar-lbl">Активный прогон</span>
-    <select id="runSel" aria-label="Активный прогон">${DS.runs.map(r=>`<option value="${runKey(r)}" ${runKey(r)===CUR_KEY?'selected':''}>${esc(r.label)}</option>`).join('')}</select>
+    <select id="runSel" aria-label="Активный прогон" title="${esc(rCur?rCur.label:'')}">${DS.runs.map(r=>`<option value="${runKey(r)}" ${runKey(r)===CUR_KEY?'selected':''}>${esc(runShort(r))}${runDate(r)?' — '+esc(runDate(r)):''}</option>`).join('')}</select>
+    ${rCur?statusPill(rCur.solve.status):''}
+    ${rCur&&rCur.datasetid?`<span class="tag" title="Идентификатор датасета">датасет ${esc(rCur.datasetid)}</span>`:''}
+    ${rCur&&rCur.configid?`<span class="tag" title="Идентификатор конфигурации">конфиг ${esc(rCur.configid)}</span>`:''}
     <span class="tag">${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])} в истории</span>
     ${loadMetaHtml()}`;
   const bPgH=$('#bPg');if(bPgH)bPgH.classList.toggle('on',!!(LOAD_META&&LOAD_META.source==='postgres'));
@@ -1624,7 +1703,7 @@ function render(){
   catch(err){$('#main').innerHTML=`<div class="empty"><h2 class="neg">Ошибка отрисовки блока</h2><p>${esc(err.message)}</p></div>`;console.error(err)}
 
   const r=curRun();
-  if(r)$('#stat').innerHTML=`${esc(r.label)}<br>${esc(r.solve.status)} · gap ${pctFmt(r.solve.gapPct)} · ${timeFmt(r.solve.solveTimeSec)}`;
+  if(r)$('#stat').innerHTML=`<span title="${esc(r.label)}">${esc(runShort(r))}</span><br>${esc(r.solve.status)} · gap ${pctFmt(r.solve.gapPct)} · ${timeFmt(r.solve.solveTimeSec)}`;
 }
 
 /* ── Загрузка XLSX ── */
