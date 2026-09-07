@@ -234,6 +234,7 @@ const CONN = { host: 'h', port: 5432, database: 'd', user: 'u', password: 'p', s
       const { status, data } = await post(base, '/api/pg/schemas', CONN);
       eq(status, 401, 'auth → 401');
       ok(/логин или пароль/.test(data.error), 'friendly auth message');
+      ok(data.error.includes('пользователя «u»'), 'в тексте назван логин — видно, что реально ушло в Postgres: ' + data.error);
     } finally {
       srv.close();
     }
@@ -361,18 +362,40 @@ const CONN = { host: 'h', port: 5432, database: 'd', user: 'u', password: 'p', s
 
   console.log('13. Мэппинг столбцов — нестандартная таблица (status/message)');
   {
-    // реальный случай: в схеме public_1841 нет Параметр/Значение
+    // реальный случай: в схеме public_1841 нет Параметр/Значение —
+    // имя параметра лежит в status, значение в message
     const REAL = ['status', 'runid', 'datasetid', 'message', 'update_date_time', 'configid', 'change_author', 'sys_id'];
     const sug = suggestColumns(REAL);
-    eq(sug.missing, ['param', 'value'], 'param/value не угадываются в status/message');
-    eq(sug.mapped.run, 'runid', 'runid всё же найден');
+    eq(sug.missing, [], 'status/message определяются автоматически (запасной кандидат)');
+    eq(sug.mapped.run, 'runid', 'runid найден');
     eq(sug.mapped.ds, 'datasetid', 'datasetid найден');
-    throwsSync(() => mapColumns(REAL, 'Схема «public_1841»'), 400, 'без мэппинга → 400');
-    const withMap = mapColumns(REAL, 'Схема «public_1841»', { param: 'status', value: 'message' });
+    eq(sug.mapped.param, 'status', 'имя параметра — status');
+    eq(sug.mapped.value, 'message', 'значение — message');
+    eq(
+      mapColumns(REAL, 'Схема «public_1841»'),
+      { run: 'runid', param: 'status', value: 'message', ds: 'datasetid', cfg: 'configid' },
+      'без мэппинга схема сразу доступна — ручной мэппинг не нужен'
+    );
+    // status/message — запасные варианты: нормальные названия важнее
+    eq(
+      suggestColumns(['status', 'message', 'parameter', 'value', 'runid']).mapped,
+      { run: 'runid', param: 'parameter', value: 'value', ds: null, cfg: null },
+      'parameter/value выигрывают у status/message'
+    );
+    eq(
+      suggestColumns(['статус', 'заметка', 'Параметр', 'Значение', 'runid']).mapped.param,
+      'Параметр',
+      'кириллические названия тоже важнее status/message'
+    );
+    // без status/message автоподбор обязательных полей по-прежнему не срабатывает
+    const EXOTIC = ['state', 'runid', 'datasetid', 'note', 'update_date_time', 'configid'];
+    eq(suggestColumns(EXOTIC).missing, ['param', 'value'], 'экзотические имена — только ручной мэппинг');
+    throwsSync(() => mapColumns(EXOTIC, 'Схема «p»'), 400, 'без мэппинга → 400');
+    const withMap = mapColumns(EXOTIC, 'Схема «public_1841»', { param: 'state', value: 'note' });
     eq(
       withMap,
-      { run: 'runid', param: 'status', value: 'message', ds: 'datasetid', cfg: 'configid' },
-      'пользовательский мэппинг status→Параметр, message→Значение'
+      { run: 'runid', param: 'state', value: 'note', ds: 'datasetid', cfg: 'configid' },
+      'пользовательский мэппинг побеждает автоподбор'
     );
     const bad = throwsSync(
       () => mapColumns(REAL, 'Схема «s»', { param: 'nope', value: 'message' }),
@@ -406,29 +429,42 @@ const CONN = { host: 'h', port: 5432, database: 'd', user: 'u', password: 'p', s
     );
   }
 
-  console.log('14. /api/pg/schemas — схема без Параметр/Значение помечается needsMapping');
+  console.log('14. /api/pg/schemas — status/message авто-маппятся, экзотика помечается needsMapping');
   {
     const REAL = ['status', 'runid', 'datasetid', 'message', 'configid'];
+    const EXOTIC = ['state', 'runid', 'datasetid', 'note', 'configid'];
     const fake = makeFake((text, params) => {
-      if (text.includes('information_schema.tables')) return { rows: [{ s: 'public_1841', t: 'optimizer_status' }] };
-      if (text.includes('information_schema.columns')) return { rows: REAL.map(c => ({ c })) };
+      if (text.includes('information_schema.tables')) {
+        return { rows: [{ s: 'public_1841', t: 'optimizer_status' }, { s: 'public_zebra', t: 'optimizer_status' }] };
+      }
+      if (text.includes('information_schema.columns') && params[0] === 'public_1841') {
+        return { rows: REAL.map(c => ({ c })) };
+      }
+      if (text.includes('information_schema.columns') && params[0] === 'public_zebra') {
+        return { rows: EXOTIC.map(c => ({ c })) };
+      }
       if (text.includes('COUNT(*)::int AS n')) return { rows: [{ n: 7 }] };
       throw new Error('unexpected: ' + text.slice(0, 60));
     });
     const { srv, base } = await listen(createApp({ connect: fake.connect }));
     try {
       const { status, data } = await post(base, '/api/pg/schemas', CONN);
-      eq(status, 200, 'schemas 200 даже без Параметр/Значение');
+      eq(status, 200, 'schemas 200 и для «странных» таблиц');
       const s0 = data.schemas[0];
-      ok(s0.needsMapping === true, 'needsMapping выставлен');
-      eq(s0.columns, REAL, 'реальные столбцы возвращены для выбора в UI');
+      eq(s0.schema, 'public_1841', 'первая схема — status/message');
+      ok(s0.ok === true && !s0.needsMapping && s0.error === null, 'status/message: доступна без ручного мэппинга');
+      eq(s0.mapped.param, 'status', 'param → status');
+      eq(s0.mapped.value, 'message', 'value → message');
+      eq(s0.columns, REAL, 'столбцы возвращены');
       eq(s0.rows, 7, 'счётчик строк посчитан');
-      eq(s0.mapped.run, 'runid', 'частичная догадка отдана клиенту');
-      ok(/Мэппинг столбцов/.test(s0.error), 'подсказка про мэппинг в тексте ошибки: ' + s0.error);
-      // с мэппингом схема становится доступной
-      const withMap = await post(base, '/api/pg/schemas', { ...CONN, columns: { param: 'status', value: 'message' } });
-      ok(withMap.data.schemas[0].ok === true, 'с мэппингом схема доступна');
-      ok(!withMap.data.schemas[0].needsMapping, 'needsMapping снят');
+      const s1 = data.schemas[1];
+      eq(s1.schema, 'public_zebra', 'вторая схема — экзотика');
+      ok(s1.needsMapping === true, 'needsMapping выставлен, когда совсем нечего угадать');
+      ok(/Мэппинг столбцов/.test(s1.error), 'подсказка про мэппинг в тексте ошибки: ' + s1.error);
+      // с мэппингом экзотика становится доступной
+      const withMap = await post(base, '/api/pg/schemas', { ...CONN, columns: { param: 'state', value: 'note' } });
+      ok(withMap.data.schemas[1].ok === true, 'с мэппингом схема доступна');
+      ok(!withMap.data.schemas[1].needsMapping, 'needsMapping снят');
     } finally {
       srv.close();
     }
@@ -520,7 +556,9 @@ const CONN = { host: 'h', port: 5432, database: 'd', user: 'u', password: 'p', s
       const { status, data } = await post(base, '/api/pg/columns', { ...CONN, schemas: ['public_1841'] });
       eq(status, 200, 'columns 200');
       eq(data.columns, REAL, 'список столбцов');
-      eq(data.missing, ['param', 'value'], 'что не угадалось');
+      eq(data.missing, [], 'status/message угадываются — ничего не пропущено');
+      eq(data.suggested.param, 'status', 'param → status');
+      eq(data.suggested.value, 'message', 'value → message');
       eq(data.sample, [{ status: 'Solution', runid: '5', message: 'OPTIMAL' }], 'образцы строк (значения строками)');
       ok(/LIMIT \d+/.test(fake.calls.map(c => c.text).join('')), 'образцы берутся с LIMIT');
     } finally {
