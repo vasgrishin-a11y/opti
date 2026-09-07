@@ -385,6 +385,103 @@ console.log('11. Schema-aware grouping (Postgres)');
   assertEq(runKey(file), '1|1|1', 'runKey without schema unchanged');
 }
 
+/* ── 12. Реальная выгрузка: столбцы status/message, набор параметров из БД ──
+   Проверяем ровно тот перечень строк, что лежит в боевой таблице:
+   есть Alias, нет Periods / Result gap % / Nodes / Best bound / Solver nodes. */
+console.log('12. Реальный набор параметров из БД (Alias, без Periods/gap)');
+{
+  const P = (p, v) => ({ runid: '19', 'Параметр': p, 'Значение': v, datasetid: '14', configid: '300' });
+  const rows = [
+    P('Start time', '2026-05-13 12:46:03.628897'),
+    P('Solver', 'CPLEX'),
+    P('Config', JSON.stringify({ periods: 20, gap_limit: 0.0001, time_limit: 10.0, threads_number: 8 })),
+    P('Config hash', 'b7a1ae'),
+    P('Alias', 'SNP_ОСНОВНОЙ_ПЛАН'),
+    P('Global cost mutliplier', '1.0'),
+    P('Included entities', 'movement; procurement; production; sale; stock'),
+    P('Functional entities', 'movement; procurement; production; sale; stock'),
+    P('Constraint types', 'production_capacity; demand_cons; stock_capacity'),
+    P('Variables', '239111'), P('Continuous vars', '239111'), P('Constraints', '105975'),
+    P('Solution', 'OPTIMAL'), P('Calc time', '0:00:01.347885'), P('Solve time', '0:00:01.120604'),
+    P('Iterations', '10980'), P('Solution value (scaled)', '364133177285.53'),
+    P('Sum of variables values', '364133177285.53'), P('Objective value', '364133177285.53'),
+    P('Deleted variables', '0'), P('Deleted constraints', '0'),
+    P('Non-zero values of sale variables', '167 / 210'),
+    P('Non-zero values of sale variables %', '79.52'),
+    P('Value of sale', '448269567261.319'),
+    P('Lower bound reached production:production_capacity (STRICT) %', '45.63'),
+    P('Upper bound reached production:production_capacity (STRICT) %', '19.38'),
+    P('Lower bound reached stock:stock_capacity (SOFT) %', '98.23'),
+    P('Upper bound reached stock:stock_capacity (SOFT) %', '78.27'),
+    P('Softmin penalties sum stock:stock_capacity (SOFT)', '11866.14'),
+    P('Softmin penalties non-zerostock:stock_capacity (SOFT) %', '3.30'),
+    P('Softmax penalties sum stock:stock_capacity (SOFT)', '0.00'),
+    P('Softmax penalties non-zerostock:stock_capacity (SOFT) %', '0.00')
+  ];
+  const r = parseOptimizerRows(rows)[0];
+
+  // Alias: раньше просто терялся
+  assertEq(r.meta.alias, 'SNP_ОСНОВНОЙ_ПЛАН', 'Alias разобран');
+  assert(r.label.indexOf('SNP_ОСНОВНОЙ_ПЛАН') !== -1, 'Alias попал в подпись прогона: ' + r.label);
+
+  // Отсутствующие поля: null, а не 0 (иначе дашборд показывал бы «gap 0,00%»)
+  assertEq(r.solve.gapPct, null, 'нет строки Result gap % → gapPct = null, не 0');
+  assertEq(r.solve.nodes, null, 'нет Nodes → null');
+  assertEq(r.solve.bestBound, null, 'нет Best bound → null');
+  assertEq(r.solve.solverNodes, null, 'нет Solver nodes → null');
+
+  // Periods нет отдельной строкой — берём из Config
+  assertEq(r.meta.periods, 20, 'горизонт взят из Config, раз строки Periods нет');
+
+  // Остальное должно разобраться как обычно
+  assertEq(r.solve.status, 'OPTIMAL', 'статус');
+  assertEq(r.solve.variables, 239111, 'переменные');
+  assertEq(r.meta.globalCostMultiplier, 1, 'множитель стоимости');
+  assertEq(r.meta.constraintTypes.length, 3, 'три типа ограничений');
+  assertEq(r.bounds.length, 2, 'две пары границ');
+  const sc = r.bounds.find(b => b.constraint === 'stock_capacity');
+  assertEq(sc.status, 'SOFT', 'stock_capacity помечен SOFT');
+  assertEq(sc.lowerPct, 98.23, 'нижняя граница stock_capacity');
+  assertEq(r.penalties.length, 1, 'нулевой Softmax отфильтрован, остался Softmin');
+  assertEq(r.penalties[0].sum, 11866.14, 'сумма штрафа');
+  assertEq(r.penalties[0].entity, 'stock', 'сущность штрафа');
+  assertEq(r.dups.length, 0, 'конфликтов среди параметров нет');
+}
+
+/* ── 13. Повторяющиеся параметры внутри одного прогона ── */
+console.log('13. Дубли параметров: конфликты фиксируются, а не теряются');
+{
+  const P = (p, v) => ({ runid: '19', 'Параметр': p, 'Значение': v, datasetid: '14', configid: '300' });
+  const rows = [
+    P('Start time', '2026-05-13 12:46:03'), P('Config hash', 'AAA111'), P('Alias', 'ЭТАП_1'),
+    P('Solver', 'CPLEX'),
+    P('Start time', '2026-05-13 12:52:40'), P('Config hash', 'BBB222'), P('Alias', 'ЭТАП_2'),
+    P('Solver', 'CPLEX'),
+    P('Solution', 'OPTIMAL')
+  ];
+  const runs = parseOptimizerRows(rows);
+  assertEq(runs.length, 1, 'один runid = один прогон');
+  const r = runs[0];
+  assertEq(r.dups.length, 3, 'три параметра с расходящимися значениями');
+  const byName = Object.fromEntries(r.dups.map(d => [d.param, d.values]));
+  assertEq(byName['Config hash'].join('→'), 'AAA111→BBB222', 'история значений Config hash');
+  assertEq(byName['Alias'].join('→'), 'ЭТАП_1→ЭТАП_2', 'история значений Alias');
+  assert(!byName['Solver'], 'одинаковые повторы (Solver) конфликтом не считаются');
+  assertEq(r.meta.configHash, 'BBB222', 'используется последнее значение');
+  assertEq(r.meta.alias, 'ЭТАП_2', 'Alias — последний');
+}
+
+/* ── 14. Метки прогона, когда датасета/конфига нет ── */
+console.log('14. Подпись прогона без datasetid/configid');
+{
+  const rows = [{ runid: '7', 'Параметр': 'Solution', 'Значение': 'OPTIMAL' }];
+  const r = parseOptimizerRows(rows)[0];
+  assertEq(r.label, 'Прогон 7', 'нет пустых «датасет · конфиг» в подписи');
+  const rows2 = [{ runid: '7', 'Параметр': 'Alias', 'Значение': 'НОЧНОЙ_ПЕРЕСЧЁТ' },
+                 { runid: '7', 'Параметр': 'Solution', 'Значение': 'OPTIMAL' }];
+  assertEq(parseOptimizerRows(rows2)[0].label, 'Прогон 7 · НОЧНОЙ_ПЕРЕСЧЁТ', 'Alias в подписи');
+}
+
 console.log('\n' + '─'.repeat(40));
 console.log(`Result: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

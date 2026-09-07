@@ -35,7 +35,10 @@ function runRows(schema, runid) {
   ];
 }
 
-/** Подмена fetch: режимы {down, authFail, http405} переключаются на лету. */
+/** Столбцы «неправильной» таблицы: ни Параметр, ни Значение (реальный случай). */
+const ODD_COLS = ['status', 'runid', 'datasetid', 'message', 'update_date_time', 'configid', 'change_author', 'sys_id'];
+
+/** Подмена fetch: режимы {down, authFail, http405, odd} переключаются на лету. */
 function apiFetch(mode, log) {
   return async (url, opts) => {
     const u = String(url);
@@ -46,6 +49,58 @@ function apiFetch(mode, log) {
       // так отвечает чужой статический сервер (Live Server и т.п.) на POST:
       // 405 + HTML-тело, не JSON
       return { ok: false, status: 405, json: async () => { throw new Error('HTML body, не JSON'); } };
+    }
+    if (mode.odd) {
+      // Схема, где optimizer_status назвал столбцы по-своему.
+      const mapped = body.columns || {};
+      const okMap = !!(mapped.param && mapped.value);
+      if (u.endsWith('/api/pg/schemas')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            schemas: [{
+              schema: 'public_1841', table: 'optimizer_status', columns: ODD_COLS, rows: 500,
+              ok: okMap, needsMapping: !okMap,
+              error: okMap ? null : 'Схема «public_1841»: не удалось определить столбцы: Параметр/parameter, Значение/value.',
+              mapped: { run: 'runid', param: mapped.param || null, value: mapped.value || null, ds: 'datasetid', cfg: 'configid' }
+            }]
+          })
+        };
+      }
+      if (u.endsWith('/api/pg/columns')) {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            schema: 'public_1841', table: 'optimizer_status', columns: ODD_COLS,
+            suggested: { run: 'runid', param: null, value: null, ds: 'datasetid', cfg: 'configid' },
+            missing: ['param', 'value'],
+            sample: [{ status: 'Solution', runid: '7', datasetid: '14', message: 'OPTIMAL', update_date_time: '2026-06-01', configid: '300', change_author: 'etl', sys_id: '1' }]
+          })
+        };
+      }
+      if (u.endsWith('/api/pg/runs')) {
+        if (!okMap) return { ok: false, status: 400, json: async () => ({ error: 'нет мэппинга' }) };
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            runs: [{ schema: 'public_1841', table: 'optimizer_status', runid: '7', datasetid: '14', configid: '300', rows: 60, startTime: '2026-06-01 09:00:00' }],
+            truncated: false
+          })
+        };
+      }
+      if (u.endsWith('/api/pg/load')) {
+        if (!okMap) return { ok: false, status: 400, json: async () => ({ error: 'нет мэппинга' }) };
+        const rows = [];
+        for (const ssel of body.selection) rows.push(...runRows(ssel.schema, ssel.runid));
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ rows, truncated: false, runs: body.selection.length, schemas: ['public_1841'] })
+        };
+      }
     }
     if (u.endsWith('/api/pg/schemas')) {
       if (mode.authFail) {
@@ -278,6 +333,97 @@ function setCheck(dom, el, checked) {
     q(doc6, '#bPg').click();
     ok(q(doc6, '#pgBackend').value === 'http://localhost:3000', 'file:// prefills http://localhost:3000');
     d6.window.close();
+  }
+
+  console.log('12. Мэппинг столбцов: таблица со status/message вместо Параметр/Значение');
+  {
+    const m7 = { odd: true };
+    const log7 = [];
+    const d7 = makeDom(apiFetch(m7, log7));
+    const doc7 = d7.window.document;
+    await waitFor(d7, d => q(d, '#runSel'), 'boot 7');
+    q(doc7, '#bPg').click();
+    q(doc7, '#pgUser').value = 'analyst';
+    q(doc7, '#pgPass').value = 'x';
+    q(doc7, '#pgConnect').click();
+    await waitFor(d7, d => q(d, '#pgStep2').hidden === false, 'step 2 (odd schema)');
+
+    ok(q(doc7, '#pgMap') !== null, 'блок «Мэппинг столбцов» есть на шаге 2');
+    ok(q(doc7, '#pgMap').open === true, 'блок раскрыт автоматически, раз мэппинг неполный');
+    ok(/нужно указать/.test(q(doc7, '#pgMapState').textContent), 'статус мэппинга предупреждает: ' + q(doc7, '#pgMapState').textContent);
+    ok(q(doc7, '#pgSchemasList .pg-item.bad') !== null, 'схема помечена недоступной до мэппинга');
+    ok(/Мэппинг столбцов/.test(q(doc7, '#pgSchemasList').textContent), 'подсказка про мэппинг в описании схемы');
+
+    // селекты заполнены реальными столбцами таблицы
+    const selParam = q(doc7, '#pgMap_param');
+    ok(selParam !== null, 'селект для «Параметр» отрисован');
+    const optVals = [...selParam.options].map(o => o.value);
+    ok(ODD_COLS.every(c => optVals.includes(c)), 'в списке все столбцы таблицы: ' + optVals.join(','));
+    ok(q(doc7, '#pgMap_run').value === 'runid', 'runid подобран автоматически');
+    ok(q(doc7, '#pgMap_ds').value === 'datasetid', 'datasetid подобран автоматически');
+    ok(selParam.value === '', '«Параметр» не угадан — пусто');
+
+    // попытка идти дальше без мэппинга — понятная ошибка
+    q(doc7, '#pgToRuns').click();
+    await waitFor(d7, d => q(d, '#pgErr2').classList.contains('show'), 'mapping error');
+    ok(/Мэппинг столбцов/.test(q(doc7, '#pgErr2').textContent), 'ошибка объясняет, что нужен мэппинг');
+    ok(q(doc7, '#pgStep2').hidden === false, 'остаёмся на шаге 2');
+
+    // образцы строк помогают понять, какой столбец за что отвечает
+    q(doc7, '#pgMapSample').click();
+    await waitFor(d7, d => q(d, '#pgMapSampleBox').hidden === false && q(d, '#pgMapSampleBox').textContent.includes('Solution'), 'sample rows');
+    ok(/message/.test(q(doc7, '#pgMapSampleBox').textContent), 'в образцах видны имена столбцов');
+    ok(log7.some(e => e.url.endsWith('/api/pg/columns')), 'образцы запрошены через /api/pg/columns');
+
+    // задаём мэппинг вручную
+    const setSel = (id, v) => { const el = q(doc7, id); el.value = v; el.dispatchEvent(new d7.window.Event('change', { bubbles: true })); };
+    setSel('#pgMap_param', 'status');
+    setSel('#pgMap_value', 'message');
+    ok(/задан вручную/.test(q(doc7, '#pgMapState').textContent), 'статус: мэппинг задан вручную');
+    ok(q(doc7, '#pgSchemasList .pg-item.bad') === null, 'схема стала доступной после мэппинга');
+
+    // теперь шаги проходят, и мэппинг уходит в каждый запрос
+    setCheck(d7, q(doc7, '#pgSchemasList input'), true);
+    q(doc7, '#pgToRuns').click();
+    await waitFor(d7, d => q(d, '#pgStep3').hidden === false, 'step 3 with mapping');
+    const runsReq = log7.filter(e => e.url.endsWith('/api/pg/runs')).pop();
+    ok(runsReq.body.columns && runsReq.body.columns.param === 'status' && runsReq.body.columns.value === 'message',
+      'мэппинг ушёл в /api/pg/runs: ' + JSON.stringify(runsReq.body.columns));
+
+    q(doc7, '#pgDoLoad').click();
+    await waitFor(d7, d => q(d, '#pgModal').hidden === true, 'loaded with mapping');
+    const loadReq = log7.filter(e => e.url.endsWith('/api/pg/load')).pop();
+    ok(loadReq.body.columns.param === 'status', 'мэппинг ушёл и в /api/pg/load');
+    ok(qa(doc7, '#runSel option').some(o => o.textContent.includes('public_1841')), 'прогон из «неправильной» схемы попал в дашборд');
+
+    // мэппинг запоминается между сессиями
+    const saved7 = JSON.parse(d7.window.localStorage.getItem('snp_opt_pg') || '{}');
+    ok(saved7.cols && saved7.cols.param === 'status' && saved7.cols.value === 'message', 'мэппинг сохранён в localStorage');
+    ok(!JSON.stringify(saved7).includes('"password"'), 'пароль по-прежнему не сохраняется');
+    d7.window.close();
+  }
+
+  console.log('13. Кнопка «Сбросить на авто» возвращает автоподбор');
+  {
+    const d8 = makeDom(apiFetch({}, []));
+    const doc8 = d8.window.document;
+    await waitFor(d8, d => q(d, '#runSel'), 'boot 8');
+    q(doc8, '#bPg').click();
+    q(doc8, '#pgUser').value = 'analyst';
+    q(doc8, '#pgPass').value = 'x';
+    q(doc8, '#pgConnect').click();
+    await waitFor(d8, d => q(d, '#pgStep2').hidden === false, 'step 2 (normal schema)');
+    ok(/автоматически/.test(q(doc8, '#pgMapState').textContent), 'обычная таблица: мэппинг авто');
+    ok(q(doc8, '#pgMap').open === false, 'блок мэппинга свёрнут, когда всё определилось');
+    ok(q(doc8, '#pgMap_param').value === 'parameter', 'parameter подобран: ' + q(doc8, '#pgMap_param').value);
+    const sel = q(doc8, '#pgMap_value');
+    sel.value = 'runid';
+    sel.dispatchEvent(new d8.window.Event('change', { bubbles: true }));
+    ok(/вручную/.test(q(doc8, '#pgMapState').textContent), 'после правки — «задан вручную»');
+    q(doc8, '#pgMapAuto').click();
+    ok(/автоматически/.test(q(doc8, '#pgMapState').textContent), 'сброс вернул авто');
+    ok(q(doc8, '#pgMap_value').value === 'value', 'значение вернулось к автоподбору');
+    d8.window.close();
   }
 
   console.log('\n' + '─'.repeat(40));

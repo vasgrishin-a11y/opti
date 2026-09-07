@@ -238,6 +238,30 @@ canvas[role="img"]{outline:none}
 [data-theme="dark"] .pg-item:hover{background:#2c2140}
 @media(max-width:560px){.pg-form{grid-template-columns:1fr}}
 
+/* §17 Мэппинг столбцов */
+.pg-map{border:1px solid var(--scp-line);border-radius:var(--r-m);margin:0 0 10px;font-size:13px}
+.pg-map>summary{cursor:pointer;padding:9px 12px;font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:8px;list-style:none}
+.pg-map>summary::-webkit-details-marker{display:none}
+.pg-map>summary::before{content:'▸';color:var(--scp-text-3);font-size:11px}
+.pg-map[open]>summary::before{content:'▾'}
+.pg-map-state{margin-left:auto;font-weight:400;font-size:12px;color:var(--scp-text-3)}
+.pg-map-state.warn{color:var(--scp-err)}
+.pg-map-state.on{color:var(--scp-accent)}
+.pg-map-body{padding:0 12px 12px;border-top:1px solid var(--scp-line)}
+.pg-map-hint{font-size:12px;color:var(--scp-text-3);line-height:17px;margin:10px 0}
+.pg-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;margin-bottom:10px}
+.pg-map-grid .f{min-width:0}
+.pg-map-grid label{font-size:11px;color:var(--scp-text-3);font-weight:600;text-transform:uppercase;display:block;margin-bottom:4px}
+.pg-map-grid label .req{color:var(--scp-err);margin-left:3px}
+.pg-map-grid select{width:100%;background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:7px 9px;font:400 12.5px 'Open Sans',sans-serif}
+.pg-map-grid select:focus{outline:none;border-color:var(--scp-accent)}
+.pg-map-grid select.bad{border-color:var(--scp-err)}
+.pg-sample{overflow:auto;max-height:210px;border:1px solid var(--scp-line);border-radius:var(--r-s);margin-top:6px}
+.pg-sample table{border-collapse:collapse;font-size:11.5px;white-space:nowrap}
+.pg-sample th,.pg-sample td{border-bottom:1px solid var(--scp-line);padding:5px 8px;text-align:left;max-width:230px;overflow:hidden;text-overflow:ellipsis}
+.pg-sample th{position:sticky;top:0;background:var(--scp-surface);font-weight:600;color:var(--scp-text-2)}
+@media(max-width:560px){.pg-map-grid{grid-template-columns:1fr}}
+
 </style>
 </head>
 <body>
@@ -327,6 +351,18 @@ canvas[role="img"]{outline:none}
       </section>
       <section id="pgStep2" aria-label="Выбор схем" hidden>
         <p class="pg-info" id="pgSchemasInfo"></p>
+        <details class="pg-map" id="pgMap">
+          <summary>Мэппинг столбцов <span class="pg-map-state" id="pgMapState"></span></summary>
+          <div class="pg-map-body">
+            <p class="pg-map-hint" id="pgMapHint">Укажите, какие столбцы таблицы соответствуют полям лога оптимизатора. По умолчанию соответствие подбирается автоматически по именам столбцов.</p>
+            <div class="pg-map-grid" id="pgMapGrid"></div>
+            <div class="pg-tools">
+              <button class="dt-btn" id="pgMapAuto" type="button">Сбросить на авто</button>
+              <button class="dt-btn" id="pgMapSample" type="button">Показать образцы строк</button>
+            </div>
+            <div class="pg-sample" id="pgMapSampleBox" hidden></div>
+          </div>
+        </details>
         <div class="pg-tools">
           <input class="dt-q" id="pgSchemaQ" type="text" placeholder="Поиск схемы…" aria-label="Поиск схемы">
           <button class="dt-btn" id="pgSchemasAll" type="button">Выбрать все</button>
@@ -711,17 +747,37 @@ function parseOptimizerRows(rows){
     if(runid===undefined||param===undefined)return;
     const sch=(schema===undefined||schema===null)?'':String(schema);
     const key=sch+'|'+String(runid)+'|'+String(dsid)+'|'+String(cfgid);
-    if(!groups.has(key))groups.set(key,{schema:sch,runid:String(runid),datasetid:String(dsid??''),configid:String(cfgid??''),raw:new Map()});
+    if(!groups.has(key))groups.set(key,{schema:sch,runid:String(runid),datasetid:String(dsid??''),configid:String(cfgid??''),raw:new Map(),dups:new Map()});
     const g=groups.get(key),pname=String(param).trim(),val=(value===undefined||value===null)?'':String(value);
+    /* Один и тот же параметр может встретиться в прогоне несколько раз
+       (например «Start time», «Config», «Alias» пишутся на каждом этапе
+       расчёта). Берём последнее непустое значение, но запоминаем все
+       различающиеся — иначе расхождение молча теряется. */
+    if(g.raw.has(pname)&&val!==''){
+      const prev=g.raw.get(pname);
+      if(prev!==''&&prev!==val){
+        if(!g.dups.has(pname))g.dups.set(pname,[prev]);
+        g.dups.get(pname).push(val);
+      }
+    }
     if(!g.raw.has(pname)||val!=='')g.raw.set(pname,val);
   });
   return [...groups.values()].map(buildRun);
 }
 function buildRun(g){
   const raw=g.raw,get=k=>raw.get(k),numv=k=>num(get(k));
+  /* numvN — для полей, которых может не быть в логе: возвращает null, а не 0.
+     Иначе отсутствующий «Result gap %» превращался в 0.00%, и дашборд
+     утверждал, что решение оптимально, хотя данных о gap просто нет. */
+  const numvN=k=>{const v=get(k);return (v===undefined||v===null||String(v).trim()==='')?null:num(v)};
   let cfg=null;try{cfg=JSON.parse(get('Config')||'null')}catch(e){cfg=null}
+  const cfgNum=k=>(cfg&&cfg[k]!=null)?num(cfg[k]):null;
   const meta={
-    startTime:get('Start time')||'',periods:numv('Periods'),solver:get('Solver')||'',configHash:get('Config hash')||'',
+    startTime:get('Start time')||'',
+    // «Periods» в логе есть не всегда — тогда берём горизонт из Config
+    periods:numvN('Periods')??cfgNum('periods'),
+    alias:get('Alias')||'', // человекочитаемое имя прогона (есть не во всех выгрузках)
+    solver:get('Solver')||'',configHash:get('Config hash')||'',
     includedEntities:(get('Included entities')||'').split(';').map(s=>s.trim()).filter(Boolean),
     functionalEntities:(get('Functional entities')||'').split(';').map(s=>s.trim()).filter(Boolean),
     constraintTypes:(get('Constraint types')||'').split(';').map(s=>s.trim()).filter(Boolean),
@@ -735,12 +791,14 @@ function buildRun(g){
     cfgParsed:!!cfg
   };
   const solve={
-    variables:numv('Variables'),continuousVars:numv('Continuous vars'),constraints:numv('Constraints'),nodes:numv('Nodes'),
-    gapPct:numv('Result gap %'),status:get('Solution')||'',calcTimeStr:get('Calc time')||'',solveTimeStr:get('Solve time')||'',
+    variables:numv('Variables'),continuousVars:numv('Continuous vars'),constraints:numv('Constraints'),nodes:numvN('Nodes'),
+    /* gapPct/bestBound/solverNodes — null, если строки нет в логе (частый
+       случай для чисто линейных моделей: у LP нет ни gap, ни дерева поиска). */
+    gapPct:numvN('Result gap %'),status:get('Solution')||'',calcTimeStr:get('Calc time')||'',solveTimeStr:get('Solve time')||'',
     calcTimeSec:parseCalcTime(get('Calc time')),solveTimeSec:parseCalcTime(get('Solve time')),iterations:numv('Iterations'),
     solutionValueScaled:numv('Solution value (scaled)'),sumVarsValues:numv('Sum of variables values'),
     objectiveValue:numv('Objective value'),deletedVars:numv('Deleted variables'),deletedConstraints:numv('Deleted constraints'),
-    bestBound:numv('Best bound'),solverNodes:numv('Solver nodes')
+    bestBound:numvN('Best bound'),solverNodes:numvN('Solver nodes')
   };
   const entMap=new Map();const ensureEnt=e=>{if(!entMap.has(e))entMap.set(e,{entity:e,nonzero:0,total:0,pct:0,value:0});return entMap.get(e)};
   raw.forEach((val,key)=>{let m;
@@ -776,10 +834,12 @@ function buildRun(g){
   const penalties=[...penMap.values()].filter(p=>p.sum!==0||p.nonzeroPct!==0);
 
   const schema=g.schema||'';
-  const runLabel=schema?`${schema} · Прогон ${g.runid} · датасет ${g.datasetid} · конфиг ${g.configid}`
-                       :`Прогон ${g.runid} · датасет ${g.datasetid} · конфиг ${g.configid}`;
+  const alias=meta.alias?` · ${meta.alias}`:'';
+  const runLabel=(schema?`${schema} · Прогон ${g.runid}`:`Прогон ${g.runid}`)+
+    (g.datasetid?` · датасет ${g.datasetid}`:'')+(g.configid?` · конфиг ${g.configid}`:'')+alias;
+  const dups=[...(g.dups||new Map()).entries()].map(([param,values])=>({param,values}));
   return {schema,runid:g.runid,datasetid:g.datasetid,configid:g.configid,label:runLabel,
-    meta,solve,entities,bounds,penalties,
+    meta,solve,entities,bounds,penalties,dups,
     rawRows:[...raw.entries()].map(([k,v])=>({param:k,value:v}))};
 }
 const runKey=r=>(r.schema?r.schema+'|':'')+r.runid+'|'+r.datasetid+'|'+r.configid;
@@ -957,13 +1017,18 @@ function summary(title,blocks){return `<div class="sum"><h4>${title}</h4>`+block
 function tabOV(){
   const r=curRun();if(!r)return '<div class="empty"><h2>Нет данных</h2><p>Загрузите XLSX с листом optimizer_status.</p></div>';
   const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
-  const gapOk=r.solve.gapPct<=gapThr;
+  // gap может отсутствовать в логе (LP-модели) — тогда судить о нём нельзя
+  const gapKnown=r.solve.gapPct!=null;
+  const gapOk=gapKnown?r.solve.gapPct<=gapThr:true;
   const statusOk=/OPTIMAL/i.test(r.solve.status);
   const ent=k=>r.entities.find(e=>e.entity===k);
   const sale=ent('sale'),mv=ent('movement'),pd=ent('production'),pc_=ent('procurement'),st=ent('stock');
   const K=[
     ['Статус решения',esc(r.solve.status)||'—',statusOk?'Оптимум найден и подтверждён':'Проверьте лог солвера — решение может быть неполным',statusOk?'pos':'neg'],
-    ['Точность решения (Gap)',pctFmt(r.solve.gapPct),r.meta.gapLimit!=null?`Порог по настройке: ${pctFmt(r.meta.gapLimit)}`:'Расстояние до теоретического оптимума',gapOk?'pos':'neg'],
+    ['Точность решения (Gap)',gapKnown?pctFmt(r.solve.gapPct):'—',
+      gapKnown?(r.meta.gapLimit!=null?`Порог по настройке: ${pctFmt(r.meta.gapLimit)}`:'Расстояние до теоретического оптимума')
+              :'В логе нет строки «Result gap %» — обычно это линейная (LP) модель, где gap не определён',
+      gapKnown?(gapOk?'pos':'neg'):''],
     ['Время решения',timeFmt(r.solve.solveTimeSec),`Полный расчёт: ${timeFmt(r.solve.calcTimeSec)} · ${nf(r.solve.iterations)} итераций симплекс-метода`,''],
     ['Масштаб модели',nf(r.solve.variables)+' переменных',`${nf(r.solve.constraints)} ограничений · горизонт ${r.meta.periods||'—'} период(ов)`,''],
     ['Покрытие спроса',sale?pctFmt(sale.pct):'—',sale?`${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса получили план продаж`:'Нет данных по продажам',sale&&sale.pct<70?'neg':(sale&&sale.pct<90?'mid':'pos')],
@@ -993,14 +1058,19 @@ function tabOV(){
       i=>i===0?`<b>Подготовка модели</b><br>${nf(prep,3)} сек — сборка матрицы ограничений и переменных`
               :`<b>Решение солвером</b><br>${nf(r.solve.solveTimeSec,3)} сек — собственно оптимизация (CPLEX)`,
       null,0,1);
+    const fnDiff=r.meta.functionalEntities.length&&
+      r.meta.functionalEntities.join(',')!==r.meta.includedEntities.join(',');
     $('#o4').innerHTML=`<table class="mtbl"><tbody>
+      ${r.meta.alias?`<tr><td class="mt-k">Имя прогона (Alias)</td><td class="mt-v">${esc(r.meta.alias)}</td></tr>`:''}
       <tr><td class="mt-k">Начало расчёта</td><td class="mt-v">${esc(r.meta.startTime)||'—'}</td></tr>
       <tr><td class="mt-k">Солвер</td><td class="mt-v">${esc(r.meta.solver)||'—'}${r.meta.threads?` · ${r.meta.threads} потоков`:''}</td></tr>
       <tr><td class="mt-k">Горизонт</td><td class="mt-v">${r.meta.periods||'—'} период(ов)</td></tr>
       <tr><td class="mt-k">Замороженные (защищённые) сущности</td><td class="mt-v">${esc(r.meta.freezable)||'—'}</td></tr>
       <tr><td class="mt-k">Лимит времени на решение</td><td class="mt-v">${r.meta.timeLimit!=null?r.meta.timeLimit+' сек':'—'}</td></tr>
       <tr><td class="mt-k">Целевой gap по настройке</td><td class="mt-v">${r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'}</td></tr>
+      <tr><td class="mt-k">Множитель стоимости</td><td class="mt-v">${r.meta.globalCostMultiplier?nf(r.meta.globalCostMultiplier,2):'—'}</td></tr>
       <tr><td class="mt-k">Включённые сущности</td><td class="mt-v">${r.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', ')||'—'}</td></tr>
+      ${fnDiff?`<tr><td class="mt-k">Функциональные сущности</td><td class="mt-v">${r.meta.functionalEntities.map(e=>ENT_LBL[e]||e).join(', ')}</td></tr>`:''}
       <tr><td class="mt-k">Типы ограничений в модели</td><td class="mt-v">${r.meta.constraintTypes.map(consLbl).join(', ')||'—'}</td></tr>
       <tr><td class="mt-k">Хэш конфигурации</td><td class="mt-v" style="font-size:11px;color:var(--scp-text-3)">${esc(r.meta.configHash)||'—'}</td></tr>
     </tbody></table>`;
@@ -1010,7 +1080,9 @@ function tabOV(){
   return html+summary('Резюме: что показал прогон оптимизатора',[
     {t:'Выводы',i:[
       `Оптимизатор завершил расчёт со статусом <span class="h">${esc(r.solve.status)}</span> за <span class="h">${timeFmt(r.solve.solveTimeSec)}</span> и <span class="h">${nf(r.solve.iterations)}</span> итераций — это ${gapOk?'быстро и уверенно':'с отклонением, требующим проверки'}.`,
-      `Отклонение от теоретического оптимума (gap) составляет <span class="h">${pctFmt(r.solve.gapPct)}</span>${r.meta.gapLimit!=null?`, при настроенном пороге ${pctFmt(r.meta.gapLimit)}`:''} — этому результату ${gapOk?'можно доверять как практически оптимальному':'следует относиться с осторожностью'}.`,
+      gapKnown
+        ?`Отклонение от теоретического оптимума (gap) составляет <span class="h">${pctFmt(r.solve.gapPct)}</span>${r.meta.gapLimit!=null?`, при настроенном пороге ${pctFmt(r.meta.gapLimit)}`:''} — этому результату ${gapOk?'можно доверять как практически оптимальному':'следует относиться с осторожностью'}.`
+        :`Показатель gap в логе отсутствует — так бывает у линейных (LP) моделей, где симплекс-метод даёт точный оптимум без зазора. Судить о точности следует по статусу решения (<span class="h">${esc(r.solve.status)||'—'}</span>).`,
       sale?`Из ${nf(sale.total)} строк плана спроса план продаж получили <span class="h">${nf(sale.nonzero)}</span> (${pctFmt(sale.pct)}). ${unmetPct>10?`Оставшиеся ${pctFmt(unmetPct)} — это заказы с нулевым выделением, которые стоит разобрать в разрезе причин (мощность, сырьё, маршрут).`:'Доля полностью необслуженных заказов невелика.'}`:'',
       `Модель охватывает <span class="h">${nf(r.solve.variables)}</span> переменных и <span class="h">${nf(r.solve.constraints)}</span> ограничений на горизонте ${r.meta.periods} периодов — это масштаб, типичный для сетевого SNP-планирования.`]},
     {t:'Аномалии и риски',i:[
@@ -1166,16 +1238,22 @@ function tabPEN(){
 /* ═══════════════ 12. ИСТОРИЯ ПРОГОНОВ (с мультивыбором прогонов) ═══════════════ */
 function histSummary(s,gapArr,objArr,slvArr){
   const multi=s.length>=2,last=s[s.length-1];
+  // gapArr приходит уже «обнулённым» для графика — берём исходные значения
+  const gRaw=s.map(r=>r.solve.gapPct),gEnds=gRaw[0]!=null&&gRaw[gRaw.length-1]!=null;
   return summary('Резюме: выбранные прогоны',[
     {t:'Выводы',i:[
-      multi?`По ${nf(s.length)} выбранным прогонам gap изменился с ${pctFmt(gapArr[0])} до <span class="h">${pctFmt(gapArr[gapArr.length-1])}</span>.`
+      multi?(gEnds
+              ?`По ${nf(s.length)} выбранным прогонам gap изменился с ${pctFmt(gRaw[0])} до <span class="h">${pctFmt(gRaw[gRaw.length-1])}</span>.`
+              :`По ${nf(s.length)} выбранным прогонам gap сравнить нельзя — он рассчитан не во всех (в логе LP-моделей строки «Result gap %» нет).`)
            :`Выбран один прогон (#${esc(last.runid)}). Отметьте в фильтре выше минимум 2 прогона, чтобы увидеть динамику и сравнение A/B.`,
       multi?`Экономический эффект плана в последнем выбранном прогоне: <span class="h">${bn(last.solve.objectiveValue)}</span>, изменение к предыдущему выбранному — ${bn(last.solve.objectiveValue-s[s.length-2].solve.objectiveValue)}.`
            :`Экономический эффект плана: <span class="h">${bn(last.solve.objectiveValue)}</span>.`,
       multi?`Время решения ${slvArr[slvArr.length-1]>slvArr[0]?'выросло':'снизилось'} с ${timeFmt(slvArr[0])} до <span class="h">${timeFmt(slvArr[slvArr.length-1])}</span>.`
            :`Время решения: <span class="h">${timeFmt(last.solve.solveTimeSec)}</span>.`]},
     {t:'Аномалии',i:multi?[
-      gapArr[gapArr.length-1]>gapArr[gapArr.length-2]*1.5&&gapArr[gapArr.length-2]>0?'Заметный скачок gap в последнем выбранном прогоне — возможна деградация исходных данных или изменение конфигурации солвера.':'Существенных скачков gap между соседними выбранными прогонами не выявлено.',
+      (gRaw[gRaw.length-1]==null||gRaw[gRaw.length-2]==null)
+        ?'Скачки gap не анализировались: показатель рассчитан не во всех выбранных прогонах.'
+        :(gRaw[gRaw.length-1]>gRaw[gRaw.length-2]*1.5&&gRaw[gRaw.length-2]>0?'Заметный скачок gap в последнем выбранном прогоне — возможна деградация исходных данных или изменение конфигурации солвера.':'Существенных скачков gap между соседними выбранными прогонами не выявлено.'),
       slvArr[slvArr.length-1]>slvArr[slvArr.length-2]*3?'Резкий рост времени решения — проверить рост размера модели (переменные/ограничения) и лимит времени.':'Время решения стабильно.'
     ]:['Для одиночного прогона разбор аномалий — на вкладке «Качество и аномалии».']},
     {t:'Рекомендации',i:[
@@ -1222,23 +1300,32 @@ function tabHIST(){
       HIST_A=Math.min(Math.max(0,HIST_A),s.length-1);
       HIST_B=Math.min(Math.max(0,HIST_B),s.length-1);
       const labs=s.map(r=>'#'+r.runid);
-      const gapArr=s.map(r=>r.solve.gapPct),objArr=s.map(r=>r.solve.objectiveValue),
+      /* gap может отсутствовать у части прогонов (LP-модели): для графика
+         подставляем 0, но помним, известен ли он, чтобы не рисовать
+         несуществующую «идеальную точность» и не считать по ней дельты. */
+      const gapRaw=s.map(r=>r.solve.gapPct),gapKnownArr=gapRaw.map(v=>v!=null),
+        anyGap=gapKnownArr.some(Boolean),allGap=gapKnownArr.every(Boolean),
+        gapArr=gapRaw.map(v=>v==null?0:v);
+      const objArr=s.map(r=>r.solve.objectiveValue),
         slvArr=s.map(r=>r.solve.solveTimeSec),
         saleArr=s.map(r=>{const e=r.entities.find(x=>x.entity==='sale');return e?e.pct:0});
       const multi=s.length>=2;
+      const gapDeltaOk=multi&&gapKnownArr[gapKnownArr.length-1]&&gapKnownArr[gapKnownArr.length-2];
 
       const kpis=`
         <div class="kpis">
           <div class="kpi"><div class="t">Прогонов выбрано</div><div class="v">${nf(s.length)}</div><div class="s">из ${nf(runs.length)} доступных в истории</div></div>
           ${multi?`
-          <div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v ${gapArr[gapArr.length-1]<=gapArr[gapArr.length-2]?'pos':'neg'}">${nf(gapArr[gapArr.length-1]-gapArr[gapArr.length-2],2)} п.п.</div><div class="s">${pctFmt(gapArr[gapArr.length-2])} → ${pctFmt(gapArr[gapArr.length-1])}</div></div>
+          ${gapDeltaOk
+            ?`<div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v ${gapArr[gapArr.length-1]<=gapArr[gapArr.length-2]?'pos':'neg'}">${nf(gapArr[gapArr.length-1]-gapArr[gapArr.length-2],2)} п.п.</div><div class="s">${pctFmt(gapArr[gapArr.length-2])} → ${pctFmt(gapArr[gapArr.length-1])}</div></div>`
+            :`<div class="kpi"><div class="t">Изменение gap, последний к предыдущему</div><div class="v">—</div><div class="s">gap не рассчитывался хотя бы в одном из двух прогонов (LP-модель)</div></div>`}
           <div class="kpi"><div class="t">Изменение эффекта плана</div><div class="v ${objArr[objArr.length-1]>=objArr[objArr.length-2]?'pos':'neg'}">${bn(objArr[objArr.length-1]-objArr[objArr.length-2])}</div><div class="s">${bn(objArr[objArr.length-2])} → ${bn(objArr[objArr.length-1])}</div></div>
           <div class="kpi"><div class="t">Изменение покрытия спроса</div><div class="v ${saleArr[saleArr.length-1]>=saleArr[saleArr.length-2]?'pos':'neg'}">${nf(saleArr[saleArr.length-1]-saleArr[saleArr.length-2],1)} п.п.</div><div class="s">${pctFmt(saleArr[saleArr.length-2])} → ${pctFmt(saleArr[saleArr.length-1])}</div></div>`
           :`<div class="kpi"><div class="t">Режим</div><div class="v">Один прогон</div><div class="s">выберите ≥2 прогона — появятся графики динамики и сравнение A/B</div></div>`}
         </div>`;
       const charts=multi?`
         <div class="grid">
-          <div class="card"><h3>Отклонение от оптимума по прогонам</h3><div class="sub">Ниже — лучше</div><canvas id="h1"></canvas></div>
+          <div class="card"><h3>Отклонение от оптимума по прогонам</h3><div class="sub">${anyGap?(allGap?'Ниже — лучше':'Ниже — лучше · у части прогонов gap не рассчитывался'):'Gap не рассчитывался ни в одном выбранном прогоне'}</div>${anyGap?'<canvas id="h1"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных о gap: в логе этих прогонов нет строки «Result gap %» — типично для линейных (LP) моделей.</div>'}</div>
           <div class="card"><h3>Время решения по прогонам</h3><div class="sub">Секунды на полное решение</div><canvas id="h2"></canvas></div>
           <div class="card"><h3>Экономический эффект плана</h3><div class="sub">Значение целевой функции, млрд</div><canvas id="h3"></canvas></div>
           <div class="card"><h3>Покрытие спроса</h3><div class="sub">Доля строк спроса с планом продаж, %</div><canvas id="h4"></canvas></div>
@@ -1260,8 +1347,8 @@ function tabHIST(){
         </div>`+histSummary(s,gapArr,objArr,slvArr);
 
       if(multi){
-        chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,v:gapArr,fill:1}],v=>nf(v,3)+'%',
-          i=>`<b>${labs[i]}</b><br>Gap: ${pctFmt(gapArr[i])}<br>Статус: ${esc(s[i].solve.status)}`,null);
+        if(anyGap)chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,v:gapArr,fill:1}],v=>nf(v,3)+'%',
+          i=>`<b>${labs[i]}</b><br>Gap: ${gapKnownArr[i]?pctFmt(gapRaw[i]):'не рассчитывался'}<br>Статус: ${esc(s[i].solve.status)}`,null);
         chLine('#h2',H('#h2',220,0.4),labs,[{c:CH.d2,v:slvArr,fill:1}],v=>nf(v,2)+' с',
           i=>`<b>${labs[i]}</b><br>Время решения: ${nf(slvArr[i],3)} сек<br>Итераций: ${nf(s[i].solve.iterations)}`,null);
         chBars('#h3',H('#h3',220,0.4),labs,[{c:CH.d3,v:objArr.map(v=>v/1e9)}],v=>nf(v,1)+' млрд',
@@ -1294,13 +1381,14 @@ function tabHIST(){
           const saleA=(A.entities.find(e=>e.entity==='sale')||{}).pct||0,saleB=(B.entities.find(e=>e.entity==='sale')||{}).pct||0;
           const rows2=[
             ['Статус',A.solve.status,B.solve.status,null],
-            ['Gap, %',A.solve.gapPct,B.solve.gapPct,-1],
+            ['Gap, %',A.solve.gapPct,B.solve.gapPct,-1,A.solve.gapPct!=null&&B.solve.gapPct!=null],
             ['Время решения, с',A.solve.solveTimeSec,B.solve.solveTimeSec,-1],
             ['Эффект плана',A.solve.objectiveValue,B.solve.objectiveValue,1],
             ['Покрытие спроса, %',saleA,saleB,1]
           ];
           $('#histDelta').innerHTML=`<div class="kpis">${rows2.map(x=>{
             if(x[3]===null)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">${esc(x[1])} → ${esc(x[2])}</div><div class="s">A → B</div></div>`;
+            if(x.length>4&&x[4]===false)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">—</div><div class="s">не рассчитывался хотя бы в одном прогоне</div></div>`;
             const d=(x[2]-x[1])*x[3];const isPct=x[0].includes('%');const isMoney=x[0]==='Эффект плана';
             const fmt=v=>isMoney?bn(v):(isPct?nf(v,2)+' п.п.':nf(v,2));
             const raw=x[2]-x[1];
@@ -1388,10 +1476,22 @@ function tabDQ(){
     statusOk?'—':'Не публиковать план без проверки причин: недостаточный лимит времени, некорректные ограничения или несовместные данные.');
 
   const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
-  const gapOk=r.solve.gapPct<=gapThr;
-  add(gapOk?'i':'w','Точность решения (Gap)',
-    `Gap составил ${pctFmt(r.solve.gapPct)}${r.meta.gapLimit!=null?`, порог настройки — ${pctFmt(r.meta.gapLimit)}`:''}.`,
-    gapOk?'—':'Увеличить лимит времени на решение либо ослабить порог gap, если критично сходимость за приемлемое время.');
+  const gapKnown=r.solve.gapPct!=null;
+  const gapOk=gapKnown?r.solve.gapPct<=gapThr:true;
+  add(!gapKnown?'i':(gapOk?'i':'w'),'Точность решения (Gap)',
+    gapKnown
+      ?`Gap составил ${pctFmt(r.solve.gapPct)}${r.meta.gapLimit!=null?`, порог настройки — ${pctFmt(r.meta.gapLimit)}`:''}.`
+      :'В логе нет строки «Result gap %» — показатель не рассчитывался. Обычно так выглядят линейные (LP) модели: симплекс-метод даёт точный оптимум, зазор не определён.',
+    gapKnown?(gapOk?'—':'Увеличить лимит времени на решение либо ослабить порог gap, если критично сходимость за приемлемое время.')
+            :'Опираться на статус решения; при переходе на целочисленную (MIP) модель gap появится в логе автоматически.');
+
+  // Расхождения в дублирующихся параметрах (несколько этапов в одном прогоне)
+  const dups=r.dups||[];
+  add(dups.length?'w':'i','Повторяющиеся параметры',
+    dups.length
+      ?`У ${nf(dups.length)} ${plural(dups.length,['параметра','параметров','параметров'])} в пределах одного прогона встретилось несколько разных значений: ${dups.slice(0,3).map(d=>`«${esc(d.param)}» (${d.values.map(esc).join(' → ')})`).join('; ')}${dups.length>3?' и др.':''}. Дашборд использует последнее значение.`
+      :'Повторяющихся параметров с разными значениями не обнаружено.',
+    dups.length?'Обычно это несколько этапов расчёта, записанных в один runid. Если этапы нужно анализировать раздельно, добавьте в выгрузку признак этапа; иначе показатели относятся к последнему этапу.':'—');
 
   const timeNearLimit=r.meta.timeLimit&&r.solve.solveTimeSec>=r.meta.timeLimit*0.9;
   add(timeNearLimit?'w':'i','Использование лимита времени',
@@ -1630,8 +1730,9 @@ function buildReportHtml(r){
   const sale=r.entities.find(e=>e.entity==='sale');
   const rows=[
     ['Прогон',r.label],
+    ...(r.meta.alias?[['Имя прогона (Alias)',r.meta.alias]]:[]),
     ['Статус',r.solve.status],
-    ['Gap',pctFmt(r.solve.gapPct)],
+    ['Gap',r.solve.gapPct!=null?pctFmt(r.solve.gapPct):'не рассчитывался (LP-модель)'],
     ['Время решения',timeFmt(r.solve.solveTimeSec)],
     ['Полный расчёт',timeFmt(r.solve.calcTimeSec)],
     ['Переменных',nf(r.solve.variables)],
@@ -1692,11 +1793,26 @@ const bPrint=$('#bPrint');if(bPrint)bPrint.onclick=()=>window.print();
    (server.js): POST /api/pg/schemas, /api/pg/runs, /api/pg/load.
    Пароль хранится только в памяти вкладки (PG.conn) и никуда не сохраняется. */
 const PG_DEFAULTS={host:'db-postgresql-app.k8s.b1gahmn2gdjf3lsm4jeh.in-plan.ru',port:48235,database:'pgs_app_data_db',ssl:'auto'};
-const PG={conn:null,schemas:[],selS:new Set(),runs:[],selR:new Set(),step:1,busy:false};
+const PG={conn:null,schemas:[],selS:new Set(),runs:[],selR:new Set(),step:1,busy:false,cols:null,sample:null};
 const PG_LS='snp_opt_pg';
-function pgSaved(){try{return Object.assign({user:'',backend:''},PG_DEFAULTS,JSON.parse(lsGet(PG_LS)||'{}'))}catch(e){return Object.assign({user:'',backend:''},PG_DEFAULTS)}}
+/* Поля мэппинга: run/param/value обязательны, ds/cfg — нет (без них прогон
+   опознаётся одним runid). Держим синхронно с COL_* в server.js. */
+const PG_COL_FIELDS=[
+  {k:'run',label:'Прогон (runid)',req:true,hint:'runid / run_id',cands:['runid','run_id','run','id_run','прогон']},
+  {k:'param',label:'Параметр',req:true,hint:'Параметр / parameter',cands:['параметр','parameter','param','metric','показатель','attribute','атрибут']},
+  {k:'value',label:'Значение',req:true,hint:'Значение / value',cands:['значение','value','val','значения']},
+  {k:'ds',label:'Датасет (необяз.)',req:false,hint:'datasetid',cands:['datasetid','dataset_id','dataset','датасет']},
+  {k:'cfg',label:'Конфиг (необяз.)',req:false,hint:'configid',cands:['configid','config_id','config','конфиг']}
+];
+function pgSaved(){try{return Object.assign({user:'',backend:'',cols:null},PG_DEFAULTS,JSON.parse(lsGet(PG_LS)||'{}'))}catch(e){return Object.assign({user:'',backend:'',cols:null},PG_DEFAULTS)}}
 function pgRemember(){if(!PG.conn)return;const c=PG.conn;
-  lsSet(PG_LS,JSON.stringify({host:c.host,port:c.port,database:c.database,user:c.user,ssl:c.ssl,backend:pgBackendBase()}))}
+  lsSet(PG_LS,JSON.stringify({host:c.host,port:c.port,database:c.database,user:c.user,ssl:c.ssl,backend:pgBackendBase(),cols:PG.cols}))}
+/* Тело запроса к API: соединение + пользовательский мэппинг (если задан). */
+function pgBody(extra){
+  const b=Object.assign({},PG.conn,extra||{});
+  if(PG.cols&&Object.values(PG.cols).some(v=>v))b.columns=PG.cols;
+  return b;
+}
 /* Адрес backend: пусто = тот же адрес, что и дашборд (запрос относительный).
    При file:// по умолчанию http://localhost:3000 — где работает npm start. */
 function pgBackendBase(){const el=$('#pgBackend');const v=el?String(el.value||'').trim():'';
@@ -1735,7 +1851,7 @@ function pgSetStep(n){
   [1,2,3].forEach(i=>{const s=$('#pgStep'+i);if(s)s.hidden=(i!==n)});
   const names={1:'подключение',2:'выбор схем',3:'выбор прогонов'};
   $('#pgSteps').innerHTML=`Шаг <b>${n}</b> из 3 — ${names[n]}${n>1?esc(pgConnInfo()):''}`;
-  if(n===2){const q=$('#pgSchemaQ');if(q)q.value='';pgRenderSchemas()}
+  if(n===2){const q=$('#pgSchemaQ');if(q)q.value='';pgRenderMap();pgRenderSchemas()}
   if(n===3){const q=$('#pgRunQ');if(q)q.value='';pgRenderRuns()}
 }
 function pgOpen(){
@@ -1750,6 +1866,7 @@ function pgOpen(){
   $('#pgPass').value='';
   $('#pgSsl').value=s.ssl||'auto';
   $('#pgBackend').value=(s.backend!=null&&s.backend!=='')?s.backend:pgDefaultBackend();
+  PG.cols=(s.cols&&typeof s.cols==='object')?s.cols:null; // мэппинг из прошлой сессии
   m.hidden=false;pgSetStep(1);
   const fu=$('#pgUser'),fp=$('#pgPass');
   if(fu&&!fu.value)fu.focus();else if(fp)fp.focus();
@@ -1768,33 +1885,146 @@ async function pgConnect(){
   const conn={host,port,database,user,password,ssl};
   pgBusy(true,'Подключение к Postgres…');
   try{
-    const data=await pgApi('/api/pg/schemas',conn);
-    PG.conn=conn;pgRemember();
+    PG.conn=conn;
+    const data=await pgApi('/api/pg/schemas',pgBody());
+    pgRemember();
     PG.schemas=(data.schemas||[]).slice().sort((a,b)=>String(a.schema).localeCompare(String(b.schema),'ru'));
-    PG.selS=new Set(PG.schemas.filter(s=>s.ok).map(s=>s.schema));
+    PG.sample=null;
+    const m=$('#pgMap');if(m)delete m.dataset.forced;
     if(!PG.schemas.length){pgBusy(false,'');pgShowErr(1,'Таблица optimizer_status не найдена ни в одной схеме.');return}
+    // сохранённый мэппинг применим только если такие столбцы реально есть
+    if(PG.cols){
+      const all=new Set(pgAllColumns().map(c=>c.toLowerCase()));
+      if(!Object.values(PG.cols).every(v=>!v||all.has(String(v).toLowerCase())))PG.cols=null;
+    }
+    PG.selS=new Set(PG.schemas.filter(s=>pgSchemaUsable(s)).map(s=>s.schema));
     pgBusy(false,'');pgSetStep(2);
-  }catch(e){pgBusy(false,'');pgShowErr(1,e.message||String(e))}
+  }catch(e){PG.conn=null;pgBusy(false,'');pgShowErr(1,e.message||String(e))}
+}
+/* ── Мэппинг столбцов: какой столбец таблицы = какое поле лога ──
+   Нужен, когда optimizer_status в базе назвал столбцы по-своему
+   (например status/message вместо Параметр/Значение). */
+function pgAllColumns(){
+  const seen=new Set(),out=[];
+  PG.schemas.forEach(s=>(s.columns||[]).forEach(c=>{const k=String(c).toLowerCase();
+    if(!seen.has(k)){seen.add(k);out.push(String(c))}}));
+  return out;
+}
+/** Что подставится, если пользователь ничего не выбирал: автоподбор по именам
+    столбцов (совпадает с логикой сервера; подсказка сервера приоритетнее). */
+function pgAutoMap(){
+  const srv=PG.schemas.find(x=>x.mapped&&Object.values(x.mapped).some(v=>v));
+  const cols=pgAllColumns(),lower=new Map();
+  cols.forEach(c=>{const k=String(c).toLowerCase();if(!lower.has(k))lower.set(k,String(c))});
+  const out={};
+  PG_COL_FIELDS.forEach(f=>{
+    const fromSrv=srv&&srv.mapped&&srv.mapped[f.k];
+    out[f.k]=fromSrv||f.cands.map(c=>lower.get(c)).find(Boolean)||'';
+  });
+  return out;
+}
+function pgEffectiveMap(){
+  const auto=pgAutoMap(),eff={};
+  PG_COL_FIELDS.forEach(f=>{eff[f.k]=(PG.cols&&PG.cols[f.k])?PG.cols[f.k]:(PG.cols?'':(auto[f.k]||''))});
+  return eff;
+}
+function pgMapMissing(){
+  const eff=pgEffectiveMap();
+  return PG_COL_FIELDS.filter(f=>f.req&&!eff[f.k]).map(f=>f.label);
+}
+function pgRenderMap(){
+  const grid=$('#pgMapGrid');if(!grid)return;
+  const cols=pgAllColumns(),eff=pgEffectiveMap(),missing=pgMapMissing();
+  const custom=!!(PG.cols&&Object.values(PG.cols).some(v=>v));
+  grid.innerHTML=PG_COL_FIELDS.map(f=>{
+    const cur=eff[f.k]||'';
+    const bad=f.req&&!cur;
+    const opts=['<option value="">'+(f.req?'— не выбрано —':'— нет столбца —')+'</option>']
+      .concat(cols.map(c=>`<option value="${esc(c)}" ${c.toLowerCase()===cur.toLowerCase()?'selected':''}>${esc(c)}</option>`));
+    return `<div class="f"><label for="pgMap_${f.k}">${esc(f.label)}${f.req?'<span class="req">*</span>':''}</label>`+
+      `<select id="pgMap_${f.k}" data-f="${f.k}" class="${bad?'bad':''}" title="${esc(f.hint)}">${opts.join('')}</select></div>`;
+  }).join('');
+  grid.querySelectorAll('select').forEach(sel=>sel.onchange=()=>{
+    const cur=pgEffectiveMap();
+    PG.cols=Object.assign({},cur,{[sel.dataset.f]:sel.value});
+    // схемы, ставшие недоступными при новом мэппинге, снимаем с выбора
+    PG.schemas.forEach(s=>{if(!pgSchemaUsable(s))PG.selS.delete(s.schema)});
+    pgRemember();pgRenderMap();pgRenderSchemas();
+  });
+  const st=$('#pgMapState');
+  if(st){
+    st.className='pg-map-state'+(missing.length?' warn':(custom?' on':''));
+    st.textContent=missing.length?('нужно указать: '+missing.join(', '))
+      :(custom?'задан вручную':'подобран автоматически');
+  }
+  const hint=$('#pgMapHint');
+  if(hint){
+    hint.textContent=missing.length
+      ?'Не удалось определить столбцы автоматически. Выберите, в каких столбцах таблицы лежат имя параметра и его значение (строки вида «Solution», «Result gap %», «Non-zero values of …»).'
+      :'Укажите, какие столбцы таблицы соответствуют полям лога оптимизатора. По умолчанию соответствие подбирается автоматически по именам столбцов.';
+  }
+  const m=$('#pgMap');
+  if(m&&missing.length&&!m.dataset.forced){m.open=true;m.dataset.forced='1'}
+}
+function pgRenderSample(){
+  const box=$('#pgMapSampleBox');if(!box)return;
+  const rows=PG.sample&&PG.sample.rows||[];
+  if(!rows.length){box.hidden=false;box.innerHTML='<div class="dtp-e" style="padding:10px">Образцы строк недоступны (пустая таблица или нет прав на чтение).</div>';return}
+  const cols=PG.sample.columns||Object.keys(rows[0]);
+  box.hidden=false;
+  box.innerHTML='<table><thead><tr>'+cols.map(c=>`<th>${esc(c)}</th>`).join('')+'</tr></thead><tbody>'+
+    rows.map(r=>'<tr>'+cols.map(c=>`<td>${esc(String(r[c]==null?'':r[c]).slice(0,120))}</td>`).join('')+'</tr>').join('')+
+    '</tbody></table>';
+}
+async function pgLoadSample(){
+  const sch=PG.schemas.find(s=>PG.selS.has(s.schema))||PG.schemas[0];
+  if(!sch){pgShowErr(2,'Нет схемы для образцов.');return}
+  pgBusy(true,'Чтение образцов строк…');
+  try{
+    const data=await pgApi('/api/pg/columns',Object.assign({},PG.conn,{schemas:[{schema:sch.schema,table:sch.table}]}));
+    PG.sample={columns:data.columns||[],rows:data.sample||[]};
+    pgBusy(false,'');pgRenderSample();
+  }catch(e){pgBusy(false,'');pgShowErr(2,e.message||String(e))}
 }
 /* ── Шаг 2: мультивыбор схем ── */
 function pgRenderSchemas(){
   const q=(($('#pgSchemaQ')||{}).value||'').toLowerCase();
   const list=$('#pgSchemasList');if(!list)return;
-  const okN=PG.schemas.filter(s=>s.ok).length;
+  const okN=PG.schemas.filter(s=>pgSchemaUsable(s)).length;
   $('#pgSchemasInfo').textContent=
     `Таблица optimizer_status найдена в схемах: ${PG.schemas.length} (доступно: ${okN}). Отметьте нужные схемы — прогоны загрузятся из каждой отмеченной.`;
   const items=PG.schemas.filter(s=>!q||String(s.schema).toLowerCase().includes(q));
   list.innerHTML=items.map(s=>{
-    const on=PG.selS.has(s.schema);
-    const sub=s.ok?`таблица «${esc(s.table)}» · строк: ${s.rows==null?'—':nf(s.rows)}`
-                  :`недоступна: ${esc(s.error||'неизвестная ошибка')}`;
-    return `<label class="pg-item${s.ok?'':' bad'}"><input type="checkbox" data-s="${esc(s.schema)}" ${on?'checked':''} ${s.ok?'':'disabled'}><span class="t"><b>${esc(s.schema)}</b><br><span class="s">${sub}</span></span></label>`;
+    const usable=pgSchemaUsable(s),on=PG.selS.has(s.schema)&&usable;
+    const sub=usable?`таблица «${esc(s.table)}» · строк: ${s.rows==null?'—':nf(s.rows)}`
+                    :`недоступна: ${esc(pgSchemaProblem(s))}`;
+    return `<label class="pg-item${usable?'':' bad'}"><input type="checkbox" data-s="${esc(s.schema)}" ${on?'checked':''} ${usable?'':'disabled'}><span class="t"><b>${esc(s.schema)}</b><br><span class="s">${sub}</span></span></label>`;
   }).join('')||'<div class="dtp-e">ничего не найдено</div>';
   list.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
     if(i.checked)PG.selS.add(i.dataset.s);else PG.selS.delete(i.dataset.s);
     pgRenderSchemas();
   });
   const b=$('#pgToRuns');if(b)b.textContent=`Показать прогоны (${PG.selS.size})`;
+}
+/** Схема пригодна, если в ней есть все столбцы из действующего мэппинга. */
+function pgSchemaUsable(s){
+  if(!s||!s.columns||!s.columns.length)return false;
+  if(!s.ok&&!s.needsMapping)return false; // например, нет прав — мэппингом не чинится
+  const eff=pgEffectiveMap(),have=new Set(s.columns.map(c=>String(c).toLowerCase()));
+  return PG_COL_FIELDS.every(f=>{
+    const c=eff[f.k];
+    if(!c)return !f.req;
+    return have.has(String(c).toLowerCase());
+  });
+}
+function pgSchemaProblem(s){
+  if(!s.columns||!s.columns.length)return s.error||'нет доступа к таблице';
+  if(!s.ok&&!s.needsMapping)return s.error||'неизвестная ошибка';
+  const eff=pgEffectiveMap(),have=new Set(s.columns.map(c=>String(c).toLowerCase()));
+  const bad=PG_COL_FIELDS.filter(f=>{const c=eff[f.k];return c?!have.has(String(c).toLowerCase()):f.req})
+    .map(f=>f.label+(eff[f.k]?` → «${eff[f.k]}»`:''));
+  if(bad.length)return `в таблице нет столбцов для: ${bad.join(', ')} (есть: ${s.columns.join(', ')}). Задайте соответствие в блоке «Мэппинг столбцов»`;
+  return s.error||'неизвестная ошибка';
 }
 /* ── Шаг 2 → 3: список прогонов в выбранных схемах ── */
 function pgRunKey(x){return x.schema+'|'+x.runid+'|'+x.datasetid+'|'+x.configid}
@@ -1804,11 +2034,17 @@ function pgNumAware(a,b){const x=num(a),y=num(b);
   if(ax!==null&&bx!==null)return ax-bx;return String(a).localeCompare(String(b),'ru')}
 async function pgFetchRuns(){
   pgClearErrs();
+  const miss=pgMapMissing();
+  if(miss.length){
+    const m=$('#pgMap');if(m)m.open=true;
+    pgShowErr(2,'Не задан мэппинг столбцов: '+miss.join(', ')+'. Укажите соответствие в блоке «Мэппинг столбцов» — без него неясно, где в таблице лежат имя параметра и его значение.');
+    return;
+  }
   if(!PG.selS.size){pgShowErr(2,'Отметьте хотя бы одну схему.');return}
   const specs=PG.schemas.filter(s=>PG.selS.has(s.schema)).map(s=>({schema:s.schema,table:s.table}));
   pgBusy(true,'Чтение списка прогонов…');
   try{
-    const data=await pgApi('/api/pg/runs',Object.assign({},PG.conn,{schemas:specs}));
+    const data=await pgApi('/api/pg/runs',pgBody({schemas:specs}));
     const order=new Map(specs.map((s,i)=>[s.schema,i]));
     PG.runs=(data.runs||[]).slice().sort((a,b)=>
       ((order.get(a.schema)??999)-(order.get(b.schema)??999))||
@@ -1862,7 +2098,7 @@ async function pgLoad(){
   if(!sel.length){pgShowErr(3,'Отметьте хотя бы один прогон.');return}
   pgBusy(true,`Загрузка ${sel.length} ${plural(sel.length,['прогона','прогонов','прогонов'])} из Postgres…`);
   try{
-    const data=await pgApi('/api/pg/load',Object.assign({},PG.conn,{selection:sel.map(r=>({schema:r.schema,table:r.table,runid:r.runid,datasetid:r.datasetid,configid:r.configid}))}));
+    const data=await pgApi('/api/pg/load',pgBody({selection:sel.map(r=>({schema:r.schema,table:r.table,runid:r.runid,datasetid:r.datasetid,configid:r.configid}))}));
     const parsed=parseOptimizerRows(data.rows||[]);
     if(!parsed.length)throw new Error('Сервер вернул пустой набор строк — не удалось распознать ни одного прогона.');
     const wasDemo=IS_DEMO||!DS;
@@ -1905,6 +2141,11 @@ async function pgLoad(){
   $('#pgRunsNone').onclick=()=>{PG.selR.clear();pgRenderRuns()};
   $('#pgSchemaQ').oninput=pgRenderSchemas;
   $('#pgRunQ').oninput=pgRenderRuns;
+  const bAuto=$('#pgMapAuto');
+  if(bAuto)bAuto.onclick=()=>{PG.cols=null;const m=$('#pgMap');if(m)delete m.dataset.forced;
+    PG.selS=new Set(PG.schemas.filter(s=>pgSchemaUsable(s)).map(s=>s.schema));
+    pgRemember();pgRenderMap();pgRenderSchemas()};
+  const bSmp=$('#pgMapSample');if(bSmp)bSmp.onclick=pgLoadSample;
 })();
 
 /* ── Старт: восстановление сессии или демо ── */
