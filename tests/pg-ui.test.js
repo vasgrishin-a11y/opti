@@ -4,7 +4,8 @@
  *
  * Проверяется полный сценарий без живого Postgres и браузера:
  * открытие модалки → подключение → мультивыбор схем → выбор прогонов →
- * загрузка в дашборд, плюс ветки ошибок (401, недоступный backend).
+ * загрузка в дашборд, плюс ветки ошибок (401, недоступный backend, 405 от
+ * чужого статического сервера) и поле «адрес backend» (включая file://).
  */
 'use strict';
 const assert = require('assert');
@@ -34,13 +35,18 @@ function runRows(schema, runid) {
   ];
 }
 
-/** Подмена fetch: режимы {down, authFail} переключаются на лету. */
+/** Подмена fetch: режимы {down, authFail, http405} переключаются на лету. */
 function apiFetch(mode, log) {
   return async (url, opts) => {
     const u = String(url);
     const body = opts && opts.body ? JSON.parse(opts.body) : {};
     (log || []).push({ url: u, body });
     if (mode.down) throw new TypeError('fetch failed');
+    if (mode.http405) {
+      // так отвечает чужой статический сервер (Live Server и т.п.) на POST:
+      // 405 + HTML-тело, не JSON
+      return { ok: false, status: 405, json: async () => { throw new Error('HTML body, не JSON'); } };
+    }
     if (u.endsWith('/api/pg/schemas')) {
       if (mode.authFail) {
         return { ok: false, status: 401, json: async () => ({ error: 'Неверный логин или пароль — Postgres отклонил аутентификацию.' }) };
@@ -82,9 +88,9 @@ function apiFetch(mode, log) {
   };
 }
 
-function makeDom(fetchImpl) {
+function makeDom(fetchImpl, url = 'http://localhost:3000/') {
   return new JSDOM(HTML, {
-    url: 'http://localhost:3000/',
+    url,
     runScripts: 'dangerously',
     beforeParse(window) {
       window.fetch = fetchImpl;
@@ -139,6 +145,7 @@ function setCheck(dom, el, checked) {
   ok(q(doc, '#pgPort').value === '48235', 'port prefilled');
   ok(q(doc, '#pgDb').value === 'pgs_app_data_db', 'database prefilled');
   ok(q(doc, '#pgPass').value === '', 'password empty');
+  ok(q(doc, '#pgBackend').value === '', 'backend field empty (same origin)');
 
   console.log('3. Подключение → мультивыбор схем');
   q(doc, '#pgUser').value = 'analyst';
@@ -223,6 +230,54 @@ function setCheck(dom, el, checked) {
     await waitFor(d3, d => q(d, '#pgErr1').classList.contains('show'), 'down error shown');
     ok(q(doc3, '#pgErr1').textContent.includes('npm start'), 'hint about backend start');
     d3.window.close();
+  }
+
+  console.log('9. HTTP 405 от чужого статического сервера — понятная ошибка вместо «Ошибка сервера: 405»');
+  {
+    const m4 = { http405: true };
+    const d4 = makeDom(apiFetch(m4, []));
+    const doc4 = d4.window.document;
+    await waitFor(d4, d => q(d, '#runSel'), 'boot 4');
+    q(doc4, '#bPg').click();
+    q(doc4, '#pgUser').value = 'analyst';
+    q(doc4, '#pgPass').value = 'x';
+    q(doc4, '#pgConnect').click();
+    await waitFor(d4, d => q(d, '#pgErr1').classList.contains('show'), '405 error shown');
+    const msg4 = q(doc4, '#pgErr1').textContent;
+    ok(msg4.includes('405') && !msg4.startsWith('Ошибка сервера: 405'), 'friendly 405 text: ' + msg4.slice(0, 50) + '…');
+    ok(msg4.includes('npm start') && msg4.includes('адрес backend'), '405 hint: npm start + backend field');
+    ok(q(doc4, '#pgStep1').hidden === false, 'still on step 1');
+    d4.window.close();
+  }
+
+  console.log('10. Поле «адрес backend» — запросы уходят туда, значение запоминается');
+  {
+    const m5 = {};
+    const log5 = [];
+    const d5 = makeDom(apiFetch(m5, log5));
+    const doc5 = d5.window.document;
+    await waitFor(d5, d => q(d, '#runSel'), 'boot 5');
+    q(doc5, '#bPg').click();
+    q(doc5, '#pgUser').value = 'analyst';
+    q(doc5, '#pgPass').value = 'x';
+    q(doc5, '#pgBackend').value = 'http://pg-host:8123/';
+    q(doc5, '#pgConnect').click();
+    await waitFor(d5, d => q(d, '#pgStep2').hidden === false, 'step 2 via external backend');
+    ok(log5.some(e => e.url === 'http://pg-host:8123/api/pg/schemas'), 'request went to the custom backend base');
+    const saved5 = JSON.parse(d5.window.localStorage.getItem('snp_opt_pg') || '{}');
+    ok(saved5.backend === 'http://pg-host:8123', 'backend base persisted (trailing slash stripped)');
+    d5.window.close();
+  }
+
+  console.log('11. file:// — поле backend автоматически заполнено http://localhost:3000');
+  {
+    const m6 = {};
+    const d6 = makeDom(apiFetch(m6, []), 'file:///C:/work/index.html');
+    const doc6 = d6.window.document;
+    await waitFor(d6, d => q(d, '#runSel'), 'boot 6');
+    q(doc6, '#bPg').click();
+    ok(q(doc6, '#pgBackend').value === 'http://localhost:3000', 'file:// prefills http://localhost:3000');
+    d6.window.close();
   }
 
   console.log('\n' + '─'.repeat(40));
