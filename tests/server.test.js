@@ -11,6 +11,8 @@ const {
   createApp,
   qi,
   mapColumns,
+  suggestColumns,
+  normalizeColumns,
   normalizeRow,
   normalizeConn,
   normalizeSchemas,
@@ -352,6 +354,175 @@ const CONN = { host: 'h', port: 5432, database: 'd', user: 'u', password: 'p', s
       eq(h.headers.get('access-control-allow-origin'), '*', 'GET /api/health — CORS-заголовок');
       const d = await fetch(base + '/api/pg/defaults', { headers: { Origin: 'null' } });
       eq(d.headers.get('access-control-allow-origin'), '*', 'GET /api/pg/defaults — CORS-заголовок (Origin: null, т.е. file://)');
+    } finally {
+      srv.close();
+    }
+  }
+
+  console.log('13. Мэппинг столбцов — нестандартная таблица (status/message)');
+  {
+    // реальный случай: в схеме public_1841 нет Параметр/Значение
+    const REAL = ['status', 'runid', 'datasetid', 'message', 'update_date_time', 'configid', 'change_author', 'sys_id'];
+    const sug = suggestColumns(REAL);
+    eq(sug.missing, ['param', 'value'], 'param/value не угадываются в status/message');
+    eq(sug.mapped.run, 'runid', 'runid всё же найден');
+    eq(sug.mapped.ds, 'datasetid', 'datasetid найден');
+    throwsSync(() => mapColumns(REAL, 'Схема «public_1841»'), 400, 'без мэппинга → 400');
+    const withMap = mapColumns(REAL, 'Схема «public_1841»', { param: 'status', value: 'message' });
+    eq(
+      withMap,
+      { run: 'runid', param: 'status', value: 'message', ds: 'datasetid', cfg: 'configid' },
+      'пользовательский мэппинг status→Параметр, message→Значение'
+    );
+    const bad = throwsSync(
+      () => mapColumns(REAL, 'Схема «s»', { param: 'nope', value: 'message' }),
+      400,
+      'несуществующий столбец в мэппинге → 400'
+    );
+    ok(/nope/.test(bad.message), 'ошибка называет неизвестный столбец');
+    eq(normalizeColumns(null), null, 'пустой мэппинг → null');
+    eq(normalizeColumns({ param: '', value: '' }), null, 'мэппинг из пустых строк → null');
+    eq(
+      normalizeColumns({ param: 'status', value: 'message' }),
+      { param: 'status', value: 'message' },
+      'непереданные ключи не добавляются (останутся на автоподборе)'
+    );
+    eq(
+      normalizeColumns({ param: 'status', value: 'message', ds: '', cfg: '' }),
+      { param: 'status', value: 'message', ds: '', cfg: '' },
+      'явно снятые ds/cfg сохраняются как пустые'
+    );
+    throwsSync(() => normalizeColumns('x'), 400, 'строка вместо объекта → 400');
+    // необязательные ds/cfg: явно снятые пользователем
+    eq(
+      mapColumns(['runid', 'status', 'message'], '', { run: 'runid', param: 'status', value: 'message' }),
+      { run: 'runid', param: 'status', value: 'message', ds: null, cfg: null },
+      'таблица без datasetid/configid допустима'
+    );
+    throwsSync(
+      () => mapColumns(['status', 'message'], '', { param: 'status', value: 'message' }),
+      400,
+      'без runid — обязательный столбец → 400'
+    );
+  }
+
+  console.log('14. /api/pg/schemas — схема без Параметр/Значение помечается needsMapping');
+  {
+    const REAL = ['status', 'runid', 'datasetid', 'message', 'configid'];
+    const fake = makeFake((text, params) => {
+      if (text.includes('information_schema.tables')) return { rows: [{ s: 'public_1841', t: 'optimizer_status' }] };
+      if (text.includes('information_schema.columns')) return { rows: REAL.map(c => ({ c })) };
+      if (text.includes('COUNT(*)::int AS n')) return { rows: [{ n: 7 }] };
+      throw new Error('unexpected: ' + text.slice(0, 60));
+    });
+    const { srv, base } = await listen(createApp({ connect: fake.connect }));
+    try {
+      const { status, data } = await post(base, '/api/pg/schemas', CONN);
+      eq(status, 200, 'schemas 200 даже без Параметр/Значение');
+      const s0 = data.schemas[0];
+      ok(s0.needsMapping === true, 'needsMapping выставлен');
+      eq(s0.columns, REAL, 'реальные столбцы возвращены для выбора в UI');
+      eq(s0.rows, 7, 'счётчик строк посчитан');
+      eq(s0.mapped.run, 'runid', 'частичная догадка отдана клиенту');
+      ok(/Мэппинг столбцов/.test(s0.error), 'подсказка про мэппинг в тексте ошибки: ' + s0.error);
+      // с мэппингом схема становится доступной
+      const withMap = await post(base, '/api/pg/schemas', { ...CONN, columns: { param: 'status', value: 'message' } });
+      ok(withMap.data.schemas[0].ok === true, 'с мэппингом схема доступна');
+      ok(!withMap.data.schemas[0].needsMapping, 'needsMapping снят');
+    } finally {
+      srv.close();
+    }
+  }
+
+  console.log('15. /api/pg/runs и /api/pg/load с пользовательским мэппингом');
+  {
+    const REAL = ['status', 'runid', 'datasetid', 'message', 'configid'];
+    const fake = makeFake((text, params) => {
+      if (text.includes('information_schema.columns')) return { rows: REAL.map(c => ({ c })) };
+      if (text.includes('GROUP BY') && text.includes('ORDER BY')) return { rows: [{ r: 5, d: 1, c: 2, n: 30 }] };
+      if (text.includes('MAX(')) return { rows: [{ r: 5, d: 1, c: 2, s: '2026-06-01 09:00:00' }] };
+      if (text.includes(' AS _r,')) return { rows: [{ _r: 5, _p: 'Solution', _v: 'OPTIMAL', _d: 1, _c: 2 }] };
+      throw new Error('unexpected: ' + text.slice(0, 60));
+    });
+    const { srv, base } = await listen(createApp({ connect: fake.connect }));
+    const columns = { run: 'runid', param: 'status', value: 'message', ds: 'datasetid', cfg: 'configid' };
+    try {
+      const r = await post(base, '/api/pg/runs', { ...CONN, schemas: ['public_1841'], columns });
+      eq(r.status, 200, 'runs 200 с мэппингом');
+      eq(r.data.runs[0].startTime, '2026-06-01 09:00:00', 'Start time читается из message');
+      const sql = fake.calls.map(c => c.text).join('\n');
+      ok(sql.includes('"status"') && sql.includes('"message"'), 'SQL использует замэпленные столбцы');
+      const l = await post(base, '/api/pg/load', {
+        ...CONN,
+        selection: [{ schema: 'public_1841', runid: '5', datasetid: '1', configid: '2' }],
+        columns
+      });
+      eq(l.status, 200, 'load 200 с мэппингом');
+      eq(
+        l.data.rows[0],
+        { runid: '5', 'Параметр': 'Solution', 'Значение': 'OPTIMAL', datasetid: '1', configid: '2', __schema: 'public_1841' },
+        'строки нормализованы к формату дашборда'
+      );
+      const bad = await post(base, '/api/pg/runs', {
+        ...CONN,
+        schemas: ['public_1841'],
+        columns: { param: 'ghost', value: 'message' }
+      });
+      eq(bad.status, 400, 'неизвестный столбец в мэппинге → 400');
+      ok(/ghost/.test(bad.data.error), 'ошибка называет столбец');
+    } finally {
+      srv.close();
+    }
+  }
+
+  console.log('16. Таблица без datasetid/configid — прогон опознаётся по runid');
+  {
+    const MIN = ['runid', 'status', 'message'];
+    const fake = makeFake((text, params) => {
+      if (text.includes('information_schema.columns')) return { rows: MIN.map(c => ({ c })) };
+      if (text.includes('GROUP BY') && text.includes('ORDER BY')) return { rows: [{ r: 9, d: '', c: '', n: 12 }] };
+      if (text.includes('MAX(')) return { rows: [] };
+      if (text.includes(' AS _r,')) return { rows: [{ _r: 9, _p: 'Solution', _v: 'OPTIMAL', _d: '', _c: '' }] };
+      throw new Error('unexpected: ' + text.slice(0, 60));
+    });
+    const { srv, base } = await listen(createApp({ connect: fake.connect }));
+    const columns = { run: 'runid', param: 'status', value: 'message', ds: '', cfg: '' };
+    try {
+      const r = await post(base, '/api/pg/runs', { ...CONN, schemas: ['public_2'], columns });
+      eq(r.status, 200, 'runs 200 без datasetid/configid');
+      eq(r.data.runs[0].datasetid, '', 'datasetid пустой');
+      const grpSql = fake.calls.map(c => c.text).find(t => t.includes('GROUP BY') && t.includes('ORDER BY'));
+      ok(/GROUP BY 1 /.test(grpSql), 'GROUP BY только по runid: ' + grpSql.slice(grpSql.indexOf('GROUP BY'), grpSql.indexOf('GROUP BY') + 20));
+      const l = await post(base, '/api/pg/load', {
+        ...CONN,
+        selection: [{ schema: 'public_2', runid: '9' }],
+        columns
+      });
+      eq(l.status, 200, 'load 200 без datasetid/configid');
+      const loadCall = fake.calls.filter(c => c.text.includes(' AS _r,')).pop();
+      eq(loadCall.params, ['9'], 'в IN уходит только runid');
+      ok(loadCall.text.includes('IN (($1))') || /IN \(\(\$1\)\)/.test(loadCall.text), 'кортеж из одного столбца: ' + loadCall.text.slice(loadCall.text.indexOf('IN (')));
+    } finally {
+      srv.close();
+    }
+  }
+
+  console.log('17. POST /api/pg/columns — столбцы + образцы строк для ручного мэппинга');
+  {
+    const REAL = ['status', 'runid', 'message'];
+    const fake = makeFake((text) => {
+      if (text.includes('information_schema.columns')) return { rows: REAL.map(c => ({ c })) };
+      if (/SELECT \* FROM/.test(text)) return { rows: [{ status: 'Solution', runid: 5, message: 'OPTIMAL' }] };
+      throw new Error('unexpected: ' + text.slice(0, 60));
+    });
+    const { srv, base } = await listen(createApp({ connect: fake.connect }));
+    try {
+      const { status, data } = await post(base, '/api/pg/columns', { ...CONN, schemas: ['public_1841'] });
+      eq(status, 200, 'columns 200');
+      eq(data.columns, REAL, 'список столбцов');
+      eq(data.missing, ['param', 'value'], 'что не угадалось');
+      eq(data.sample, [{ status: 'Solution', runid: '5', message: 'OPTIMAL' }], 'образцы строк (значения строками)');
+      ok(/LIMIT \d+/.test(fake.calls.map(c => c.text).join('')), 'образцы берутся с LIMIT');
     } finally {
       srv.close();
     }

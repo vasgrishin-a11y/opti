@@ -32,6 +32,7 @@ const MAX_SCHEMAS = 64;
 const MAX_RUNS = 2000;
 const MAX_SELECTION = 2000;
 const CHUNK = 500; // прогонов в одном SQL-запросе (по 3 параметра на прогон)
+const SAMPLE_ROWS = 5; // строк-образцов для ручного мэппинга столбцов
 
 class HttpError extends Error {
   constructor(status, message) {
@@ -104,14 +105,24 @@ function normalizeSelection(v) {
   });
 }
 
-/* ── Соответствие столбцов: русские/английские имена, любой регистр ── */
+/* ── Мэппинг столбцов ─────────────────────────────────────────────────────
+   Таблица optimizer_status в разных базах называет столбцы по-разному
+   (русские/английские имена, свой регистр, иногда совсем другие названия —
+   например status/message вместо Параметр/Значение). Поэтому:
+     1. пробуем угадать соответствие по списку кандидатов (suggestColumns);
+     2. пользователь может задать своё соответствие в модалке — оно приходит
+        в теле запроса как `columns` и имеет приоритет над догадкой.
+   Обязательны только run/param/value; datasetid/configid необязательны
+   (если их нет, прогон определяется одним runid).                        */
 const COL_CANDIDATES = {
-  run: ['runid', 'run_id', 'run'],
-  param: ['параметр', 'parameter'],
-  value: ['значение', 'value'],
-  ds: ['datasetid', 'dataset_id'],
-  cfg: ['configid', 'config_id']
+  run: ['runid', 'run_id', 'run', 'id_run', 'прогон'],
+  param: ['параметр', 'parameter', 'param', 'metric', 'показатель', 'attribute', 'атрибут'],
+  value: ['значение', 'value', 'val', 'значения'],
+  ds: ['datasetid', 'dataset_id', 'dataset', 'датасет'],
+  cfg: ['configid', 'config_id', 'config', 'конфиг']
 };
+const COL_KEYS = Object.keys(COL_CANDIDATES);
+const COL_REQUIRED = ['run', 'param', 'value'];
 const COL_LABELS = {
   run: 'runid',
   param: 'Параметр/parameter',
@@ -119,25 +130,99 @@ const COL_LABELS = {
   ds: 'datasetid',
   cfg: 'configid'
 };
-function mapColumns(columnNames, where) {
+/** Карта «нижний регистр → исходное имя столбца». */
+function colIndex(columnNames) {
   const lower = new Map();
   for (const c of columnNames || []) {
     const k = String(c).toLowerCase();
     if (!lower.has(k)) lower.set(k, c);
   }
+  return lower;
+}
+/**
+ * Догадка о соответствии столбцов — ничего не бросает.
+ * @returns {{mapped:Object, missing:string[]}} missing — ключи (run/param/…),
+ *   которые не удалось определить (только обязательные учитываются как проблема).
+ */
+function suggestColumns(columnNames) {
+  const lower = colIndex(columnNames);
+  const mapped = {};
+  const missing = [];
+  for (const key of COL_KEYS) {
+    const hit = COL_CANDIDATES[key].map(c => lower.get(c)).find(Boolean);
+    if (hit) mapped[key] = hit;
+    else {
+      mapped[key] = null;
+      if (COL_REQUIRED.includes(key)) missing.push(key);
+    }
+  }
+  return { mapped, missing };
+}
+/**
+ * Пользовательский мэппинг из тела запроса: {run,param,value,ds,cfg}.
+ * Ключ отсутствует → подбирается автоматически; ключ есть, но пустой →
+ * столбца в таблице нет (осмысленно только для необязательных ds/cfg).
+ */
+function normalizeColumns(v, field) {
+  if (v === undefined || v === null || v === '') return null;
+  if (typeof v !== 'object' || Array.isArray(v)) {
+    throw new HttpError(400, `Поле «${field || 'columns'}» должно быть объектом соответствия столбцов.`);
+  }
+  const out = {};
+  let any = false;
+  for (const key of COL_KEYS) {
+    if (!(key in v) || v[key] === undefined || v[key] === null) continue;
+    out[key] = asStr(v[key], `columns.${key}`).trim();
+    if (out[key]) any = true;
+  }
+  // объект без единого непустого значения = мэппинг не задан
+  return any ? out : null;
+}
+/**
+ * Итоговое соответствие столбцов для конкретной таблицы.
+ * @param columnNames реальные столбцы таблицы
+ * @param where       префикс для текста ошибки («Схема «public_1841»»)
+ * @param override    пользовательский мэппинг (приоритетнее автоподбора)
+ */
+function mapColumns(columnNames, where, override) {
+  const lower = colIndex(columnNames);
+  const auto = suggestColumns(columnNames).mapped;
+  const prefix = where ? where + ': ' : '';
+  const found = (columnNames && columnNames.length) ? columnNames.join(', ') : '—';
   const out = {};
   const missing = [];
-  for (const [key, cands] of Object.entries(COL_CANDIDATES)) {
-    const hit = cands.map(c => lower.get(c)).find(Boolean);
-    if (hit !== undefined && hit !== null && hit !== '') out[key] = hit;
-    else missing.push(COL_LABELS[key]);
+  const unknown = [];
+  for (const key of COL_KEYS) {
+    const given = override && key in override;
+    const want = given ? String(override[key] || '') : '';
+    if (want) {
+      const hit = lower.get(want.toLowerCase());
+      if (hit) out[key] = hit;
+      else unknown.push(`${COL_LABELS[key]} → «${want}»`);
+      continue;
+    }
+    // Пустое значение при явно переданном ключе = столбца нет (только ds/cfg)
+    if (given && !COL_REQUIRED.includes(key)) {
+      out[key] = null;
+      continue;
+    }
+    if (auto[key]) out[key] = auto[key];
+    else {
+      out[key] = null;
+      if (COL_REQUIRED.includes(key)) missing.push(COL_LABELS[key]);
+    }
   }
-  if (missing.length) {
-    const prefix = where ? where + ': ' : '';
-    const found = (columnNames && columnNames.length) ? columnNames.join(', ') : '—';
+  if (unknown.length) {
     throw new HttpError(
       400,
-      `${prefix}в таблице ${TABLE_NAME} не найдены столбцы: ${missing.join(', ')}. Найдены: ${found}.`
+      `${prefix}в таблице нет столбцов, указанных в мэппинге: ${unknown.join(', ')}. Есть: ${found}.`
+    );
+  }
+  if (missing.length) {
+    throw new HttpError(
+      400,
+      `${prefix}не удалось определить столбцы: ${missing.join(', ')}. Найдены: ${found}. ` +
+      'Задайте соответствие вручную в блоке «Мэппинг столбцов».'
     );
   }
   return out;
@@ -246,7 +331,7 @@ function friendlyPgError(err, conn) {
   return new HttpError(500, `Postgres: ${msg || 'неизвестная ошибка'}`);
 }
 
-async function discoverColumns(db, spec) {
+async function listColumns(db, spec) {
   let res;
   try {
     res = await db.query(
@@ -264,7 +349,12 @@ async function discoverColumns(db, spec) {
       `Схема «${spec.schema}»: таблица «${spec.table}» не найдена или нет доступа.`
     );
   }
-  return { names, mapped: mapColumns(names, `Схема «${spec.schema}»`) };
+  return names;
+}
+/** Столбцы таблицы + итоговый мэппинг (с учётом пользовательского override). */
+async function discoverColumns(db, spec, override) {
+  const names = await listColumns(db, spec);
+  return { names, mapped: mapColumns(names, `Схема «${spec.schema}»`, override) };
 }
 
 /* ── Приложение ── */
@@ -318,22 +408,44 @@ function createApp(deps) {
             'Таблица optimizer_status не найдена ни в одной схеме. Проверьте базу данных и права пользователя.'
           );
         }
+        /* Пользовательский мэппинг (если уже задан в модалке) применяется и
+           здесь — схема считается доступной, если он к ней подходит. */
+        const override = normalizeColumns((req.body || {}).columns, 'columns');
         const schemas = [];
         for (const f of found.slice(0, MAX_SCHEMAS)) {
           let columns = [];
           let rows = null;
           let error = null;
+          let mapped = null;
+          let needsMapping = false;
           try {
-            const disc = await discoverColumns(db, f);
-            columns = disc.names;
+            columns = await listColumns(db, f);
+            try {
+              mapped = mapColumns(columns, `Схема «${f.schema}»`, override);
+            } catch (e) {
+              // Столбцы прочитаны, но соответствие не найдено — это чинится
+              // мэппингом в UI, поэтому не считаем схему «сломанной наглухо».
+              needsMapping = true;
+              error = e instanceof HttpError ? e.message : friendlyPgError(e, conn).message;
+              mapped = suggestColumns(columns).mapped;
+            }
             const c = await db.query(`SELECT COUNT(*)::int AS n FROM ${qi(f.schema)}.${qi(f.table)}`);
             rows = c.rows && c.rows[0] ? c.rows[0].n : null;
           } catch (e) {
             error = e instanceof HttpError ? e.message : friendlyPgError(e, conn).message;
           }
-          schemas.push({ schema: f.schema, table: f.table, columns, rows, ok: !error, error });
+          schemas.push({
+            schema: f.schema,
+            table: f.table,
+            columns,
+            rows,
+            ok: !error,
+            error,
+            needsMapping,
+            mapped
+          });
         }
-        res.json({ schemas });
+        res.json({ schemas, columnKeys: COL_KEYS, requiredColumnKeys: COL_REQUIRED, columnLabels: COL_LABELS });
       } finally {
         await db.close();
       }
@@ -347,6 +459,7 @@ function createApp(deps) {
     try {
       const conn = normalizeConn(req.body || {});
       const specs = normalizeSchemas((req.body || {}).schemas);
+      const override = normalizeColumns((req.body || {}).columns, 'columns');
       let db;
       try {
         db = await connect(conn);
@@ -357,18 +470,23 @@ function createApp(deps) {
         const runs = [];
         let truncated = false;
         for (const spec of specs) {
-          const { mapped } = await discoverColumns(db, spec);
+          const { mapped } = await discoverColumns(db, spec, override);
           const from = `${qi(spec.schema)}.${qi(spec.table)}`;
-          const R = qi(mapped.run), D = qi(mapped.ds), C = qi(mapped.cfg);
+          const R = qi(mapped.run);
+          // datasetid/configid необязательны: если столбца нет — подставляем ''
+          const D = mapped.ds ? qi(mapped.ds) : "''::text";
+          const C = mapped.cfg ? qi(mapped.cfg) : "''::text";
+          // группируем только по реальным столбцам (константы в GROUP BY нельзя)
+          const grp = ['1'].concat(mapped.ds ? ['2'] : [], mapped.cfg ? ['3'] : []).join(',');
           let groups, starts;
           try {
             groups = await db.query(
               `SELECT ${R} AS r, ${D} AS d, ${C} AS c, COUNT(*)::int AS n FROM ${from} ` +
-              `WHERE ${R} IS NOT NULL GROUP BY 1,2,3 ORDER BY 1 DESC LIMIT 1001`
+              `WHERE ${R} IS NOT NULL GROUP BY ${grp} ORDER BY 1 DESC LIMIT 1001`
             );
             starts = await db.query(
               `SELECT ${R} AS r, ${D} AS d, ${C} AS c, MAX(${qi(mapped.value)}) AS s FROM ${from} ` +
-              `WHERE ${qi(mapped.param)}='Start time' GROUP BY 1,2,3`
+              `WHERE ${qi(mapped.param)}='Start time' GROUP BY ${grp}`
             );
           } catch (e) {
             throw friendlyPgError(e, conn);
@@ -412,6 +530,7 @@ function createApp(deps) {
     try {
       const conn = normalizeConn(req.body || {});
       const selection = normalizeSelection((req.body || {}).selection);
+      const override = normalizeColumns((req.body || {}).columns, 'columns');
       let db;
       try {
         db = await connect(conn);
@@ -428,16 +547,22 @@ function createApp(deps) {
         const rows = [];
         let truncated = false;
         for (const { spec, items } of byTable.values()) {
-          const { mapped } = await discoverColumns(db, spec);
+          const { mapped } = await discoverColumns(db, spec, override);
           const from = `${qi(spec.schema)}.${qi(spec.table)}`;
-          const R = qi(mapped.run), D = qi(mapped.ds), C = qi(mapped.cfg);
+          const R = qi(mapped.run);
+          const D = mapped.ds ? qi(mapped.ds) : "''::text";
+          const C = mapped.cfg ? qi(mapped.cfg) : "''::text";
+          // ключ прогона = только те столбцы, что реально есть в таблице
+          const keyCols = [R].concat(mapped.ds ? [qi(mapped.ds)] : [], mapped.cfg ? [qi(mapped.cfg)] : []);
+          const arity = keyCols.length;
           for (let i = 0; i < items.length && !truncated; i += CHUNK) {
             const chunk = items.slice(i, i + CHUNK);
             const vals = [];
             const conds = chunk.map((it, j) => {
-              vals.push(it.runid, it.datasetid, it.configid);
-              const o = j * 3;
-              return `($${o + 1},$${o + 2},$${o + 3})`;
+              const parts = [it.runid].concat(mapped.ds ? [it.datasetid] : [], mapped.cfg ? [it.configid] : []);
+              vals.push(...parts);
+              const o = j * arity;
+              return '(' + parts.map((_, k) => `$${o + k + 1}`).join(',') + ')';
             }).join(',');
             const remaining = MAX_ROWS + 1 - rows.length;
             let q;
@@ -445,7 +570,7 @@ function createApp(deps) {
               q = await db.query(
                 `SELECT ${R} AS _r, ${qi(mapped.param)} AS _p, ${qi(mapped.value)} AS _v, ` +
                 `${D} AS _d, ${C} AS _c FROM ${from} ` +
-                `WHERE (${R},${D},${C}) IN (${conds}) LIMIT ${remaining}`,
+                `WHERE (${keyCols.join(',')}) IN (${conds}) LIMIT ${remaining}`,
                 vals
               );
             } catch (e) {
@@ -467,6 +592,51 @@ function createApp(deps) {
           truncated,
           runs: selection.length,
           schemas: [...new Set(selection.map(s => s.schema))]
+        });
+      } finally {
+        await db.close();
+      }
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  /** Столбцы схемы + образцы значений — для ручного мэппинга в модалке. */
+  app.post('/api/pg/columns', async (req, res, next) => {
+    try {
+      const conn = normalizeConn(req.body || {});
+      const specs = normalizeSchemas((req.body || {}).schemas);
+      const spec = specs[0];
+      let db;
+      try {
+        db = await connect(conn);
+      } catch (e) {
+        throw friendlyPgError(e, conn);
+      }
+      try {
+        const names = await listColumns(db, spec);
+        const { mapped, missing } = suggestColumns(names);
+        let sample = [];
+        try {
+          const s = await db.query(
+            `SELECT * FROM ${qi(spec.schema)}.${qi(spec.table)} LIMIT ${SAMPLE_ROWS}`
+          );
+          sample = (s.rows || []).map(r => {
+            const o = {};
+            for (const n of names) o[n] = cell(r[n]).slice(0, 200);
+            return o;
+          });
+        } catch (e) { /* образцы необязательны (например, нет прав на SELECT) */ }
+        res.json({
+          schema: spec.schema,
+          table: spec.table,
+          columns: names,
+          suggested: mapped,
+          missing,
+          sample,
+          columnKeys: COL_KEYS,
+          requiredColumnKeys: COL_REQUIRED,
+          columnLabels: COL_LABELS
         });
       } finally {
         await db.close();
@@ -504,7 +674,13 @@ module.exports = {
   normalizeConn,
   normalizeSchemas,
   normalizeSelection,
+  normalizeColumns,
+  suggestColumns,
   mapColumns,
+  COL_CANDIDATES,
+  COL_KEYS,
+  COL_REQUIRED,
+  COL_LABELS,
   normalizeRow,
   cell,
   qi,
