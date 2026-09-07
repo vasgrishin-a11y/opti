@@ -271,6 +271,20 @@ async function discoverColumns(db, spec) {
 function createApp(deps) {
   const connect = (deps && deps.connect) || defaultConnect;
   const app = express();
+  /* CORS: дашборд может обращаться к backend с чужого origins (file://, Live
+     Server, другой хостинг), поэтому разрешаем произвольный Origin. Куки/
+     auth не используются (пароль — в теле запроса), так что «*» безопасно.
+     Без этого статический сервер отдаёт 405 на POST, а браузер блокирует
+     чужой ответ — пользователь видит «Ошибка сервера: 405». */
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    next();
+  });
   app.use(express.json({ limit: '1mb' }));
 
   app.get('/api/health', (req, res) => res.json({ ok: true, time: new Date().toISOString() }));

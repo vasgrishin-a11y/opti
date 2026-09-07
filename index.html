@@ -316,8 +316,12 @@ canvas[role="img"]{outline:none}
               <option value="off">Без SSL</option>
             </select>
           </div>
+          <div class="full">
+            <label for="pgBackend">Дополнительно: адрес backend (если дашборд открыт не через него)</label>
+            <input id="pgBackend" type="text" placeholder="пусто — дашборд открыт через backend (npm start); для file:// вставьте http://localhost:3000" autocomplete="off" spellcheck="false">
+          </div>
         </div>
-        <div class="pg-hint">Достаточно ввести логин и пароль — хост, порт и база уже подставлены. Пароль хранится только в памяти вкладки и никуда не сохраняется.</div>
+        <div class="pg-hint">Достаточно ввести логин и пароль — хост, порт и база уже подставлены. Поле «адрес backend» нужно, только если дашборд открыт не через <code>npm start</code> (двойной клик по файлу, Live Server, другой хостинг): укажите, где запущен backend — при <code>file://</code> подставится <code>http://localhost:3000</code>. Пароль хранится только в памяти вкладки и никуда не сохраняется.</div>
         <div class="pg-err" id="pgErr1" role="alert"></div>
         <div class="pg-foot"><button class="btn p" id="pgConnect" type="button">Подключиться</button></div>
       </section>
@@ -1690,15 +1694,30 @@ const bPrint=$('#bPrint');if(bPrint)bPrint.onclick=()=>window.print();
 const PG_DEFAULTS={host:'db-postgresql-app.k8s.b1gahmn2gdjf3lsm4jeh.in-plan.ru',port:48235,database:'pgs_app_data_db',ssl:'auto'};
 const PG={conn:null,schemas:[],selS:new Set(),runs:[],selR:new Set(),step:1,busy:false};
 const PG_LS='snp_opt_pg';
-function pgSaved(){try{return Object.assign({},PG_DEFAULTS,{user:''},JSON.parse(lsGet(PG_LS)||'{}'))}catch(e){return Object.assign({},PG_DEFAULTS,{user:''})}}
+function pgSaved(){try{return Object.assign({user:'',backend:''},PG_DEFAULTS,JSON.parse(lsGet(PG_LS)||'{}'))}catch(e){return Object.assign({user:'',backend:''},PG_DEFAULTS)}}
 function pgRemember(){if(!PG.conn)return;const c=PG.conn;
-  lsSet(PG_LS,JSON.stringify({host:c.host,port:c.port,database:c.database,user:c.user,ssl:c.ssl}))}
+  lsSet(PG_LS,JSON.stringify({host:c.host,port:c.port,database:c.database,user:c.user,ssl:c.ssl,backend:pgBackendBase()}))}
+/* Адрес backend: пусто = тот же адрес, что и дашборд (запрос относительный).
+   При file:// по умолчанию http://localhost:3000 — где работает npm start. */
+function pgBackendBase(){const el=$('#pgBackend');const v=el?String(el.value||'').trim():'';
+  return v.replace(/\/+$/,'')}
+function pgDefaultBackend(){return location.protocol==='file:'?'http://localhost:3000':''}
 async function pgApi(path,body){
+  const base=pgBackendBase(),url=base+path;
   let res;
-  try{res=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
-  catch(e){throw new Error('Сервер недоступен. Запустите backend командой «npm start» и откройте дашборд через http://localhost:3000.')}
+  try{res=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
+  catch(e){
+    throw new Error(base
+      ?'Не удалось достучаться до backend («'+base+'»). Проверьте, что он запущен (npm start), адрес указан верно, и что к нему есть доступ из этой сети.'
+      :'Сервер недоступен. Запустите backend командой «npm start» и откройте дашборд через http://localhost:3000.');
+  }
   let data=null;try{data=await res.json()}catch(e){}
-  if(!res.ok)throw new Error((data&&data.error)||('Ошибка сервера: '+res.status));
+  if(!res.ok){
+    if(res.status===405||res.status===404){
+      throw new Error('Backend не найден (HTTP '+res.status+' на '+(base||location.origin)+'). Запрос не дошёл до сервера «npm start» — он ушёл на обычный статический сервер, который не умеет обращаться к Postgres. Решение: откройте дашборд через http://localhost:3000 (после npm start), либо укажите адрес запущенного backend в поле «Дополнительно: адрес backend» на шаге 1.');
+    }
+    throw new Error((data&&data.error)||('Ошибка сервера: '+res.status+' (ответ не JSON — вероятно, запрос пришёл не на backend «npm start»)'));
+  }
   return data||{};
 }
 function pgShowErr(n,msg){const el=$('#pgErr'+n);if(!el)return;el.textContent=msg;el.classList.add('show')}
@@ -1730,6 +1749,7 @@ function pgOpen(){
   $('#pgUser').value=s.user||'';
   $('#pgPass').value='';
   $('#pgSsl').value=s.ssl||'auto';
+  $('#pgBackend').value=(s.backend!=null&&s.backend!=='')?s.backend:pgDefaultBackend();
   m.hidden=false;pgSetStep(1);
   const fu=$('#pgUser'),fp=$('#pgPass');
   if(fu&&!fu.value)fu.focus();else if(fp)fp.focus();
@@ -1873,7 +1893,7 @@ async function pgLoad(){
   ov.addEventListener('click',e=>{if(e.target===ov)pgClose()});
   ov.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();pgClose()}});
   $('#pgConnect').onclick=pgConnect;
-  ['pgHost','pgPort','pgDb','pgUser','pgPass'].forEach(id=>{const el=document.getElementById(id);
+  ['pgHost','pgPort','pgDb','pgUser','pgPass','pgBackend'].forEach(id=>{const el=document.getElementById(id);
     if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();pgConnect()}})});
   $('#pgBack2').onclick=()=>pgSetStep(1);
   $('#pgBack3').onclick=()=>pgSetStep(2);
@@ -1898,8 +1918,5 @@ async function pgLoad(){
   if(restored)toast('Восстановлена сохранённая сессия ('+DS.runs.length+' '+plural(DS.runs.length,['прогон','прогона','прогонов'])+').','ok',4500);
 })();
 </script>
-</body>
-</html>
-cript>
 </body>
 </html>

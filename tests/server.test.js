@@ -332,6 +332,31 @@ const CONN = { host: 'h', port: 5432, database: 'd', user: 'u', password: 'p', s
     }
   }
 
+  console.log('12. CORS — preflight 204 и заголовки на ответах');
+  {
+    const { srv, base } = await listen(createApp({ connect: makeFake(() => ({ rows: [] })).connect }));
+    try {
+      const pre = await fetch(base + '/api/pg/schemas', {
+        method: 'OPTIONS',
+        headers: {
+          Origin: 'http://localhost:5500',
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Content-Type'
+        }
+      });
+      eq(pre.status, 204, 'preflight OPTIONS → 204');
+      eq(pre.headers.get('access-control-allow-origin'), '*', 'Access-Control-Allow-Origin: *');
+      ok(/POST/i.test(pre.headers.get('access-control-allow-methods') || ''), 'allow-methods включает POST');
+      ok(/content-type/i.test(pre.headers.get('access-control-allow-headers') || ''), 'allow-headers включает Content-Type');
+      const h = await fetch(base + '/api/health', { headers: { Origin: 'http://localhost:5500' } });
+      eq(h.headers.get('access-control-allow-origin'), '*', 'GET /api/health — CORS-заголовок');
+      const d = await fetch(base + '/api/pg/defaults', { headers: { Origin: 'null' } });
+      eq(d.headers.get('access-control-allow-origin'), '*', 'GET /api/pg/defaults — CORS-заголовок (Origin: null, т.е. file://)');
+    } finally {
+      srv.close();
+    }
+  }
+
   console.log('\n' + '─'.repeat(40));
   console.log(`Result: ${passed} passed`);
 })().catch(e => {
