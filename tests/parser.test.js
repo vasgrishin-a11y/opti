@@ -364,6 +364,27 @@ console.log('10. runKey + num');
   assertEq(num(''), 0, 'num empty');
 }
 
+console.log('11. Schema-aware grouping (Postgres)');
+{
+  const rows = [
+    { __schema: 'public', runid: 1, Параметр: 'Solution', Значение: 'OPTIMAL', datasetid: 1, configid: 1 },
+    { __schema: 'public_1', runid: 1, Параметр: 'Solution', Значение: 'FEASIBLE', datasetid: 1, configid: 1 },
+    { runid: 1, Параметр: 'Solution', Значение: 'OPTIMAL', datasetid: 1, configid: 1 }
+  ];
+  const runs = parseOptimizerRows(rows);
+  assertEq(runs.length, 3, 'same runid in 2 schemas + file row = 3 runs');
+  const pub = runs.find(r => r.schema === 'public');
+  const pub1 = runs.find(r => r.schema === 'public_1');
+  const file = runs.find(r => !r.schema);
+  assert(pub && pub1 && file, 'all three groups found');
+  assertEq(pub.solve.status, 'OPTIMAL', 'public status');
+  assertEq(pub1.solve.status, 'FEASIBLE', 'public_1 status');
+  assert(pub.label.indexOf('public') !== -1, 'label contains schema');
+  assertEq(file.label, 'Прогон 1 · датасет 1 · конфиг 1', 'file label unchanged');
+  assertEq(runKey(pub), 'public|1|1|1', 'runKey with schema');
+  assertEq(runKey(file), '1|1|1', 'runKey without schema unchanged');
+}
+
 console.log('\n' + '─'.repeat(40));
 console.log(`Result: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

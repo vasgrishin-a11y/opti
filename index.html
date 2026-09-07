@@ -191,7 +191,7 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
 canvas[role="img"]{outline:none}
 @media print{
   body{background:#fff!important;color:#000!important}
-  .rail,.hdr-actions,.runbar,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,body.drag::after{display:none!important}
+  .rail,.hdr-actions,.runbar,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,#pgModal,body.drag::after{display:none!important}
   .app{display:block}
   .wrap{width:100%}
   header{border:0;padding:0 0 12px}
@@ -200,6 +200,43 @@ canvas[role="img"]{outline:none}
   canvas{max-width:100%}
   a[href]::after{content:''}
 }
+
+/* §9 PostgreSQL: модалка подключения */
+.pg-overlay{position:fixed;inset:0;background:rgba(17,17,17,.55);z-index:800;display:flex;align-items:center;justify-content:center;padding:20px}
+.pg-overlay[hidden]{display:none}
+.pg-dialog{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-line-2);border-radius:var(--r-l);width:min(660px,100%);max-height:calc(100vh - 40px);display:flex;flex-direction:column;box-shadow:0 12px 44px #00000055}
+.pg-head{display:flex;align-items:flex-start;gap:12px;padding:16px 18px 10px;border-bottom:1px solid var(--scp-line)}
+.pg-title{font:600 17px/22px 'Open Sans',sans-serif}
+.pg-steps{font-size:12px;color:var(--scp-text-3);margin-top:3px}
+.pg-steps b{color:var(--scp-accent)}
+.pg-x{margin-left:auto;flex:0 0 auto}
+.pg-body{padding:14px 18px;overflow-y:auto}
+.pg-form{display:grid;grid-template-columns:1fr 1fr;gap:10px 12px}
+.pg-form .full{grid-column:1/-1}
+.pg-form label{font-size:11px;color:var(--scp-text-3);font-weight:600;text-transform:uppercase;display:block;margin-bottom:4px}
+.pg-form input,.pg-form select{width:100%;background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:8px 10px;font:400 13px 'Open Sans',sans-serif}
+.pg-form input:focus,.pg-form select:focus{outline:none;border-color:var(--scp-accent)}
+.pg-hint{font-size:12px;color:var(--scp-text-3);margin-top:10px;line-height:17px}
+.pg-err{display:none;background:var(--scp-err-bg);color:var(--scp-err);border:1px solid var(--scp-err);border-radius:var(--r-m);padding:10px 12px;font-size:13px;margin-top:12px;line-height:18px}
+.pg-err.show{display:block}
+.pg-info{font-size:13px;color:var(--scp-text-2);margin:0 0 10px;line-height:19px}
+.pg-list{border:1px solid var(--scp-line);border-radius:var(--r-m);max-height:300px;overflow-y:auto;padding:6px}
+.pg-item{display:flex;align-items:flex-start;gap:10px;padding:8px;border-radius:var(--r-s);cursor:pointer;font-size:13px}
+.pg-item:hover{background:var(--scp-b-50)}
+.pg-item input{accent-color:var(--scp-accent);margin:3px 0 0;width:15px;height:15px;flex:0 0 15px}
+.pg-item .t{flex:1;min-width:0}
+.pg-item .s{font-size:12px;color:var(--scp-text-3)}
+.pg-item.bad{opacity:.65;cursor:not-allowed}
+.pg-item.bad:hover{background:transparent}
+.pg-grp{position:sticky;top:-6px;background:var(--scp-surface);padding:8px;border-bottom:1px solid var(--scp-line);font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:8px}
+.pg-grp button{margin-left:auto}
+.pg-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.pg-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.pg-tools .dt-q{flex:1;min-width:160px}
+.pg-status{min-height:22px;font-size:12.5px;color:var(--scp-text-3);padding:8px 18px 14px}
+.pg-status.busy{color:var(--scp-accent)}
+[data-theme="dark"] .pg-item:hover{background:#2c2140}
+@media(max-width:560px){.pg-form{grid-template-columns:1fr}}
 
 </style>
 </head>
@@ -233,6 +270,9 @@ canvas[role="img"]{outline:none}
           <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         </button>
         <input type="file" id="fIn" accept=".xlsx,.xls" multiple style="display:none">
+        <button class="icon-btn" id="bPg" data-tip="Подключиться к PostgreSQL (таблица optimizer_status)" aria-label="Подключиться к PostgreSQL и загрузить таблицу optimizer_status">
+          <svg viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+        </button>
         <button class="icon-btn" id="bReport" data-tip="Скачать HTML-отчёт по активному прогону" aria-label="Скачать HTML-отчёт по активному прогону">
           <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </button>
@@ -247,6 +287,70 @@ canvas[role="img"]{outline:none}
     </header>
     <div class="runbar" id="runbar"></div>
     <main id="main"></main>
+  </div>
+</div>
+<div id="pgModal" class="pg-overlay" hidden>
+  <div class="pg-dialog" role="dialog" aria-modal="true" aria-labelledby="pgDlgTitle">
+    <div class="pg-head">
+      <div>
+        <div class="pg-title" id="pgDlgTitle">Подключение к PostgreSQL</div>
+        <div class="pg-steps" id="pgSteps"></div>
+      </div>
+      <button class="icon-btn pg-x" id="pgClose" aria-label="Закрыть окно подключения">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="pg-body">
+      <section id="pgStep1" aria-label="Параметры подключения">
+        <div class="pg-form">
+          <div class="full"><label for="pgHost">Хост</label><input id="pgHost" type="text" autocomplete="off" spellcheck="false"></div>
+          <div><label for="pgPort">Порт</label><input id="pgPort" type="number" min="1" max="65535" step="1"></div>
+          <div><label for="pgDb">База данных</label><input id="pgDb" type="text" autocomplete="off" spellcheck="false"></div>
+          <div><label for="pgUser">Логин</label><input id="pgUser" type="text" autocomplete="username"></div>
+          <div><label for="pgPass">Пароль</label><input id="pgPass" type="password" autocomplete="current-password"></div>
+          <div class="full"><label for="pgSsl">Режим SSL</label>
+            <select id="pgSsl">
+              <option value="auto">Авто (сначала SSL, иначе без него)</option>
+              <option value="insecure">SSL без проверки сертификата</option>
+              <option value="strict">SSL со строгой проверкой</option>
+              <option value="off">Без SSL</option>
+            </select>
+          </div>
+        </div>
+        <div class="pg-hint">Достаточно ввести логин и пароль — хост, порт и база уже подставлены. Пароль хранится только в памяти вкладки и никуда не сохраняется.</div>
+        <div class="pg-err" id="pgErr1" role="alert"></div>
+        <div class="pg-foot"><button class="btn p" id="pgConnect" type="button">Подключиться</button></div>
+      </section>
+      <section id="pgStep2" aria-label="Выбор схем" hidden>
+        <p class="pg-info" id="pgSchemasInfo"></p>
+        <div class="pg-tools">
+          <input class="dt-q" id="pgSchemaQ" type="text" placeholder="Поиск схемы…" aria-label="Поиск схемы">
+          <button class="dt-btn" id="pgSchemasAll" type="button">Выбрать все</button>
+          <button class="dt-btn" id="pgSchemasNone" type="button">Снять все</button>
+        </div>
+        <div class="pg-list" id="pgSchemasList"></div>
+        <div class="pg-err" id="pgErr2" role="alert"></div>
+        <div class="pg-foot">
+          <button class="btn" id="pgBack2" type="button">Назад</button>
+          <button class="btn p" id="pgToRuns" type="button">Показать прогоны</button>
+        </div>
+      </section>
+      <section id="pgStep3" aria-label="Выбор прогонов" hidden>
+        <p class="pg-info" id="pgRunsInfo"></p>
+        <div class="pg-tools">
+          <input class="dt-q" id="pgRunQ" type="text" placeholder="Поиск прогона…" aria-label="Поиск прогона">
+          <button class="dt-btn" id="pgRunsAll" type="button">Выбрать все</button>
+          <button class="dt-btn" id="pgRunsNone" type="button">Снять все</button>
+        </div>
+        <div class="pg-list" id="pgRunsList"></div>
+        <div class="pg-err" id="pgErr3" role="alert"></div>
+        <div class="pg-foot">
+          <button class="btn" id="pgBack3" type="button">Назад</button>
+          <button class="btn p" id="pgDoLoad" type="button">Загрузить в дашборд</button>
+        </div>
+      </section>
+    </div>
+    <div class="pg-status" id="pgStatus" aria-live="polite"></div>
   </div>
 </div>
 <div id="tip"></div>
@@ -599,9 +703,11 @@ function parseOptimizerRows(rows){
     const value=getF(r,['Значение','значение','Value','value']);
     const dsid=getF(r,['datasetid','DatasetId','dataset_id']);
     const cfgid=getF(r,['configid','ConfigId','config_id']);
+    const schema=getF(r,['__schema','schema']); // источник Postgres (§9); у файлов — пусто
     if(runid===undefined||param===undefined)return;
-    const key=String(runid)+'|'+String(dsid)+'|'+String(cfgid);
-    if(!groups.has(key))groups.set(key,{runid:String(runid),datasetid:String(dsid??''),configid:String(cfgid??''),raw:new Map()});
+    const sch=(schema===undefined||schema===null)?'':String(schema);
+    const key=sch+'|'+String(runid)+'|'+String(dsid)+'|'+String(cfgid);
+    if(!groups.has(key))groups.set(key,{schema:sch,runid:String(runid),datasetid:String(dsid??''),configid:String(cfgid??''),raw:new Map()});
     const g=groups.get(key),pname=String(param).trim(),val=(value===undefined||value===null)?'':String(value);
     if(!g.raw.has(pname)||val!=='')g.raw.set(pname,val);
   });
@@ -665,12 +771,14 @@ function buildRun(g){
   });
   const penalties=[...penMap.values()].filter(p=>p.sum!==0||p.nonzeroPct!==0);
 
-  return {runid:g.runid,datasetid:g.datasetid,configid:g.configid,
-    label:`Прогон ${g.runid} · датасет ${g.datasetid} · конфиг ${g.configid}`,
+  const schema=g.schema||'';
+  const runLabel=schema?`${schema} · Прогон ${g.runid} · датасет ${g.datasetid} · конфиг ${g.configid}`
+                       :`Прогон ${g.runid} · датасет ${g.datasetid} · конфиг ${g.configid}`;
+  return {schema,runid:g.runid,datasetid:g.datasetid,configid:g.configid,label:runLabel,
     meta,solve,entities,bounds,penalties,
     rawRows:[...raw.entries()].map(([k,v])=>({param:k,value:v}))};
 }
-const runKey=r=>r.runid+'|'+r.datasetid+'|'+r.configid;
+const runKey=r=>(r.schema?r.schema+'|':'')+r.runid+'|'+r.datasetid+'|'+r.configid;
 
 /* ═══════════════ 5. ВСТРОЕННОЕ ДЕМО ═══════════════ */
 function mkRow(p,v){return {runid:19,'Параметр':p,'Значение':v,datasetid:14,configid:300}}
@@ -774,7 +882,7 @@ function idbDel(key){
 /** Сериализация прогонов: raw Map → plain object entries */
 function serializeRuns(runs){
   return runs.map(r=>({
-    runid:r.runid,datasetid:r.datasetid,configid:r.configid,label:r.label,
+    schema:r.schema||'',runid:r.runid,datasetid:r.datasetid,configid:r.configid,label:r.label,
     meta:r.meta,solve:r.solve,entities:r.entities,bounds:r.bounds,penalties:r.penalties,
     rawRows:r.rawRows
   }));
@@ -1364,7 +1472,7 @@ function render(){
     $('#runbar').innerHTML='';
     $('#pgTitle').textContent='Данные не загружены';
     $('#pgSub').textContent='';
-    $('#main').innerHTML='<div class="empty"><h2>Данные не загружены</h2><p>Нажмите кнопку загрузки в шапке и выберите XLSX с листом <code>optimizer_status</code>.</p></div>';
+    $('#main').innerHTML='<div class="empty"><h2>Данные не загружены</h2><p>Загрузите XLSX с листом <code>optimizer_status</code> (кнопка со стрелкой в шапке) или подключитесь к PostgreSQL (кнопка с базой данных).</p></div>';
     $('#stat').innerHTML='Нет активного прогона';
     return;
   }
@@ -1380,6 +1488,7 @@ function render(){
     <select id="runSel" aria-label="Активный прогон">${DS.runs.map(r=>`<option value="${runKey(r)}" ${runKey(r)===CUR_KEY?'selected':''}>${esc(r.label)}</option>`).join('')}</select>
     <span class="tag">${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])} в истории</span>
     ${loadMetaHtml()}`;
+  const bPgH=$('#bPg');if(bPgH)bPgH.classList.toggle('on',!!(LOAD_META&&LOAD_META.source==='postgres'));
   const sel=$('#runSel');
   if(sel)sel.onchange=()=>{CUR_KEY=sel.value;if(!IS_DEMO)persistSession();render()};
   const bSave=$('#bSaveSession');
@@ -1574,6 +1683,210 @@ function downloadReport(){
 const bReport=$('#bReport');if(bReport)bReport.onclick=downloadReport;
 const bPrint=$('#bPrint');if(bPrint)bPrint.onclick=()=>window.print();
 
+/* ═══════════════ 16. POSTGRESQL: загрузка optimizer_status из схем ═══════════════
+   Браузер не умеет открывать TCP к Postgres, поэтому запросы идут через backend
+   (server.js): POST /api/pg/schemas, /api/pg/runs, /api/pg/load.
+   Пароль хранится только в памяти вкладки (PG.conn) и никуда не сохраняется. */
+const PG_DEFAULTS={host:'db-postgresql-app.k8s.b1gahmn2gdjf3lsm4jeh.in-plan.ru',port:48235,database:'pgs_app_data_db',ssl:'auto'};
+const PG={conn:null,schemas:[],selS:new Set(),runs:[],selR:new Set(),step:1,busy:false};
+const PG_LS='snp_opt_pg';
+function pgSaved(){try{return Object.assign({},PG_DEFAULTS,{user:''},JSON.parse(lsGet(PG_LS)||'{}'))}catch(e){return Object.assign({},PG_DEFAULTS,{user:''})}}
+function pgRemember(){if(!PG.conn)return;const c=PG.conn;
+  lsSet(PG_LS,JSON.stringify({host:c.host,port:c.port,database:c.database,user:c.user,ssl:c.ssl}))}
+async function pgApi(path,body){
+  let res;
+  try{res=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})}
+  catch(e){throw new Error('Сервер недоступен. Запустите backend командой «npm start» и откройте дашборд через http://localhost:3000.')}
+  let data=null;try{data=await res.json()}catch(e){}
+  if(!res.ok)throw new Error((data&&data.error)||('Ошибка сервера: '+res.status));
+  return data||{};
+}
+function pgShowErr(n,msg){const el=$('#pgErr'+n);if(!el)return;el.textContent=msg;el.classList.add('show')}
+function pgClearErrs(){[1,2,3].forEach(n=>{const el=$('#pgErr'+n);if(el)el.classList.remove('show')})}
+function pgBusy(on,text){
+  PG.busy=on;
+  $$('#pgModal button, #pgModal input, #pgModal select').forEach(el=>{el.disabled=!!on});
+  const st=$('#pgStatus');if(!st)return;
+  st.textContent=on?(text||'Выполняется…'):'';
+  st.classList.toggle('busy',!!on);
+}
+function pgConnInfo(){return PG.conn?` · ${PG.conn.user}@${PG.conn.host}/${PG.conn.database}`:''}
+function pgSetStep(n){
+  PG.step=n;pgClearErrs();
+  [1,2,3].forEach(i=>{const s=$('#pgStep'+i);if(s)s.hidden=(i!==n)});
+  const names={1:'подключение',2:'выбор схем',3:'выбор прогонов'};
+  $('#pgSteps').innerHTML=`Шаг <b>${n}</b> из 3 — ${names[n]}${n>1?esc(pgConnInfo()):''}`;
+  if(n===2){const q=$('#pgSchemaQ');if(q)q.value='';pgRenderSchemas()}
+  if(n===3){const q=$('#pgRunQ');if(q)q.value='';pgRenderRuns()}
+}
+function pgOpen(){
+  const m=$('#pgModal');if(!m)return;
+  pgBusy(false,'');pgClearErrs();
+  if(PG.conn&&PG.schemas.length){m.hidden=false;pgSetStep(2);const q=$('#pgSchemaQ');if(q)q.focus();return}
+  const s=pgSaved();
+  $('#pgHost').value=s.host||PG_DEFAULTS.host;
+  $('#pgPort').value=(s.port==null||s.port==='')?PG_DEFAULTS.port:s.port;
+  $('#pgDb').value=s.database||PG_DEFAULTS.database;
+  $('#pgUser').value=s.user||'';
+  $('#pgPass').value='';
+  $('#pgSsl').value=s.ssl||'auto';
+  m.hidden=false;pgSetStep(1);
+  const fu=$('#pgUser'),fp=$('#pgPass');
+  if(fu&&!fu.value)fu.focus();else if(fp)fp.focus();
+}
+function pgClose(){const m=$('#pgModal');if(m)m.hidden=true}
+/* ── Шаг 1 → 2: подключение и список схем ── */
+async function pgConnect(){
+  pgClearErrs();
+  const host=$('#pgHost').value.trim(),port=Number($('#pgPort').value),
+    database=$('#pgDb').value.trim(),user=$('#pgUser').value.trim(),
+    password=$('#pgPass').value,ssl=$('#pgSsl').value;
+  if(!host){pgShowErr(1,'Заполните поле «Хост».');return}
+  if(!Number.isInteger(port)||port<1||port>65535){pgShowErr(1,'Порт должен быть целым числом от 1 до 65535.');return}
+  if(!database){pgShowErr(1,'Заполните поле «База данных».');return}
+  if(!user){pgShowErr(1,'Введите логин.');return}
+  const conn={host,port,database,user,password,ssl};
+  pgBusy(true,'Подключение к Postgres…');
+  try{
+    const data=await pgApi('/api/pg/schemas',conn);
+    PG.conn=conn;pgRemember();
+    PG.schemas=(data.schemas||[]).slice().sort((a,b)=>String(a.schema).localeCompare(String(b.schema),'ru'));
+    PG.selS=new Set(PG.schemas.filter(s=>s.ok).map(s=>s.schema));
+    if(!PG.schemas.length){pgBusy(false,'');pgShowErr(1,'Таблица optimizer_status не найдена ни в одной схеме.');return}
+    pgBusy(false,'');pgSetStep(2);
+  }catch(e){pgBusy(false,'');pgShowErr(1,e.message||String(e))}
+}
+/* ── Шаг 2: мультивыбор схем ── */
+function pgRenderSchemas(){
+  const q=(($('#pgSchemaQ')||{}).value||'').toLowerCase();
+  const list=$('#pgSchemasList');if(!list)return;
+  const okN=PG.schemas.filter(s=>s.ok).length;
+  $('#pgSchemasInfo').textContent=
+    `Таблица optimizer_status найдена в схемах: ${PG.schemas.length} (доступно: ${okN}). Отметьте нужные схемы — прогоны загрузятся из каждой отмеченной.`;
+  const items=PG.schemas.filter(s=>!q||String(s.schema).toLowerCase().includes(q));
+  list.innerHTML=items.map(s=>{
+    const on=PG.selS.has(s.schema);
+    const sub=s.ok?`таблица «${esc(s.table)}» · строк: ${s.rows==null?'—':nf(s.rows)}`
+                  :`недоступна: ${esc(s.error||'неизвестная ошибка')}`;
+    return `<label class="pg-item${s.ok?'':' bad'}"><input type="checkbox" data-s="${esc(s.schema)}" ${on?'checked':''} ${s.ok?'':'disabled'}><span class="t"><b>${esc(s.schema)}</b><br><span class="s">${sub}</span></span></label>`;
+  }).join('')||'<div class="dtp-e">ничего не найдено</div>';
+  list.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
+    if(i.checked)PG.selS.add(i.dataset.s);else PG.selS.delete(i.dataset.s);
+    pgRenderSchemas();
+  });
+  const b=$('#pgToRuns');if(b)b.textContent=`Показать прогоны (${PG.selS.size})`;
+}
+/* ── Шаг 2 → 3: список прогонов в выбранных схемах ── */
+function pgRunKey(x){return x.schema+'|'+x.runid+'|'+x.datasetid+'|'+x.configid}
+function pgNumAware(a,b){const x=num(a),y=num(b);
+  const ax=(a===''||!isFinite(x)||String(x)!==String(a).trim().replace(',','.'))?null:x;
+  const bx=(b===''||!isFinite(y)||String(y)!==String(b).trim().replace(',','.'))?null:y;
+  if(ax!==null&&bx!==null)return ax-bx;return String(a).localeCompare(String(b),'ru')}
+async function pgFetchRuns(){
+  pgClearErrs();
+  if(!PG.selS.size){pgShowErr(2,'Отметьте хотя бы одну схему.');return}
+  const specs=PG.schemas.filter(s=>PG.selS.has(s.schema)).map(s=>({schema:s.schema,table:s.table}));
+  pgBusy(true,'Чтение списка прогонов…');
+  try{
+    const data=await pgApi('/api/pg/runs',Object.assign({},PG.conn,{schemas:specs}));
+    const order=new Map(specs.map((s,i)=>[s.schema,i]));
+    PG.runs=(data.runs||[]).slice().sort((a,b)=>
+      ((order.get(a.schema)??999)-(order.get(b.schema)??999))||
+      pgNumAware(b.runid,a.runid)||pgNumAware(a.datasetid,b.datasetid)||pgNumAware(a.configid,b.configid));
+    PG.selR=new Set();
+    if(PG.runs.length<=25)PG.runs.forEach(r=>PG.selR.add(pgRunKey(r)));
+    else{const perSchema={};PG.runs.forEach(r=>{ // последние 10 прогонов каждой схемы
+      perSchema[r.schema]=perSchema[r.schema]||0;
+      if(perSchema[r.schema]<10){PG.selR.add(pgRunKey(r));perSchema[r.schema]++}})}
+    PG.runsTruncated=!!data.truncated;
+    pgBusy(false,'');
+    if(!PG.runs.length){pgSetStep(2);pgShowErr(2,'В выбранных схемах нет прогонов (таблицы optimizer_status пустые).');return}
+    pgSetStep(3);
+  }catch(e){pgBusy(false,'');pgShowErr(2,e.message||String(e))}
+}
+/* ── Шаг 3: выбор прогонов, группировка по схемам ── */
+function pgRenderRuns(){
+  const q=(($('#pgRunQ')||{}).value||'').toLowerCase();
+  const list=$('#pgRunsList');if(!list)return;
+  const schemas=[...new Set(PG.runs.map(r=>r.schema))];
+  $('#pgRunsInfo').textContent=
+    `Найдено прогонов: ${PG.runs.length} в схемах: ${schemas.join(', ')}. `+
+    (PG.runs.length>25?'По умолчанию отмечены последние 10 прогонов каждой схемы (по runid).':'')+
+    (PG.runsTruncated?' Показаны не все прогоны (лимит сервера).':'');
+  const match=r=>!q||(r.schema+' '+r.runid+' '+r.datasetid+' '+r.configid+' '+(r.startTime||'')).toLowerCase().includes(q);
+  let html='';
+  schemas.forEach(sch=>{
+    const gr=PG.runs.filter(r=>r.schema===sch&&match(r));
+    if(!gr.length)return;
+    const keys=gr.map(pgRunKey),allOn=keys.every(k=>PG.selR.has(k));
+    html+=`<div class="pg-grp"><span>${esc(sch)}</span><span class="s dt-info">${gr.filter(r=>PG.selR.has(pgRunKey(r))).length}/${gr.length}</span><button class="dt-btn" type="button" data-grp="${esc(sch)}" data-on="${allOn?0:1}">${allOn?'Снять':'Выбрать'}</button></div>`;
+    html+=gr.map(r=>{const k=pgRunKey(r),on=PG.selR.has(k);
+      return `<label class="pg-item"><input type="checkbox" data-k="${esc(k)}" ${on?'checked':''}><span class="t"><b>Прогон ${esc(r.runid)} · датасет ${esc(r.datasetid)} · конфиг ${esc(r.configid)}</b><br><span class="s">${r.rows==null?'':nf(r.rows)+' строк · '}${r.startTime?esc(r.startTime):'дата запуска неизвестна'}</span></span></label>`}).join('');
+  });
+  list.innerHTML=html||'<div class="dtp-e">ничего не найдено</div>';
+  list.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
+    if(i.checked)PG.selR.add(i.dataset.k);else PG.selR.delete(i.dataset.k);
+    pgRenderRuns();
+  });
+  list.querySelectorAll('button[data-grp]').forEach(b=>b.onclick=()=>{
+    const sch=b.dataset.grp,on=b.dataset.on==='1';
+    PG.runs.filter(r=>r.schema===sch).forEach(r=>{const k=pgRunKey(r);if(on)PG.selR.add(k);else PG.selR.delete(k)});
+    pgRenderRuns();
+  });
+  const b=$('#pgDoLoad');if(b)b.textContent=`Загрузить в дашборд (${PG.selR.size})`;
+}
+/* ── Шаг 3 → дашборд: загрузка строк и слияние с историей ── */
+async function pgLoad(){
+  pgClearErrs();
+  const sel=PG.runs.filter(r=>PG.selR.has(pgRunKey(r)));
+  if(!sel.length){pgShowErr(3,'Отметьте хотя бы один прогон.');return}
+  pgBusy(true,`Загрузка ${sel.length} ${plural(sel.length,['прогона','прогонов','прогонов'])} из Postgres…`);
+  try{
+    const data=await pgApi('/api/pg/load',Object.assign({},PG.conn,{selection:sel.map(r=>({schema:r.schema,table:r.table,runid:r.runid,datasetid:r.datasetid,configid:r.configid}))}));
+    const parsed=parseOptimizerRows(data.rows||[]);
+    if(!parsed.length)throw new Error('Сервер вернул пустой набор строк — не удалось распознать ни одного прогона.');
+    const wasDemo=IS_DEMO||!DS;
+    if(!DS||IS_DEMO)DS={runs:[]};
+    if(wasDemo)IS_DEMO=false;
+    const existKeys=new Set(DS.runs.map(runKey));
+    let added=0;
+    parsed.forEach(p=>{if(!existKeys.has(runKey(p))){DS.runs.push(p);existKeys.add(runKey(p));added++}});
+    DS.runs.sort((a,b)=>(a.meta.startTime||'').localeCompare(b.meta.startTime||'')||num(a.runid)-num(b.runid));
+    CUR_KEY=runKey(DS.runs[DS.runs.length-1]);
+    resetHistSel(DS.runs);
+    const schemas=data.schemas&&data.schemas.length?data.schemas:[...new Set(sel.map(r=>r.schema))];
+    LOAD_META={source:'postgres',files:['PostgreSQL: '+schemas.join(', ')],
+      sheetNote:'таблица optimizer_status · прогонов: '+parsed.length+(data.truncated?' · показаны не все строки (лимит сервера)':''),
+      loadedAt:new Date().toISOString(),persisted:false};
+    const okSave=await persistSession();
+    pgBusy(false,'');pgClose();render();
+    const dup=parsed.length-added;
+    $('#stat').innerHTML=`<span class="pos">Загружено из Postgres:</span> ${nf(added)} из ${nf(parsed.length)} прогон(ов)<br>Всего в истории: ${nf(DS.runs.length)}`;
+    toast(`Загружено из Postgres: ${added} из ${parsed.length}${dup?` · повторных (уже в истории): ${dup}`:''}${data.truncated?' · Внимание: сервер вернул не все строки (лимит).':''}${okSave?' · Сессия сохранена.':''}`,(dup||data.truncated)?'warn':'ok',6000);
+  }catch(e){pgBusy(false,'');pgShowErr(3,e.message||String(e))}
+}
+/* ── Привязка модалки ── */
+(function pgWire(){
+  const bPg=$('#bPg');if(bPg)bPg.onclick=pgOpen;
+  const ov=$('#pgModal');if(!ov)return;
+  $('#pgClose').onclick=pgClose;
+  ov.addEventListener('click',e=>{if(e.target===ov)pgClose()});
+  ov.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();pgClose()}});
+  $('#pgConnect').onclick=pgConnect;
+  ['pgHost','pgPort','pgDb','pgUser','pgPass'].forEach(id=>{const el=document.getElementById(id);
+    if(el)el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();pgConnect()}})});
+  $('#pgBack2').onclick=()=>pgSetStep(1);
+  $('#pgBack3').onclick=()=>pgSetStep(2);
+  $('#pgToRuns').onclick=pgFetchRuns;
+  $('#pgDoLoad').onclick=pgLoad;
+  $('#pgSchemasAll').onclick=()=>{PG.schemas.filter(s=>s.ok).forEach(s=>PG.selS.add(s.schema));pgRenderSchemas()};
+  $('#pgSchemasNone').onclick=()=>{PG.selS.clear();pgRenderSchemas()};
+  $('#pgRunsAll').onclick=()=>{PG.runs.forEach(r=>PG.selR.add(pgRunKey(r)));pgRenderRuns()};
+  $('#pgRunsNone').onclick=()=>{PG.selR.clear();pgRenderRuns()};
+  $('#pgSchemaQ').oninput=pgRenderSchemas;
+  $('#pgRunQ').oninput=pgRenderRuns;
+})();
+
 /* ── Старт: восстановление сессии или демо ── */
 (async function boot(){
   let restored=false;
@@ -1585,5 +1898,8 @@ const bPrint=$('#bPrint');if(bPrint)bPrint.onclick=()=>window.print();
   if(restored)toast('Восстановлена сохранённая сессия ('+DS.runs.length+' '+plural(DS.runs.length,['прогон','прогона','прогонов'])+').','ok',4500);
 })();
 </script>
+</body>
+</html>
+cript>
 </body>
 </html>
