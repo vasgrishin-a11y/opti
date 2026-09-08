@@ -117,10 +117,16 @@ h1{font:600 22px/28px 'Open Sans',sans-serif;margin:0;color:var(--scp-text);whit
 .stat .pos{color:var(--scp-ok)}.stat .neg{color:var(--scp-err)}
 
 /* ══════════════════ КОНТЕКСТНАЯ ПАНЕЛЬ ПРОГОНА ══════════════════ */
-.ctx{background:var(--scp-surface);border-bottom:1px solid var(--scp-line-2);padding:9px var(--pad-x) 10px;
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+/* Две явные строки: сверху — прогон и его статус (главное), снизу — откуда
+   загружены данные (третьестепенное). Без этого flex-wrap раскидывал блоки
+   на 4–5 строк и панель съедала 160 px по вертикали. */
+.ctx{background:var(--scp-surface);border-bottom:1px solid var(--scp-line-2);padding:8px var(--pad-x) 9px;
+  display:flex;flex-direction:column;gap:6px}
+.ctx-r1{display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0}
+.ctx-r2{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;
+  padding-top:6px;border-top:1px dashed var(--scp-line)}
 .ctx-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--scp-text-3);white-space:nowrap}
-.ctx-run{display:flex;align-items:center;gap:9px;min-width:0;flex-wrap:wrap}
+.ctx-run{display:flex;align-items:center;gap:9px;min-width:0}
 .ctx-pick{display:flex;align-items:center;gap:0;min-width:0;max-width:100%}
 /* Селектор прогона не должен растягиваться под самое длинное имя в списке */
 .ctx-pick #runSel{flex:0 1 auto;min-width:0;width:340px;max-width:min(340px,52vw)}
@@ -135,9 +141,12 @@ h1{font:600 22px/28px 'Open Sans',sans-serif;margin:0;color:var(--scp-text);whit
 .ctx-pick .ico.sm:last-child{border-radius:0 var(--r-s) var(--r-s) 0}
 .ctx-pick #runSel{border-radius:var(--r-s) 0 0 var(--r-s)}
 .ctx-pick #runSel:only-child{border-radius:var(--r-s)}
-.ctx-sub{font-size:12px;color:var(--scp-text-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 auto}
+.ctx-sub{font-size:11.5px;color:var(--scp-text-3);min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;flex:0 1 auto;margin-left:auto;text-align:right}
 .ctx-st{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
-.ctx-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;min-width:0}
+.ctx-meta{display:contents}
+.ctx-r2 .tag{font-size:11px;padding:2px 8px}
+.ctx-r2 .dt-btn{padding:2px 9px;font-size:11px}
 select{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);
   padding:7px 30px 7px 10px;font:400 13px 'Open Sans',sans-serif;cursor:pointer;max-width:100%;
   appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--scp-text-3) 50%),linear-gradient(135deg,var(--scp-text-3) 50%,transparent 50%);
@@ -153,8 +162,7 @@ select:focus{outline:none;border-color:var(--scp-accent);box-shadow:0 0 0 3px va
 .ctx-nav button:disabled{opacity:.4;cursor:default}
 .ctx-facts{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .ctx-right{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-.meta-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11.5px;color:var(--scp-text-3);
-  flex:1 1 100%;margin-top:2px;padding-top:7px;border-top:1px dashed var(--scp-line-2)}
+.meta-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--scp-text-3);min-width:0}
 
 /* ══════════════════ ЧИПЫ / БЕЙДЖИ ══════════════════ */
 .tag{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;line-height:16px;padding:3px 9px;border-radius:9999px;
@@ -672,7 +680,7 @@ const plural=(n,f)=>{const a=Math.abs(n)%100,b=a%10;
 const num=v=>{if(v===undefined||v===null||v==='')return 0;
   const n=typeof v==='number'?v:parseFloat(String(v).replace(/\s/g,'').replace(',','.'));return isFinite(n)?n:0};
 const str=v=>v===undefined||v===null?'':String(v).trim();
-function timeFmt(sec){if(!isFinite(sec)||sec<=0)return '0 сек';
+function timeFmt(sec){if(!isFinite(sec)||sec<=0)return '—';
   if(sec<60)return nf(sec,sec<10?2:1)+' сек';
   const m=Math.floor(sec/60),r=sec-m*60;return m+' мин '+nf(r,0)+' сек'}
 /* Короткая дата для подписей: «13.05.2026 12:46» вместо ISO-простыни */
@@ -761,6 +769,9 @@ function kpis(list,cls){return `<div class="kpis ${cls||''}">${list.filter(Boole
 /* Дельта «стало лучше / хуже» — единая логика знака и цвета */
 function delta(cur,prev,fmt,goodUp){
   if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev))return null;
+  /* Оба значения нулевые — сравнивать нечего: плашка «без изменений» рядом
+     с «0 сек» только зашумляет карточку. */
+  if(!cur&&!prev)return null;
   const d=cur-prev,eps=Math.abs(prev||cur||1)*1e-9;
   if(Math.abs(d)<=eps)return {dir:'flat',text:'без изменений',raw:0};
   const good=goodUp?d>0:d<0;
@@ -1522,13 +1533,21 @@ function loadMetaHtml(){
   const src=m.source==='demo'?'Демо-набор':m.source==='postgres'?'PostgreSQL':m.source==='session'?'Сохранённая сессия':'Файлы XLSX';
   const files=(m.files&&m.files.length)?m.files.join(', '):'';
   const saved=m.persisted&&m.savedAt?dateShort(String(m.savedAt).replace('T',' ')):'';
-  return `<div class="meta-bar" id="loadMetaBar">
-    <span class="tag" title="${esc(files||src)}"><span>Источник: <b>${esc(src)}</b>${files?' · '+esc(clip(files,46)):''}</span></span>
-    <span class="tag"><span>Загружено ${esc(when)}</span></span>
-    ${m.sheetNote?`<span class="tag" title="${esc(m.sheetNote)}"><span>${esc(clip(m.sheetNote,42))}</span></span>`:''}
-    ${saved?`<span class="tag" title="Сессия сохранена в браузере"><span>Сохранено ${esc(saved)}</span></span>`:''}
-    ${!IS_DEMO&&!saved?`<button type="button" class="dt-btn" id="bSaveSession" title="Сохранить историю прогонов в браузере (IndexedDB)">Сохранить сессию</button>`:''}
-  </div>`;
+  /* Это служебная справка, а не показатели: держим её в одну строку.
+     Детали (полный список файлов, лист, время сохранения) — в подсказке. */
+  const nFiles=(m.files||[]).length;
+  /* Для Postgres в files лежит уже готовая подпись «PostgreSQL: public, …» —
+     префикс источника добавлять не нужно, иначе выйдет «PostgreSQL · PostgreSQL: …». */
+  const srcTxt=m.source==='postgres'
+    ? clip(files||src,42)
+    : (files?`${src} · ${clip(files.split(', ')[0],34)}${nFiles>1?` +${nFiles-1}`:''}`:src);
+  const tip=[files?'Файлы: '+files:'Источник: '+src,
+    m.sheetNote?'Лист: '+m.sheetNote:'',
+    saved?'Сессия сохранена: '+saved:''].filter(Boolean).join('\n');
+  return `<span class="tag" id="loadMetaBar" title="${esc(tip)}"><span>${esc(srcTxt)}</span></span>
+    <span class="tag" title="Когда данные загружены в дашборд"><span>${esc(when)}</span></span>
+    ${saved?`<span class="tag" title="История прогонов сохранена в браузере (IndexedDB) и переживёт перезагрузку"><span>сохранено</span></span>`:''}
+    ${!IS_DEMO&&!saved?`<button type="button" class="dt-btn" id="bSaveSession" title="Сохранить историю прогонов в браузере (IndexedDB)">Сохранить сессию</button>`:''}`;
 }
 function curRun(){if(!DS||!DS.runs.length)return null;
   return DS.runs.find(r=>runKey(r)===CUR_KEY)||DS.runs[DS.runs.length-1]}
@@ -2570,30 +2589,33 @@ function renderRunBar(){
   const r=curRun();
   const stat=r?runVerdict(r):null;
   bar.innerHTML=`
-    <div class="ctx-run" data-print="${r?esc(rShort(r)+' · '+rName(r)):''}">
-      <span class="ctx-lbl">Активный прогон</span>
-      <div class="ctx-pick">
-        <select id="runSel" aria-label="Активный прогон" title="${r?esc(r.label):''}">
-          ${DS.runs.map(x=>`<option value="${esc(runKey(x))}" ${runKey(x)===CUR_KEY?'selected':''}>${esc(rPick(x))}</option>`).join('')}
-        </select>
-        ${DS.runs.length>1?`<button class="ico sm" id="runPrev" type="button" title="Предыдущий прогон" aria-label="Предыдущий прогон">‹</button>
-        <button class="ico sm" id="runNext" type="button" title="Следующий прогон" aria-label="Следующий прогон">›</button>`:''}
+    <div class="ctx-r1">
+      <div class="ctx-run" data-print="${r?esc(rShort(r)+' · '+rName(r)):''}">
+        <span class="ctx-lbl">Прогон</span>
+        <div class="ctx-pick">
+          <select id="runSel" aria-label="Активный прогон" title="${r?esc(r.label):''}">
+            ${DS.runs.map(x=>`<option value="${esc(runKey(x))}" ${runKey(x)===CUR_KEY?'selected':''}>${esc(rPick(x))}</option>`).join('')}
+          </select>
+          ${DS.runs.length>1?`<button class="ico sm" id="runPrev" type="button" title="Предыдущий прогон (стрелка влево)" aria-label="Предыдущий прогон">‹</button>
+          <button class="ico sm" id="runNext" type="button" title="Следующий прогон (стрелка вправо)" aria-label="Следующий прогон">›</button>`:''}
+        </div>
       </div>
+      ${r&&stat?`<div class="ctx-st">
+        ${statusBadge(r.solve.status)}
+        ${bdg(stat.gapKnown?(stat.gapOk?'ok':'err'):'mut','Gap '+(stat.gapKnown?pctFmt(r.solve.gapPct):'н/д'),
+          stat.gapKnown?'Отклонение от теоретического оптимума':'Gap не рассчитывался: '+gapAbsentWhy(r))}
+        ${r.solve.solveTimeSec>0?bdg('mut',timeFmt(r.solve.solveTimeSec),'Время работы солвера'):''}
+        ${stat.sale?bdg(stat.sale.pct>=90?'ok':stat.sale.pct>=70?'warn':'err','Спрос '+pct1(stat.sale.pct),'Покрытие плана спроса'):''}
+        ${stat.issues.length?bdg(stat.lvl==='err'?'err':'warn',stat.issues.length+' '+plural(stat.issues.length,['замечание','замечания','замечаний']),
+          stat.issues.map(i=>'• '+i.t).join('\n')):bdg('ok','Замечаний нет','Все автопроверки пройдены')}
+      </div>`:''}
       ${r?`<div class="ctx-sub" title="${esc(r.label)}">${esc(rCtx(r)||('прогон '+r.runid))}${r.meta.startTime?' · '+esc(dateHuman(r.meta.startTime)):''}</div>`:''}
     </div>
-    ${r&&stat?`<div class="ctx-st">
-      ${statusBadge(r.solve.status)}
-      ${bdg(stat.gapKnown?(stat.gapOk?'ok':'err'):'mut','Gap '+(stat.gapKnown?pctFmt(r.solve.gapPct):'н/д'),
-        stat.gapKnown?'Отклонение от теоретического оптимума':'Gap не рассчитывался: '+gapAbsentWhy(r))}
-      ${bdg('mut',timeFmt(r.solve.solveTimeSec),'Время работы солвера')}
-      ${stat.sale?bdg(stat.sale.pct>=90?'ok':stat.sale.pct>=70?'warn':'err','Спрос '+pct1(stat.sale.pct),'Покрытие плана спроса'):''}
-      ${stat.issues.length?bdg(stat.lvl==='err'?'err':'warn',stat.issues.length+' '+plural(stat.issues.length,['замечание','замечания','замечаний']),
-        stat.issues.map(i=>'• '+i.t).join('\n')):bdg('ok','Замечаний нет','Все автопроверки пройдены')}
-    </div>`:''}
-    <span style="flex:1"></span>
-    <div class="ctx-meta">
-      <span class="tag" title="Всего прогонов в текущей истории"><span>${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])}</span></span>
-      ${loadMetaHtml()}
+    <div class="ctx-r2">
+      <div class="ctx-meta">
+        <span class="tag" title="Всего прогонов в текущей истории"><span>${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])}</span></span>
+        ${loadMetaHtml()}
+      </div>
     </div>`;
 
   const sel=$('#runSel');
