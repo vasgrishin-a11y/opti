@@ -650,6 +650,7 @@ function money(v,d){if(v==null||!isFinite(v))return '—';const a=Math.abs(v);
   if(a>=1e9)return nf(v/1e9,d==null?2:d)+' млрд';
   if(a>=1e6)return nf(v/1e6,d==null?1:d)+' млн';
   if(a>=1e3)return nf(v/1e3,0)+' тыс';
+  if(a===0)return '0'; // ровный ноль — без «0,00», это не точность, а отсутствие эффекта
   return nf(v,a<10?2:0)}
 function moneySigned(v){return (v>0?'+':'')+money(v)}
 const S=(a,f)=>a.reduce((s,o)=>s+(f(o)||0),0);
@@ -1000,6 +1001,10 @@ function cv(id,h,ariaLabel){const c=$(id);if(!c)return null;
 function H(id,base,ratio=0.5,min=170,max=420){const c=$(id);if(!c)return base;
   const w=c.clientWidth||(c.parentElement?c.parentElement.clientWidth-34:0)||600;
   return Math.round(Math.max(min,Math.min(max,Math.max(base,w*ratio))))}
+/* Высота рейтинга (chH) = число строк × шаг: пустоты под одной-двумя
+   категориями быть не должно, но и слипаться строки не могут. */
+function hRank(id,n,row=34,min=72,max=340){
+  return Math.round(Math.max(min,Math.min(max,12+Math.max(n,1)*row)));}
 function reg(c,x,y,w,h,html,cb){c._h.push({x,y,w,h,html,cb})}
 function bind(c){
   c.onmousemove=e=>{const b=c.getBoundingClientRect(),mx=e.clientX-b.left,my=e.clientY-b.top;
@@ -1539,10 +1544,13 @@ const TSUB=Object.fromEntries(TABS.map(t=>[t[0],t[2]]));
 /* ═══════════════ 7. РЕЗЮМЕ ═══════════════ */
 function summary(title,blocks,tone){
   const t=tone||'';
-  return `<div class="sum"${t?` style="border-left-color:${t}"`:''}><h4>${esc(title)}</h4><div class="sum-cols">`+blocks.map(b=>{
-    const items=b.i.filter(Boolean);
-    return `<div><div class="sec">${b.t}</div><ul>${items.length?items.map(s=>`<li>${s}</li>`).join(''):'<li>Существенных наблюдений по этому блоку не выявлено.</li>'}</ul></div>`;
-  }).join('')+`</div></div>`}
+  /* Колонка без наблюдений не рисуется: «ничего не выявлено» рядом с красным
+     вердиктом читается как противоречие. */
+  const cols=blocks.map(b=>({t:b.t,i:b.i.filter(Boolean)})).filter(b=>b.i.length);
+  if(!cols.length)return '';
+  return `<div class="sum"${t?` style="border-left-color:${t}"`:''}><h4>${esc(title)}</h4><div class="sum-cols">`+cols.map(b=>
+    `<div><div class="sec">${b.t}</div><ul>${b.i.map(s=>`<li>${s}</li>`).join('')}</ul></div>`
+  ).join('')+`</div></div>`}
 /* Верхний вердикт: один экран — один вывод «можно ли публиковать план» */
 function verdict(level,title,text,chips){
   const ic=level==='err'?ICO.err:level==='warn'?ICO.warn:ICO.ok;
@@ -1561,6 +1569,14 @@ function emptyState(title,text,actions,icon){
 /* ═══════════════ 8. ОБЗОР ═══════════════
    Логика экрана: сначала вердикт (можно ли доверять плану), затем 4 бизнес-KPI
    с дельтой к предыдущему прогону, затем «где деньги» и «где риск». */
+/* Почему в логе нет gap: у нерешённой задачи его не существует,
+   у LP он не считается по природе метода. Разные причины — разный текст. */
+function gapAbsentWhy(r){
+  const st=String(r.solve.status||'').toUpperCase();
+  if(/INFEASIBLE|UNBOUNDED/.test(st))return 'решение не найдено, поэтому отклонение от оптимума не определено';
+  if(!st)return 'статус решения в логе отсутствует';
+  return 'типично для линейных (LP) моделей: симплекс-метод даёт точный оптимум без зазора';
+}
 function runVerdict(r){
   const statusOk=/OPTIMAL/i.test(r.solve.status);
   const gapKnown=r.solve.gapPct!=null;
@@ -1606,8 +1622,10 @@ function tabOV(){
   const gapDelta=(p&&V.gapKnown&&p.solve.gapPct!=null)?delta(r.solve.gapPct,p.solve.gapPct,v=>nf(v,2)+' п.п.',false):null;
 
   const bizKpis=kpis([
-    {t:'Экономический эффект плана',v:money(r.solve.objectiveValue),tone:'',accent:'aAcc',delta:objDelta,
-      s:p?`Предыдущий прогон: ${money(p.solve.objectiveValue)}`:'Значение целевой функции решения',
+    {t:'Экономический эффект плана',v:V.statusOk||r.solve.objectiveValue?money(r.solve.objectiveValue):'—',
+      tone:'',accent:V.lvl==='err'&&!r.solve.objectiveValue?'aErr':'aAcc',delta:objDelta,
+      s:!r.solve.objectiveValue&&!V.statusOk?'Плана нет — солвер не нашёл допустимого решения'
+        :(p?`Предыдущий прогон: ${money(p.solve.objectiveValue)}`:'Значение целевой функции решения'),
       hint:'Значение целевой функции: выручка от продаж за вычетом затрат на производство, закупки, логистику и хранение.'},
     {t:'Покрытие спроса',v:sale?pct1(sale.pct):'—',tone:sale?pctTone(sale.pct,90,70):'',accent:sale?(sale.pct>=90?'aOk':sale.pct>=70?'aWarn':'aErr'):'',
       delta:saleDelta,
@@ -1616,7 +1634,7 @@ function tabOV(){
     {t:'Надёжность результата',v:V.statusOk?'Оптимум':(r.solve.status||'—'),small:!V.statusOk,
       tone:V.statusOk?'pos':'neg',accent:V.statusOk?'aOk':'aErr',
       s:V.gapKnown?`Отклонение от оптимума ${pctFmt(r.solve.gapPct)}${r.meta.gapLimit!=null?` при пороге ${pctFmt(r.meta.gapLimit)}`:''}`
-        :'Gap не рассчитывался — типично для линейных (LP) моделей',
+        :'Gap не рассчитывался: '+gapAbsentWhy(r),
       hint:'Статус солвера и gap: насколько найденное решение близко к теоретически лучшему.'},
     {t:'Время расчёта',v:timeFmt(r.solve.solveTimeSec),delta:timeDelta,
       tone:r.meta.timeLimit&&r.solve.solveTimeSec>=r.meta.timeLimit*0.9?'mid':'',
@@ -1655,7 +1673,7 @@ function tabOV(){
     <div class="card">
       <div class="card-h"><div><h3>Задействованность блоков модели</h3><div class="sub">Доля переменных с ненулевым значением в решении</div></div>
         <div class="card-x"><span class="hint" title="Низкий процент у логистики и запасов — норма: сеть выбирает узкий набор оптимальных плеч. У продаж низкий процент означает потерянные заказы." tabindex="0">?</span></div></div>
-      <canvas id="o2"></canvas>
+      ${entPct.length?'<canvas id="o2"></canvas>':'<div class="nodata">В логе нет строк «Non-zero values of …» — задействованность блоков недоступна</div>'}
     </div>
   </div>
   <div class="sec-h"><h2>Риски и настройки</h2><span class="sec-s">Что ограничивает план и с какими параметрами он посчитан</span></div>
@@ -1669,9 +1687,9 @@ function tabOV(){
   </div>`;
 
   setTimeout(()=>{
-    if(costRows.length)chH('#o1',H('#o1',190,0.44,150,300),costRows,v=>money(v),null);
-    chH('#o2',H('#o2',190,0.44,150,300),entPct,v=>nf(v,1)+'%',null);
-    if(topHot.length)chH('#o3',H('#o3',190,0.44,150,300),topHot,v=>nf(v,1)+'%',()=>go('bnd'));
+    if(costRows.length)chH('#o1',hRank('#o1',costRows.length),costRows,v=>money(v),null);
+    if(entPct.length)chH('#o2',hRank('#o2',entPct.length),entPct,v=>nf(v,1)+'%',null);
+    if(topHot.length)chH('#o3',hRank('#o3',topHot.length),topHot,v=>nf(v,1)+'%',()=>go('bnd'));
     const el=$('#o4');
     if(el){
       const fnDiff=r.meta.functionalEntities.length&&
@@ -1700,20 +1718,27 @@ function tabOV(){
   const topCost=costRows[0];
   return html+summary('Что это значит для бизнеса',[
     {t:'Выводы',i:[
-      `План приносит <span class="h">${money(r.solve.objectiveValue)}</span> экономического эффекта${p?`, это ${objDelta&&objDelta.raw>=0?'на '+money(Math.abs(objDelta.raw))+' больше':'на '+money(Math.abs(objDelta?objDelta.raw:0))+' меньше'}, чем в предыдущем прогоне`:''}.`,
+      (!r.solve.objectiveValue&&!V.statusOk)
+        ?`Экономического эффекта нет: солвер завершился со статусом <span class="h">${esc(r.solve.status)||'—'}</span> и не построил допустимый план. Показатели ниже описывают попытку расчёта, а не готовый план.`
+        :`План приносит <span class="h">${money(r.solve.objectiveValue)}</span> экономического эффекта${p?`, это ${objDelta&&objDelta.raw>=0?'на '+money(Math.abs(objDelta.raw))+' больше':'на '+money(Math.abs(objDelta?objDelta.raw:0))+' меньше'}, чем в предыдущем прогоне`:''}.`,
       topCost?`Основная статья затрат — <span class="h">${topCost.k}</span> (${money(topCost.v)}, ${pc(topCost.v/(costs||1))} всех затрат). Именно здесь наибольший потенциал экономии.`:'',
       sale?`Спрос покрыт на <span class="h">${pct1(sale.pct)}</span>: ${nf(sale.nonzero)} из ${nf(sale.total)} строк. ${unmetPct>10?`Непокрытые ${pct1(unmetPct)} — заказы без плана продаж; их стоит разобрать по причинам (мощность, сырьё, маршрут).`:'Доля необслуженных заказов невелика.'}`:'',
       V.gapKnown
         ?`Отклонение от теоретического оптимума — <span class="h">${pctFmt(r.solve.gapPct)}</span>${r.meta.gapLimit!=null?` при пороге ${pctFmt(r.meta.gapLimit)}`:''}: результату ${V.gapOk?'можно доверять как практически оптимальному':'следует относиться с осторожностью'}.`
-        :`Gap в логе отсутствует — так выглядят линейные (LP) модели: симплекс-метод даёт точный оптимум без зазора. Ориентир качества — статус <span class="h">${esc(r.solve.status)||'—'}</span>.`]},
+        :`Gap в логе отсутствует: ${gapAbsentWhy(r)}. Ориентир качества — статус <span class="h">${esc(r.solve.status)||'—'}</span>.`]},
     {t:'Риски',i:[
       topHot[0]&&topHot[0].v>=50?`Ограничение «<span class="h">${topHot[0].k}</span>» упирается в потолок в ${pct1(topHot[0].v)} случаев — это фактический ограничитель роста плана.`:'',
       worst&&worst.pct<5?`Блок «<span class="h">${entLbl(worst.entity)}</span>» задействован лишь на ${pct1(worst.pct)}. Для логистики и запасов это обычно норма, но стоит убедиться, что модель видит все доступные мощности.`:'',
-      V.penRatio>0.0001?`Мягкие лимиты нарушаются: штраф <span class="h">${nf(V.totalPen,0)}</span> (${pc(V.penRatio)} от эффекта плана) — подробности в разделе «Штрафы».`:'Мягкие лимиты (SOFT) выполнены полностью — компромиссов в плане нет.',
+      V.penRatio>0.0001?`Мягкие лимиты нарушаются: штраф <span class="h">${nf(V.totalPen,0)}</span> (${pc(V.penRatio)} от эффекта плана) — подробности в разделе «Штрафы».`
+        :(r.penalties.length?'Мягкие лимиты (SOFT) выполнены полностью — компромиссов в плане нет.':''),
       (r.solve.deletedVars>0||r.solve.deletedConstraints>0)?`Солвер отбросил ${nf(r.solve.deletedVars)} переменных и ${nf(r.solve.deletedConstraints)} ограничений как избыточные — при системном повторении проверьте логику построения модели.`:'']},
     {t:'Что делать',i:[
-      unmetPct&&unmetPct>10?`Разобрать непокрытый спрос (${pct1(unmetPct)}) вместе с коммерцией: какие клиенты и SKU остались без плана и по какой причине.`:'Поддерживать текущий уровень покрытия спроса — он в норме.',
-      topHot[0]&&topHot[0].v>=50?`Оценить стоимость расширения «${topHot[0].k}»: снятие этого ограничения даёт наибольший прирост плана на единицу вложений.`:'Сравнить структуру затрат с плановой: значимых узких мест по мощностям сейчас нет.',
+      !sale?'Проверить состав выгрузки: в логе нет блока продаж, поэтому покрытие спроса — ключевой бизнес-показатель — оценить нельзя.'
+        :(unmetPct>10?`Разобрать непокрытый спрос (${pct1(unmetPct)}) вместе с коммерцией: какие клиенты и SKU остались без плана и по какой причине.`
+          :'Поддерживать текущий уровень покрытия спроса — он в норме.'),
+      topHot[0]&&topHot[0].v>=50?`Оценить стоимость расширения «${topHot[0].k}»: снятие этого ограничения даёт наибольший прирост плана на единицу вложений.`
+        :(hasBnd?'Сравнить структуру затрат с плановой: значимых узких мест по мощностям сейчас нет.'
+          :'Дополнить выгрузку строками «Upper/Lower bound reached …» — без них не видно, какие мощности сдерживают план.'),
       `Сравнивать каждый новый прогон с предыдущим в разделе «История прогонов» — рост gap или времени решения при том же масштабе модели служит ранним сигналом проблем в данных.`]}
   ]);
 }
@@ -1770,7 +1795,7 @@ function tabENT(){
       rows.slice().sort((a,b)=>Math.abs(b.value)-Math.abs(a.value))
         .map(e=>({k:entLbl(e.entity),v:Math.abs(e.value),c:CH[ENT_COL[e.entity]]||PAL[0]})),
       money(income-costs),v=>money(v),null,'эффект плана');
-    chH('#e2',H('#e2',210,0.5,180,300),
+    chH('#e2',hRank('#e2',rows.length,36),
       rows.slice().sort((a,b)=>b.pct-a.pct).map(e=>({k:entLbl(e.entity),v:e.pct,
         c:e.entity==='sale'?(e.pct>=90?CH.ok:e.pct>=70?CH.warn:CH.err):(CH[ENT_COL[e.entity]]||PAL[0]),
         tip:`<b>${esc(entLbl(e.entity))}</b><br>${esc(ENT_FULL[e.entity]||'')}<br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)} (${pctFmt(e.pct)})<br>Вклад: ${money(e.value)}`})),
@@ -1962,11 +1987,11 @@ function tabPEN(){
 
   setTimeout(()=>{
     const byS=rows.slice().sort((a,b)=>b.sum-a.sum);
-    chH('#p1',Math.max(120,30+byS.length*32),byS.map(p=>({k:p.chartLbl,v:p.sum,c:p.kind==='min'?CH.warn:CH.err,
+    chH('#p1',hRank('#p1',byS.length,34),byS.map(p=>({k:p.chartLbl,v:p.sum,c:p.kind==='min'?CH.warn:CH.err,
       tip:`<b>${esc(p.full)}</b><br>${esc(p.kindLbl)}<br>Сумма штрафа: ${nf(p.sum,2)}<br>Охват: ${pctFmt(p.nonzeroPct)} объектов`})),
       v=>nf(v,0),null);
     const byP=rows.slice().sort((a,b)=>b.nonzeroPct-a.nonzeroPct);
-    chH('#p2',Math.max(120,30+byP.length*32),byP.map(p=>({k:p.chartLbl,v:p.nonzeroPct,
+    chH('#p2',hRank('#p2',byP.length,34),byP.map(p=>({k:p.chartLbl,v:p.nonzeroPct,
       c:p.nonzeroPct>=10?CH.err:p.nonzeroPct>=3?CH.warn:CH.ok,
       tip:`<b>${esc(p.full)}</b><br>${esc(p.kindLbl)}<br>Охват: ${pctFmt(p.nonzeroPct)} объектов<br>Сумма штрафа: ${nf(p.sum,2)}`})),
       v=>pct1(v),null);
@@ -2325,8 +2350,13 @@ function tabDQ(){
     'Решение может быть неполным или остановленным по лимиту.','Увеличить лимит времени или ослабить целевой gap и перезапустить расчёт.');
 
   /* 2. Gap */
-  if(r.solve.gapPct==null)add('info','Результат','Отклонение от оптимума (gap)','Показатель отсутствует в логе.',
-    'Так выглядят линейные (LP) модели: симплекс-метод даёт точный оптимум, зазора нет.','Ничего; для MIP-моделей отсутствие gap стоит уточнить у команды оптимизации.');
+  if(r.solve.gapPct==null){
+    const infeas=/INFEASIBLE|UNBOUNDED/i.test(st);
+    add(infeas?'warn':'info','Результат','Отклонение от оптимума (gap)','Показатель отсутствует в логе.',
+      'Причина: '+gapAbsentWhy(r)+'.',
+      infeas?'Сначала добиться допустимого решения — до этого оценивать качество оптимума бессмысленно.'
+        :'Ничего; для MIP-моделей отсутствие gap стоит уточнить у команды оптимизации.');
+  }
   else{
     const thr=r.meta.gapLimit!=null?r.meta.gapLimit:0.5;
     if(r.solve.gapPct<=thr)add('ok','Результат','Отклонение от оптимума (gap)',`${pctFmt(r.solve.gapPct)} при пороге ${pctFmt(thr)}.`,
@@ -2479,7 +2509,7 @@ function tabDQ(){
       {k:'Критичные',v:errs,c:CH.err},{k:'Предупреждения',v:warns,c:CH.warn},
       {k:'Информационные',v:C.length-oks-errs-warns,c:CH.info},{k:'Пройдено',v:oks,c:CH.ok}
     ].filter(x=>x.v>0),nf(idx),v=>nf(v)+' '+plural(v,['проверка','проверки','проверок']),null,'индекс качества');
-    chH('#q3',H('#q3',200,0.45,180,280),cats.map(cat=>{
+    chH('#q3',hRank('#q3',cats.length,34,140),cats.map(cat=>{
       const inCat=C.filter(c=>c.cat===cat),bad=inCat.filter(c=>c.lvl==='err'||c.lvl==='warn').length;
       return {k:cat,v:bad,c:bad?(inCat.some(c=>c.lvl==='err')?CH.err:CH.warn):CH.ok,
         tip:`<b>${esc(cat)}</b><br>Проверок: ${inCat.length}<br>С замечаниями: ${bad}`}
@@ -2545,7 +2575,7 @@ function renderRunBar(){
     ${r&&stat?`<div class="ctx-st">
       ${statusBadge(r.solve.status)}
       ${bdg(stat.gapKnown?(stat.gapOk?'ok':'err'):'mut','Gap '+(stat.gapKnown?pctFmt(r.solve.gapPct):'н/д'),
-        stat.gapKnown?'Отклонение от теоретического оптимума':'Gap не рассчитывался — типично для линейных (LP) моделей')}
+        stat.gapKnown?'Отклонение от теоретического оптимума':'Gap не рассчитывался: '+gapAbsentWhy(r))}
       ${bdg('mut',timeFmt(r.solve.solveTimeSec),'Время работы солвера')}
       ${stat.sale?bdg(stat.sale.pct>=90?'ok':stat.sale.pct>=70?'warn':'err','Спрос '+pct1(stat.sale.pct),'Покрытие плана спроса'):''}
       ${stat.issues.length?bdg(stat.lvl==='err'?'err':'warn',stat.issues.length+' '+plural(stat.issues.length,['замечание','замечания','замечаний']),
