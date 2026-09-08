@@ -415,11 +415,20 @@ body.drag::after{content:'Отпустите файлы — загрузим п�
 }
 @media print{
   body{background:#fff!important;color:#000!important}
-  .rail,.hdr-actions,.ctx,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,#pgModal,body.drag::after{display:none!important}
+  /* Убираем только управление. Панель контекста остаётся: без неё на бумаге
+     не видно, к какому прогону относится отчёт. */
+  .rail,.hdr-actions,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,#pgModal,
+  .ctx-pick,.ctx-lbl,.ctx-meta,.seg,.hint,.card-x,.dt-pgs,body.drag::after{display:none!important}
   .app{display:block}.wrap{width:100%}
-  header{border:0;padding:0 0 12px;position:static}
-  main{padding:0}
-  .card,.kpi,.sum,.dq,.verdict{break-inside:avoid;box-shadow:none}
+  header{border:0;padding:0 0 8px;position:static}
+  .ctx{position:static;padding:0 0 10px;border-bottom:1px solid #ccc;gap:6px}
+  .ctx-run::before{content:attr(data-print);font-weight:700;font-size:13px}
+  main{padding:12px 0 0}
+  .card,.kpi,.sum,.dq,.verdict,.dq-grid>*{break-inside:avoid;box-shadow:none}
+  .sec-h{break-after:avoid}
+  .scr{max-height:none!important;overflow:visible!important;border-color:#ccc}
+  thead{display:table-header-group}
+  tr{break-inside:avoid}
   canvas{max-width:100%}
   a[href]::after{content:''}
 }
@@ -2561,7 +2570,7 @@ function renderRunBar(){
   const r=curRun();
   const stat=r?runVerdict(r):null;
   bar.innerHTML=`
-    <div class="ctx-run">
+    <div class="ctx-run" data-print="${r?esc(rShort(r)+' · '+rName(r)):''}">
       <span class="ctx-lbl">Активный прогон</span>
       <div class="ctx-pick">
         <select id="runSel" aria-label="Активный прогон" title="${r?esc(r.label):''}">
