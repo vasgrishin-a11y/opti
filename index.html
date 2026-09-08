@@ -918,6 +918,22 @@ function parseOptimizerRows(rows){
   });
   return [...groups.values()].map(buildRun);
 }
+/** Короткое деловое имя сценария из поля Alias лога.
+    «SNP_ОСНОВНОЙ_ПЛАН» → «Основной план». Длинный технический код
+    (ночные пересчёты на 80+ символов) не показываем: он не несёт
+    бизнес-смысла и растягивает карточки и таблицы. */
+function friendlyAlias(s, max){
+  if(s==null||s==='')return '';
+  const raw=String(s).trim();
+  if(raw.length>48)return '';
+  let t=raw.replace(/^SNP[_ \-]*/i,'').replace(/[_-]+/g,' ').replace(/\s+/g,' ').trim();
+  if(!t)return '';
+  const letters=t.replace(/[^A-Za-zА-Яа-яЁё]/g,'');
+  if(letters&&letters===letters.toUpperCase()) t=t.charAt(0)+t.slice(1).toLowerCase();
+  max=max==null?42:max;
+  if(max>0&&t.length>max)return t.slice(0,max-1)+'…';
+  return t;
+}
 function buildRun(g){
   const raw=g.raw,get=k=>raw.get(k),numv=k=>num(get(k));
   /* numvN — для полей, которых может не быть в логе: возвращает null, а не 0.
@@ -993,12 +1009,12 @@ function buildRun(g){
     (g.datasetid?` · датасет ${g.datasetid}`:'')+(g.configid?` · конфиг ${g.configid}`:'')+alias;
   /* У прогона четыре представления, чтобы одна и та же длинная строка не
      служила одновременно идентификатором и подписью в интерфейсе:
-       label — полное имя (отчёты, CSV, подсказки);
-       name  — компактное имя для селекторов и заголовков;
+       label — полное имя (CSV, подсказки) — может содержать технический Alias;
+       name  — деловое имя сценария или «Прогон N»;
        short — «#22» для осей графиков;
        ctx   — техническая строка контекста (схема/датасет/конфиг). */
   const runShort='#'+g.runid;
-  const runName=(meta.alias?meta.alias:`Прогон ${g.runid}`);
+  const runName=friendlyAlias(meta.alias)||`Прогон ${g.runid}`;
   const ctxParts=[];
   if(schema)ctxParts.push(`схема ${schema}`);
   ctxParts.push(`прогон ${g.runid}`);
@@ -1014,7 +1030,10 @@ const runKey=r=>(r.schema?r.schema+'|':'')+r.runid+'|'+r.datasetid+'|'+r.configi
 /* Совместимость с сессиями, сохранёнными до появления name/short/ctx:
    восстановленный из IndexedDB прогон может их не содержать. */
 const rShort=r=>r&&r.short?r.short:('#'+(r?r.runid:'—'));
-const rName=r=>r&&r.name?r.name:((r&&r.meta&&r.meta.alias)||('Прогон '+(r?r.runid:'—')));
+const rName=r=>{
+  if(!r)return 'Прогон —';
+  return friendlyAlias((r.meta&&r.meta.alias)||r.name||'')||('Прогон '+(r.runid||'—'));
+};
 function rCtx(r){
   if(!r)return '';
   if(r.ctx)return r.ctx;
@@ -1025,14 +1044,13 @@ function rCtx(r){
   if(r.configid)p.push('конфиг '+r.configid);
   return p.join(' · ');
 }
-/** Подпись прогона для выпадающих списков: схема, номер и укороченный alias.
-    Датасет/конфиг вынесены в строку контекста — в списке они не нужны. */
+/** Подпись прогона для списков и таблиц: схема и номер.
+    Alias лога — технический идентификатор; в короткой подписи его нет
+    (полное имя остаётся в title/label и в необязательном столбце истории). */
 const clip=(s,n)=>{s=String(s==null?'':s);return s.length>n?s.slice(0,n-1)+'…':s};
 function rOpt(r){
   if(!r)return '—';
-  const base=(r.schema?r.schema+' · ':'')+'Прогон '+r.runid;
-  const a=(r.meta&&r.meta.alias)||'';
-  return a?base+' · '+clip(a,26):base;
+  return (r.schema?r.schema+' · ':'')+'Прогон '+r.runid;
 }
 
 /* ═══════════════ 5. ВСТРОЕННОЕ ДЕМО ═══════════════ */
@@ -1324,8 +1342,9 @@ function tabOV(){
     if(topHot.length)chH('#o3',HC(topHot.length),topHot,v=>nf(v,1)+'%',()=>go('bnd'));
     const fnDiff=r.meta.functionalEntities.length&&
       r.meta.functionalEntities.join(',')!==r.meta.includedEntities.join(',');
+    const scenario=friendlyAlias(r.meta.alias);
     $('#o4').innerHTML=`<table class="mtbl"><tbody>
-      ${r.meta.alias?`<tr><td class="mt-k">Имя прогона</td><td class="mt-v">${esc(r.meta.alias)}</td></tr>`:''}
+      ${scenario?`<tr><td class="mt-k">Сценарий</td><td class="mt-v" title="${esc(r.meta.alias)}">${esc(scenario)}</td></tr>`:''}
       <tr><td class="mt-k">Идентификация</td><td class="mt-v">${esc(rCtx(r))}</td></tr>
       <tr><td class="mt-k">Начало расчёта</td><td class="mt-v">${esc(r.meta.startTime)||'—'}</td></tr>
       <tr><td class="mt-k">Солвер</td><td class="mt-v">${esc(r.meta.solver)||'—'}${r.meta.threads?` · ${r.meta.threads} потоков`:''}</td></tr>
@@ -1729,7 +1748,7 @@ function tabHIST(){
       }
 
       dtable('#h5',[
-        {k:'run',t:'Прогон',left:1,flt:1,w:230,tip:'Схема, номер прогона и его имя'},
+        {k:'run',t:'Прогон',left:1,flt:1,w:150,tip:'Схема и номер прогона'},
         {k:'startTime',t:'Запуск',left:1,flt:1,w:150,f:v=>esc(String(v||'').slice(0,16)||'—')},
         {k:'status',t:'Статус',flt:1,w:120,cls:v=>/OPTIMAL/i.test(v||'')?'pos':'neg'},
         {k:'salePct',t:'Покрытие спроса, %',num:1,f:v=>pctFmt(v),cls:v=>v<70?'neg':v<90?'mid':'pos',w:170},
@@ -2160,8 +2179,8 @@ function buildReportHtml(r){
     ['Время расчёта',`${timeFmt(r.solve.solveTimeSec)} (полный цикл ${timeFmt(r.solve.calcTimeSec)})`],
     ['Масштаб задачи',`${nf(r.solve.variables)} переменных · ${nf(r.solve.constraints)} ограничений`],
     ['Горизонт планирования',r.meta.periods!=null?`${r.meta.periods} период(ов)`:'—'],
-    ['Прогон',r.label],
-    ...(r.meta.alias?[['Имя прогона',r.meta.alias]]:[]),
+    ['Прогон',rOpt(r)],
+    ...(friendlyAlias(r.meta.alias)?[['Сценарий',friendlyAlias(r.meta.alias)]]:[]),
     ['Идентификация',rCtx(r)],
     ['Начало расчёта',r.meta.startTime||'—'],
     ['Блоков модели',nf(r.entities.length)],
@@ -2188,7 +2207,7 @@ th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}th{background:#f5f5f
 @media print{body{margin:0;max-width:none}}
 </style></head><body>
 <h1>SNP Optimizer Insight — отчёт по прогону оптимизатора</h1>
-<div class="sub">${esc(r.meta.alias||('Прогон '+r.runid))} · ${esc(rCtx(r))} · сформирован ${new Date().toLocaleString('ru-RU')} · In.Plan</div>
+<div class="sub">${esc(friendlyAlias(r.meta.alias)||rOpt(r))} · ${esc(rCtx(r))} · сформирован ${new Date().toLocaleString('ru-RU')} · In.Plan</div>
 <div class="verdict"><b>${vOk?'План можно публиковать':'План требует разбора'}</b>${esc(vText)}</div>
 <div class="kpi">${rows.slice(0,7).map(x=>`<div>${esc(x[0])}<b>${esc(String(x[1]))}</b></div>`).join('')}</div>
 <h2>Карточка прогона</h2>

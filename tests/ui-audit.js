@@ -166,6 +166,14 @@ async function walkTabs(dom, label) {
     `имя прогона в шапке усечено до ${statName ? statName.textContent.length : '?'} симв.`);
   ok(statName && statName.getAttribute('title').includes(LONG_ALIAS),
     'полное имя прогона доступно в подсказке шапки');
+  ok(opt.textContent === 'Прогон 22' && !opt.textContent.includes('SNP_'),
+    'в селекторе только номер прогона, без технического Alias: «'+opt.textContent+'»');
+  dom.window.eval("TAB='ov';render();");
+  await tick();
+  const o4 = q(doc, '#o4');
+  ok(o4 && o4.textContent.trim().length > 0, 'карточка «Как настроен прогон» заполнена');
+  ok(o4 && !o4.textContent.includes(LONG_ALIAS) && !/Имя прогона/.test(o4.textContent),
+    'длинный Alias не выводится в карточке настроек (нет строки «Имя прогона»)');
 
   /* ── 2. Инварианты вёрстки таблиц ── */
   console.log('\n2. Таблицы: фиксированная ширина и усечение');
@@ -259,6 +267,9 @@ async function walkTabs(dom, label) {
   ok(/Качество плана/.test(histTxt), 'история: вердикт по динамике показан');
   ok(qa(d4.window.document, '#h5 thead th').length <= 6,
     `история: в таблице видно ${qa(d4.window.document, '#h5 thead th').length} колонок, остальные скрыты`);
+  const histNames = qa(d4.window.document, '#h5 tbody tr').map(tr => (tr.querySelector('td') || {}).textContent || '');
+  ok(histNames.length >= 2 && histNames.every(t => t.length <= 24 && /^Прогон \d+$/.test(t.trim())),
+    'история: первая колонка — короткое «Прогон N», без технического Alias: ' + histNames.slice(0, 3).join(', '));
   d4.window.close();
 
   /* ── 7. Тёмная тема ── */

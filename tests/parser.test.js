@@ -119,7 +119,10 @@ src += `
   csvEscape,
   runKey,
   num,
-  mkRow
+  mkRow,
+  friendlyAlias,
+  rOpt,
+  rName
 };
 `;
 
@@ -139,7 +142,10 @@ const {
   setCsvSep,
   csvEscape,
   runKey,
-  num
+  num,
+  friendlyAlias,
+  rOpt,
+  rName
 } = sandbox.__TEST__ || {};
 
 if (typeof parseOptimizerRows !== 'function') {
@@ -481,6 +487,31 @@ console.log('14. Подпись прогона без datasetid/configid');
                  { runid: '7', 'Параметр': 'Solution', 'Значение': 'OPTIMAL' }];
   assertEq(parseOptimizerRows(rows2)[0].label, 'Прогон 7 · НОЧНОЙ_ПЕРЕСЧЁТ', 'Alias в подписи');
 }
+
+console.log('15. Деловое имя сценария (friendlyAlias) и короткая подпись (rOpt)');
+{
+  assertEq(friendlyAlias('SNP_ОСНОВНОЙ_ПЛАН'), 'Основной план', 'SNP_ префикс снят, регистр нормализован');
+  assertEq(friendlyAlias('НОЧНОЙ_ПЕРЕСЧЁТ'), 'Ночной пересчёт', 'подчёркивания → пробелы');
+  assertEq(friendlyAlias('Основной план'), 'Основной план', 'уже читаемое имя не портится');
+  assertEq(friendlyAlias(''), '', 'пустой Alias');
+  const long = 'SNP_НОЧНОЙ_ПЕРЕСЧЁТ_РЕГИОН_ЦЕНТР_ПОЛНЫЙ_ГОРИЗОНТ_С_ЗАМОРОЗКОЙ_И_ПЕРЕРАСЧЁТОМ_ЗАПАСОВ_22';
+  assertEq(friendlyAlias(long), '', 'длинный технический Alias скрыт, а не обрезан многоточием');
+  const r = parseOptimizerRows([
+    { runid: '22', 'Параметр': 'Alias', 'Значение': long, datasetid: '15', configid: '301' },
+    { runid: '22', 'Параметр': 'Solution', 'Значение': 'OPTIMAL', datasetid: '15', configid: '301' }
+  ])[0];
+  assertEq(r.name, 'Прогон 22', 'name не наследует длинный Alias');
+  assertEq(rOpt(r), 'Прогон 22', 'короткая подпись — только номер');
+  assertEq(rName(r), 'Прогон 22', 'rName не показывает технический код');
+  assert(r.label.indexOf(long) !== -1, 'полное имя по-прежнему в label (подсказка/CSV)');
+  const short = parseOptimizerRows([
+    { __schema: 'public_1', runid: '20', 'Параметр': 'Alias', 'Значение': 'SNP_ОСНОВНОЙ_ПЛАН' },
+    { __schema: 'public_1', runid: '20', 'Параметр': 'Solution', 'Значение': 'OPTIMAL' }
+  ])[0];
+  assertEq(short.name, 'Основной план', 'короткий Alias стал деловым именем');
+  assertEq(rOpt(short), 'public_1 · Прогон 20', 'в списках схема и номер, без Alias');
+}
+
 
 console.log('\n' + '─'.repeat(40));
 console.log(`Result: ${passed} passed, ${failed} failed`);
