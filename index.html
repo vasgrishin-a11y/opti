@@ -137,6 +137,10 @@ h1{font:600 22px/28px 'Open Sans',sans-serif;margin:0;color:var(--scp-text);whit
 .ico:hover:not(:disabled){border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
 .ico:focus-visible{outline:none;border-color:var(--scp-accent);box-shadow:0 0 0 3px var(--scp-accent-bg)}
 .ico:disabled{opacity:.4;cursor:default}
+/* Кнопка, функция которой недоступна из-за окружения (нет CDN), а не из-за
+   состояния данных: гасим, но оставляем кликабельной ради подсказки. */
+.icon-btn.off{opacity:.5}
+.icon-btn.off::before{content:'';position:absolute;left:6px;right:6px;top:50%;height:1px;background:currentColor;transform:rotate(-14deg);opacity:.6}
 .ctx-pick .ico.sm{width:28px;height:32px;flex:0 0 28px;border-radius:0;border-left:0}
 .ctx-pick .ico.sm:last-child{border-radius:0 var(--r-s) var(--r-s) 0}
 .ctx-pick #runSel{border-radius:var(--r-s) 0 0 var(--r-s)}
@@ -2676,9 +2680,23 @@ function render(){
 }
 
 /* ── Загрузка XLSX ── */
+/* SheetJS подключается с CDN и в закрытом контуре может не загрузиться.
+   Тогда честно помечаем кнопку загрузки, а не молчим до выбора файла. */
+function markXlsxUnavailable(){
+  const b=$('#bLoad');
+  if(!b||b.classList.contains('off'))return;
+  b.classList.add('off');
+  b.setAttribute('data-tip','Чтение XLSX недоступно: библиотека SheetJS не загрузилась с CDN. Используйте загрузку из PostgreSQL');
+  b.setAttribute('aria-disabled','true');
+}
+function checkXlsx(){
+  if(typeof XLSX==='undefined')markXlsxUnavailable();
+}
 async function loadFiles(fileList){
   if(typeof XLSX==='undefined'){
-    toast('Парсер XLSX недоступен: нет доступа к CDN SheetJS. Проверьте интернет-соединение и перезагрузите страницу.','err',9000);
+    toast('Чтение XLSX недоступно: библиотека SheetJS не загрузилась с CDN (обычно её блокирует корпоративная сеть). '
+      +'Загрузка из PostgreSQL при этом работает — она идёт через backend.','err',11000);
+    markXlsxUnavailable();
     return;
   }
   const files=Array.from(fileList);
@@ -3315,6 +3333,7 @@ async function pgLoad(){
     initFromRows(SEED_ROWS,{source:'demo',files:[],sheetNote:'',loadedAt:new Date().toISOString(),persisted:false});
   }
   render();
+  checkXlsx();
   if(restored)toast('Восстановлена сохранённая сессия ('+DS.runs.length+' '+plural(DS.runs.length,['прогон','прогона','прогонов'])+').','ok',4500);
 })();
 </script>
