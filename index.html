@@ -851,9 +851,24 @@ function bind(c){
 }
 function yAxis(x,w,h,p,max,fmt,n=5){x.strokeStyle=CH.grid;x.lineWidth=1;x.fillStyle=CH.axis;x.font='11px '+FNT;x.textAlign='right';x.textBaseline='middle';
   for(let i=0;i<=n;i++){const y=h-p.b-(h-p.t-p.b)*i/n;x.beginPath();x.moveTo(p.l,y);x.lineTo(w-p.r,y);x.stroke();x.fillText(fmt(max*i/n),p.l-7,y)}}
-function xAxis(x,w,h,p,labs,rot){x.fillStyle=CH.lab;x.font='11px '+FNT;x.textAlign=rot?'right':'center';x.textBaseline='top';
+function xAxis(x,w,h,p,labs,rot){x.fillStyle=CH.lab;x.font='11px '+FNT;
   const bw=(w-p.l-p.r)/labs.length;
-  labs.forEach((l,i)=>{const cx=p.l+bw*(i+.5),s=String(l).length>13?String(l).slice(0,12)+'…':l;
+  const clipX=s=>{s=String(s);return s.length>13?s.slice(0,12)+'…':s};
+  /* Автопрореживание подписей оси: когда прогонов много и подписи уже не
+     помещаются рядом, рисуем каждую step-ю, начиная с конца — последний
+     (самый свежий) прогон подписан всегда. Полная подпись каждого прогона
+     остаётся в тултипе при наведении, а пропущенные категории отмечены
+     короткими рисками, чтобы читалось положение каждого столбика/точки. */
+  const cw=labs.reduce((m,l)=>Math.max(m,x.measureText(clipX(l)).width),8)+8;
+  const foot=rot?cw*Math.cos(.6)+12*Math.sin(.6):cw;
+  const step=Math.max(1,Math.ceil(foot/bw));
+  const show=i=>(labs.length-1-i)%step===0;
+  if(step>1){x.strokeStyle=CH.grid;x.lineWidth=1;
+    labs.forEach((l,i)=>{if(show(i))return;const cx=p.l+bw*(i+.5);
+      x.beginPath();x.moveTo(cx,h-p.b);x.lineTo(cx,h-p.b+3);x.stroke()})}
+  labs.forEach((l,i)=>{if(!show(i))return;
+    x.textAlign=rot?'right':'center';x.textBaseline='top';
+    const cx=p.l+bw*(i+.5),s=clipX(l);
     if(rot){x.save();x.translate(cx,h-p.b+7);x.rotate(-.6);x.fillText(s,0,0);x.restore()}else x.fillText(s,cx,h-p.b+7)})}
 function barLab(x,txt,cx,cy){x.fillStyle=CH.lab;x.font='600 10.5px '+FNT;x.textAlign='center';x.textBaseline='bottom';x.fillText(txt,cx,cy)}
 function chBars(id,h,labs,ser,fmt,tips,cb,rot,showLab,opts){
@@ -1356,6 +1371,9 @@ function rCtx(r){
     и номер — конфиг/датасет в пикерах показывают шапки групп, в истории —
     контекст. Полное имя остаётся в label/title и в CSV. */
 const clip=(s,n)=>{s=String(s==null?'':s);return s.length>n?s.slice(0,n-1)+'…':s};
+/* Отображение статуса решения: пустой статус из лога показываем как «(пусто)».
+   Ключ '—' — внутреннее обозначение пустого статуса в фильтре истории. */
+const stDisp=st=>(st==null||st===''||st==='—')?'(пусто)':String(st);
 function rOpt(r){
   if(!r)return '—';
   return (r.schema?r.schema+' · ':'')+'Прогон '+(r.runid==null?'—':r.runid);
@@ -2166,7 +2184,7 @@ function tabHIST(){
       btn.textContent=b.length===0?'Прогоны не выбраны'
         :(b.length===1?clip(rOpt(b[0]),34):`Выбрано прогонов: ${b.length}`);
       info.textContent=`из ${nf(runs.length)} доступных · кликните чип для выбора`
-        +(HIST_STATUS.size?` · статус ${[...HIST_STATUS].join(', ')}: показано ${s.length} из ${b.length}`:'');
+        +(HIST_STATUS.size?` · статус ${[...HIST_STATUS].map(stDisp).join(', ')}: показано ${s.length} из ${b.length}`:'');
       renderStatusChips();
     };
 
@@ -2184,7 +2202,7 @@ function tabHIST(){
       [...HIST_STATUS].forEach(st=>{if(!counts.has(st))HIST_STATUS.delete(st)}); // протухшие статусы
       const allOn=HIST_STATUS.size===0;
       box.innerHTML=`<button type="button" class="chip sm${allOn?' on':''}" data-st="" title="Показать прогоны с любым статусом">Все (${base.length})</button>`
-        +sts.map(st=>`<button type="button" class="chip sm${!allOn&&HIST_STATUS.has(st)?' on':''}" data-st="${esc(st)}" title="Показать только прогоны со статусом ${esc(st)}">${esc(st)} (${counts.get(st)})</button>`).join('');
+        +sts.map(st=>`<button type="button" class="chip sm${!allOn&&HIST_STATUS.has(st)?' on':''}" data-st="${esc(st)}" title="Показать только прогоны со статусом ${esc(stDisp(st))}">${esc(stDisp(st))} (${counts.get(st)})</button>`).join('');
       box.querySelectorAll('button').forEach(b=>b.onclick=()=>{
         const st=b.dataset.st;
         if(st==='')HIST_STATUS.clear();
@@ -2200,14 +2218,59 @@ function tabHIST(){
     const drawAll=()=>{
       const s=sel();
       updateChip();
+      /* График статусов: распределение выбранных для анализа прогонов по
+         статусу решения. Названия статусов берутся как есть из загруженного
+         набора (OPTIMAL, INFEASIBLE, … — какие есть), пустые показываются
+         как «(пусто)». Считается по выбору прогонов ДО статус-фильтра,
+         чтобы график оставался обзором и сам работал переключателем фильтра:
+         клик по полосе включает/выключает этот статус (как чипы выше). */
+      const stBy=new Map();
+      selBase().forEach(r=>{const st=r.solve.status||'—';stBy.set(st,(stBy.get(st)||0)+1)});
+      const stTotal=selBase().length;
+      /* Цвет полосы — семантика статуса. Порядок проверок важен:
+         «недопустимый» и «субоптимальный» содержат подстроки других слов,
+         поэтому разбираем от более частных случаев к общим. Названия статусов
+         приходят из набора как есть, потому работаем по регуляркам, а не
+         по жёсткому списку. */
+      const stColor=st=>{const u=String(st).toUpperCase();
+        if(st==='—')return CH.axis; // пустой статус — нейтральный серый
+        if(/INFEASIBLE|UNBOUNDED|FAIL|ERROR|NO SOLUTION/.test(u))return CH.err;
+        if(/SUB-?OPTIMAL|NOT\s?OPTIMAL|NON-?OPTIMAL/.test(u))return CH.warn;
+        if(/OPTIMAL/.test(u))return CH.ok;
+        if(/FEASIBLE|TIME|LIMIT|INTERRUPT|STOP|UNKNOWN|SOLUTION|FOUND/.test(u))return CH.warn;
+        return CH.d1};
+      const stItems=[...stBy.entries()]
+        .sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),'ru'))
+        .map(([st,n])=>({st,k:stDisp(st),v:n,
+          c:HIST_STATUS.size&&!HIST_STATUS.has(st)?rgba(stColor(st),.3):stColor(st),
+          tip:`<b>${esc(stDisp(st))}</b><br>Прогонов: ${nf(n)} из ${nf(stTotal)} · ${pc(n/stTotal)}<br>Клик — ${HIST_STATUS.has(st)?'убрать этот статус из фильтра':'отфильтровать вкладку по этому статусу'}`}));
+      const statusCard=`
+        <div class="grid">
+          <div class="card w"><h3>Прогоны по статусам решения</h3>
+            <div class="sub">Сколько среди выбранных прогонов завершилось каждым статусом · названия статусов подтягиваются из загруженного набора данных · клик по полосе включает фильтр по статусу</div>
+            <canvas id="h7"></canvas></div>
+        </div>`;
+      /* Отрисовка графика в #h7 (canvas появляется в нескольких ветках). */
+      function renderStatusChart(){
+        if(!$('#h7')||!stItems.length)return;
+        chH('#h7',HC(stItems.length,30,24,110),stItems,
+          v=>nf(v,0)+' '+plural(v,['прогон','прогона','прогонов']),
+          it=>{
+            if(HIST_STATUS.has(it.st))HIST_STATUS.delete(it.st);else HIST_STATUS.add(it.st);
+            if(HIST_STATUS.size>=stBy.size)HIST_STATUS.clear(); // выбраны все статусы = фильтр не нужен
+            if(!IS_DEMO)persistSession();
+            drawAll();
+          },{legend:false});
+      }
       if(!selBase().length){
         body.innerHTML='<div class="empty"><h2>Прогоны не выбраны</h2><p>Нажмите «Выбрать прогоны» и отметьте хотя бы один прогон для анализа.</p></div>';
         return;
       }
       if(!s.length){
-        body.innerHTML=`<div class="empty"><h2>Нет прогонов с выбранным статусом</h2><p>Среди отмеченных для анализа прогонов нет ни одного со статусом ${esc([...HIST_STATUS].join(', '))}. Ослабьте фильтр статуса или отметьте другие прогоны.</p><p><button type="button" class="dt-btn" id="histStatusReset">Показать все статусы</button></p></div>`;
+        body.innerHTML=`<div class="empty"><h2>Нет прогонов с выбранным статусом</h2><p>Среди отмеченных для анализа прогонов нет ни одного со статусом ${esc([...HIST_STATUS].map(stDisp).join(', '))}. Ослабьте фильтр статуса или отметьте другие прогоны.</p><p><button type="button" class="dt-btn" id="histStatusReset">Показать все статусы</button></p></div>`+statusCard;
         const rs=$('#histStatusReset');
         if(rs)rs.onclick=()=>{HIST_STATUS.clear();if(!IS_DEMO)persistSession();drawAll()};
+        renderStatusChart();
         return;
       }
       HIST_A=Math.min(Math.max(0,HIST_A),s.length-1);
@@ -2265,7 +2328,7 @@ function tabHIST(){
         {t:'Прогонов выбрано',v:nf(s.length),s:`из ${nf(runs.length)} доступных в истории`}
       ]);
       const charts=multi?`
-        <div class="grid">
+        <div class="grid" style="margin-top:12px">
           <div class="card"><h3>Покрытие спроса по прогонам</h3><div class="sub">Доля строк спроса с планом продаж, % · выше — лучше</div><canvas id="h4"></canvas></div>
           <div class="card"><h3>Экономический эффект плана</h3><div class="sub">Значение целевой функции, млрд · выше — лучше</div><canvas id="h3"></canvas></div>
           <div class="card"><h3>Отклонение от оптимума (gap)</h3><div class="sub">${anyGap?(allGap?'Ниже — лучше':'Ниже — лучше · у части прогонов gap не рассчитывался'):'Gap не рассчитывался ни в одном выбранном прогоне'}</div>${anyGap?'<canvas id="h1"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных о gap: в логе этих прогонов нет строки «Result gap %» — типично для линейных (LP) моделей.</div>'}</div>
@@ -2282,11 +2345,12 @@ function tabHIST(){
           <div id="histDelta"></div>
         </div>`:'';
 
-      body.innerHTML=kpiBlock+charts+`
+      body.innerHTML=kpiBlock+statusCard+charts+`
         <div class="grid" style="margin-top:12px">
-          <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Только выбранные прогоны${HIST_STATUS.size?` · статус: ${esc([...HIST_STATUS].join(', '))}`:''} · поиск, сортировка, экспорт</div><div id="h5"></div></div>
+          <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Только выбранные прогоны${HIST_STATUS.size?` · статус: ${esc([...HIST_STATUS].map(stDisp).join(', '))}`:''} · поиск, сортировка, экспорт</div><div id="h5"></div></div>
           ${abCard}
         </div>`+histSummary(s,gapArr,objArr,slvArr);
+      renderStatusChart();
 
       if(multi){
         if(anyGap)chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,name:'Gap, %',v:gapArr,fill:1}],v=>nf(v,3)+'%',
