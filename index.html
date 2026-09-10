@@ -465,9 +465,10 @@ canvas[role="img"]{outline:none}
             <input id="pgBackend" type="text" placeholder="пусто — дашборд открыт через backend (npm start); для file:// вставьте http://localhost:3000" autocomplete="off" spellcheck="false">
           </div>
         </div>
-        <div class="pg-hint">Достаточно ввести логин и пароль — хост, порт и база уже подставлены. Поле «адрес backend» нужно, только если дашборд открыт не через <code>npm start</code> (двойной клик по файлу, Live Server, другой хостинг): укажите, где запущен backend — при <code>file://</code> подставится <code>http://localhost:3000</code>. Пароль хранится только в памяти вкладки и никуда не сохраняется.</div>
+        <div class="pg-hint">Достаточно ввести логин и пароль — хост, порт и база уже подставлены. Поле «адрес backend» нужно, только если дашборд открыт не через <code>npm start</code> (двойной клик по файлу, Live Server, другой хостинг): укажите, где запущен backend — при <code>file://</code> подставится <code>http://localhost:3000</code>. Вход запоминается в этом браузере на 4 часа: повторное подключение — из другой вкладки или после перезагрузки страницы — пройдёт без ввода пароля. Кнопка «Закрыть автосессию» стирает сохранённый пароль досрочно.</div>
+        <div class="pg-hint" id="pgAutoHint" style="display:none"></div>
         <div class="pg-err" id="pgErr1" role="alert"></div>
-        <div class="pg-foot"><button class="btn p" id="pgConnect" type="button">Подключиться</button></div>
+        <div class="pg-foot"><button class="btn" id="pgLogout" type="button" hidden title="Стереть сохранённый пароль и выйти из БД во всех вкладках">Закрыть автосессию</button><button class="btn p" id="pgConnect" type="button">Подключиться</button></div>
       </section>
       <section id="pgStep2" aria-label="Выбор схем" hidden>
         <p class="pg-info" id="pgSchemasInfo"></p>
@@ -1608,21 +1609,29 @@ function idbOpen(){
     req.onerror=()=>reject(req.error||new Error('IndexedDB open failed'));
   });
 }
+/* Последняя ошибка IndexedDB — чтобы провал сохранения был виден в интерфейсе,
+   а не терялся молча (приватный режим, переполнение квоты, file://). */
+let IDB_LAST_ERROR='';
+function idbErr(e,fallback){
+  const m=(e&&(e.message||e.name))||fallback||'IndexedDB недоступен';
+  IDB_LAST_ERROR=String(m).slice(0,200);
+  return IDB_LAST_ERROR;
+}
 function idbGet(key){
   return idbOpen().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction(IDB_STORE,'readonly');
     const rq=tx.objectStore(IDB_STORE).get(key);
     rq.onsuccess=()=>resolve(rq.result);
     rq.onerror=()=>reject(rq.error);
-  })).catch(()=>null);
+  })).catch(e=>{idbErr(e);return null});
 }
 function idbSet(key,val){
   return idbOpen().then(db=>new Promise((resolve,reject)=>{
     const tx=db.transaction(IDB_STORE,'readwrite');
     tx.objectStore(IDB_STORE).put(val,key);
     tx.oncomplete=()=>resolve(true);
-    tx.onerror=()=>reject(tx.error);
-  })).catch(()=>false);
+    tx.onerror=()=>reject(tx.error||new Error('IndexedDB write failed'));
+  })).catch(e=>{idbErr(e);return false});
 }
 function idbDel(key){
   return idbOpen().then(db=>new Promise((resolve,reject)=>{
@@ -1638,6 +1647,7 @@ function serializeRuns(runs){
     schema:r.schema||'',runid:r.runid,datasetid:r.datasetid,configid:r.configid,label:r.label,
     name:rName(r),short:rShort(r),ctx:rCtx(r),
     meta:r.meta,solve:r.solve,entities:r.entities,bounds:r.bounds,penalties:r.penalties,
+    dups:r.dups||[],
     rawRows:r.rawRows
   }));
 }
@@ -1652,15 +1662,23 @@ function persistSession(){
   };
   return idbSet('current',payload).then(ok=>{
     LOAD_META.persisted=!!ok;
-    if(ok){LOAD_META.savedAt=payload.savedAt}
+    if(ok){
+      LOAD_META.savedAt=payload.savedAt;
+      delete LOAD_META.persistError;
+      // Просим браузер не вытеснять хранилище при нехватке места.
+      try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+    }else{
+      LOAD_META.persistError=IDB_LAST_ERROR||'не удалось записать в IndexedDB';
+    }
     return ok;
   });
 }
 function clearPersistedSession(){return idbDel('current')}
 async function restoreSession(){
   const payload=await idbGet('current');
-  if(!payload||!payload.runs||!payload.runs.length)return false;
+  if(!payload||payload.v!==1||!payload.runs||!payload.runs.length)return false;
   DS={runs:payload.runs};
+  DS.runs.forEach(r=>{if(!r.dups)r.dups=[]}); // сессии, сохранённые до появления dups
   CUR_KEY=payload.curKey||runKey(DS.runs[DS.runs.length-1]);
   TAB=payload.tab||'ov';
   SEL_HIST=new Set(payload.selHist||[]);
@@ -1677,11 +1695,14 @@ function loadMetaHtml(){
   const files=(m.files&&m.files.length)?m.files.join(', '):(m.source==='demo'?'демо-набор':(m.source==='session'?'сохранённая сессия':'—'));
   const note=m.sheetNote?` · ${esc(m.sheetNote)}`:'';
   const saved=m.persisted&&m.savedAt?` · сохранено ${esc(new Date(m.savedAt).toLocaleString('ru-RU'))}`:'';
+  const notSaved=(!IS_DEMO&&!m.persisted)
+    ?`<span class="tag" style="color:var(--scp-warn);border-color:var(--scp-warn)" title="${esc('Автосохранение не сработало'+(m.persistError?': '+m.persistError:'')+'. Данные пропадут при перезагрузке страницы — нажмите «Сохранить сессию».')}">⚠ не сохранено в браузере</span>`:'';
   return `<div class="meta-bar" id="loadMetaBar">
     <span class="tag">Источник: ${esc(files)}</span>
     <span class="tag">Загружено: ${esc(when)}</span>
     ${note?`<span class="tag">${note}</span>`:''}
     ${saved?`<span class="tag pos">${saved}</span>`:''}
+    ${notSaved}
     ${!IS_DEMO?`<button type="button" class="dt-btn" id="bSaveSession" title="Сохранить историю прогонов в браузере (IndexedDB)">Сохранить сессию</button>`:''}
   </div>`;
 }
@@ -2566,7 +2587,7 @@ function render(){
   if(bSave)bSave.onclick=async()=>{
     bSave.disabled=true;bSave.textContent='Сохранение…';
     const ok=await persistSession();
-    toast(ok?'Сессия сохранена в браузере (IndexedDB) — переживёт перезагрузку.':'Не удалось сохранить сессию (IndexedDB недоступен).',ok?'ok':'err');
+    toast(ok?'Сессия сохранена в браузере (IndexedDB) — переживёт перезагрузку.':'Не удалось сохранить сессию: '+(LOAD_META.persistError||'IndexedDB недоступен'),ok?'ok':'err');
     render();
   };
 
@@ -2632,9 +2653,10 @@ async function loadFiles(fileList){
     const okSave=await persistSession();
     render();
     const dup=parsed.length-added;
-    const msg=`Добавлено прогонов: ${added} из ${parsed.length}${dup?` · повторных (уже в истории): ${dup}`:''}${okSave?' · сессия сохранена':''}`;
+    const saveNote=okSave?' · сессия сохранена':' · ⚠ сессия НЕ сохранена в браузере'+(LOAD_META.persistError?': '+LOAD_META.persistError:'');
+    const msg=`Добавлено прогонов: ${added} из ${parsed.length}${dup?` · повторных (уже в истории): ${dup}`:''}${saveNote}`;
     $('#stat').innerHTML=`<span class="pos">Загружено:</span> ${nf(added)} из ${nf(parsed.length)} прогон(ов)<br>Всего в истории: ${nf(DS.runs.length)}`;
-    toast(msg + (fallbackSheets.length?` · В файле «${fallbackSheets.join('», «')}» лист optimizer_status не найден — прочитан первый лист.`:''),dup||fallbackSheets.length?'warn':'ok',6000);
+    toast(msg + (fallbackSheets.length?` · В файле «${fallbackSheets.join('», «')}» лист optimizer_status не найден — прочитан первый лист.`:''),(!okSave||dup||fallbackSheets.length)?'warn':'ok',6000);
   }catch(err){
     const msg=err&&err.message?err.message:String(err);
     $('#stat').innerHTML=`<span class="neg">Ошибка: ${esc(msg)}</span>`;
@@ -2667,6 +2689,10 @@ window.addEventListener('dragenter',e=>{e.preventDefault();const ok=e.dataTransf
 window.addEventListener('dragleave',e=>{e.preventDefault();dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)document.body.classList.remove('drag')});
 window.addEventListener('dragover',e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy'});
 window.addEventListener('drop',e=>{e.preventDefault();dragDepth=0;document.body.classList.remove('drag');const fs=e.dataTransfer&&e.dataTransfer.files;if(fs&&fs.length)loadFiles(fs)});
+/* Best-effort досохранение при сворачивании/закрытии вкладки: все изменения и так
+   пишутся сразу, это страховка на случай закрытия раньше завершения записи. */
+window.addEventListener('pagehide',()=>{if(!IS_DEMO&&DS&&DS.runs&&DS.runs.length){try{persistSession()}catch(e){}}});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&!IS_DEMO&&DS&&DS.runs&&DS.runs.length){try{persistSession()}catch(e){}}});
 const toggleRail=()=>{
   const app=$('#app'),min=app.classList.toggle('min');
   $('#railToggle').textContent=min?'›':'‹ Свернуть панель';
@@ -2770,7 +2796,11 @@ const bPrint=$('#bPrint');if(bPrint)bPrint.onclick=()=>window.print();
 /* ═══════════════ 16. POSTGRESQL: загрузка optimizer_status из схем ═══════════════
    Браузер не умеет открывать TCP к Postgres, поэтому запросы идут через backend
    (server.js): POST /api/pg/schemas, /api/pg/runs, /api/pg/load.
-   Пароль хранится только в памяти вкладки (PG.conn) и никуда не сохраняется. */
+   Автосессия: после успешного входа логин и пароль запоминаются в localStorage
+   на 4 часа (PG_SESSION_TTL_MS) — повторный вход из другой вкладки или после
+   перезагрузки страницы проходит без ввода пароля. Пароль хранится в base64-
+   обфускации (защита от случайного подглядывания, НЕ шифрование) и стирается
+   кнопкой «Закрыть автосессию», по истечении TTL или при ответе 401. */
 const PG_DEFAULTS={host:'db-postgresql-app.k8s.b1gahmn2gdjf3lsm4jeh.in-plan.ru',port:48235,database:'pgs_app_data_db',ssl:'auto'};
 const PG={conn:null,schemas:[],selS:new Set(),runs:[],selR:new Set(),step:1,busy:false,cols:null,sample:null};
 const PG_LS='snp_opt_pg';
@@ -2784,8 +2814,88 @@ const PG_COL_FIELDS=[
   {k:'cfg',label:'Конфиг (необяз.)',req:false,hint:'configid',cands:['configid','config_id','config','конфиг']}
 ];
 function pgSaved(){try{return Object.assign({user:'',backend:'',cols:null},PG_DEFAULTS,JSON.parse(lsGet(PG_LS)||'{}'))}catch(e){return Object.assign({user:'',backend:'',cols:null},PG_DEFAULTS)}}
+const PG_SESSION_TTL_MS=4*3600*1000; // 4 часа автовхода в БД
+/* Успешный вход = новая автосессия: запоминаем всё нужное для переподключения,
+   включая пароль (обфусцированный, см. pgEncPw). */
 function pgRemember(){if(!PG.conn)return;const c=PG.conn;
-  lsSet(PG_LS,JSON.stringify({host:c.host,port:c.port,database:c.database,user:c.user,ssl:c.ssl,backend:pgBackendBase(),cols:PG.cols}))}
+  lsSet(PG_LS,JSON.stringify({host:c.host,port:c.port,database:c.database,user:c.user,ssl:c.ssl,backend:pgBackendBase(),cols:PG.cols,
+    enc:pgEncPw(c.password),expiresAt:Date.now()+PG_SESSION_TTL_MS}))}
+/* Обфускация пароля для localStorage: base64 от UTF-8-байтов. Это НЕ шифрование
+   (любой JS на странице декодирует), а защита от случайного чтения в DevTools,
+   на скриншоте или в открытом хранилище. Пустой пароль валиден (trust-авторизация). */
+function pgEncPw(pw){
+  const s=String(pw==null?'':pw);
+  try{
+    if(typeof TextEncoder!=='undefined'&&typeof btoa!=='undefined'){
+      const bytes=new TextEncoder().encode(s);
+      let bin='';for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+      return 'B64:'+btoa(bin);
+    }
+  }catch(e){}
+  try{if(typeof btoa!=='undefined')return 'B64:'+btoa(s)}catch(e){}
+  return 'RAW:'+s;
+}
+function pgDecPw(enc){
+  const s=String(enc==null?'':enc);
+  if(s.indexOf('RAW:')===0)return s.slice(4);
+  const raw=s.indexOf('B64:')===0?s.slice(4):s;
+  try{
+    if(typeof atob==='undefined')return null;
+    const bin=atob(raw);
+    try{
+      if(typeof TextDecoder!=='undefined'){
+        const bytes=Uint8Array.from(bin,c=>c.charCodeAt(0));
+        return new TextDecoder().decode(bytes);
+      }
+    }catch(e){}
+    return bin;
+  }catch(e){return null}
+}
+/* Валидная (не истёкшая, с расшифровывающимся паролем) автосессия из хранилища. */
+function pgStoredSession(){
+  const s=pgSaved();
+  if(!s||!s.expiresAt||s.expiresAt<=Date.now())return null;
+  if(!('enc' in s))return null;
+  const password=pgDecPw(s.enc);
+  if(password===null)return null;
+  if(!s.host||!s.database||!s.user)return null;
+  return {host:s.host,port:s.port,database:s.database,user:s.user,password,ssl:s.ssl||'auto',
+    backend:s.backend||'',cols:(s.cols&&typeof s.cols==='object')?s.cols:null,expiresAt:s.expiresAt};
+}
+/* Стереть только секретную часть (пароль + срок), не трогая хост/логин/поля формы. */
+function pgDropStoredCreds(){
+  try{
+    const raw=lsGet(PG_LS);if(!raw)return;
+    const o=JSON.parse(raw);if(!o||typeof o!=='object')return;
+    if(!('enc' in o)&&!('expiresAt' in o))return;
+    delete o.enc;delete o.expiresAt;
+    lsSet(PG_LS,JSON.stringify(o));
+  }catch(e){}
+}
+/* Полный выход: память + хранилище → шаг 1 с пустым паролем. */
+function pgLogout(silent){
+  PG.conn=null;PG.schemas=[];PG.selS=new Set();PG.runs=[];PG.selR=new Set();PG.sample=null;
+  pgDropStoredCreds();
+  const p=$('#pgPass');if(p)p.value='';
+  if(!silent){pgSetStep(1);toast('Автосессия закрыта: пароль стёрт из браузера.','ok',3500)}
+  else pgRenderAuto();
+}
+/* Состояние автовхода на шаге 1: кнопка выхода + строка «активен до …». */
+function pgRenderAuto(){
+  const lo=$('#pgLogout'),hint=$('#pgAutoHint');
+  const stored=pgStoredSession();
+  const active=!!(stored||PG.conn);
+  if(lo)lo.hidden=!active;
+  if(!hint)return;
+  if(stored){
+    const dt=new Date(stored.expiresAt).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+    hint.innerHTML=`Автовход активен до <b>${esc(dt)}</b> — в новой вкладке и после перезагрузки пароль вводить не нужно. «Закрыть автосессию» стирает пароль из браузера досрочно.`;
+    hint.style.display='';
+  }else if(PG.conn){
+    hint.textContent='Подключено только в этой вкладке (сохранить автосессию в браузере не удалось).';
+    hint.style.display='';
+  }else{hint.style.display='none';hint.textContent=''}
+}
 /* Тело запроса к API: соединение + пользовательский мэппинг (если задан). */
 function pgBody(extra){
   const b=Object.assign({},PG.conn,extra||{});
@@ -2844,23 +2954,67 @@ function pgSetStep(n){
   $('#pgSteps').innerHTML=`Шаг <b>${n}</b> из 3 — ${names[n]}${n>1?esc(pgConnInfo()):''}`;
   if(n===2){const q=$('#pgSchemaQ');if(q)q.value='';pgRenderMap();pgRenderSchemas()}
   if(n===3){const q=$('#pgRunQ');if(q)q.value='';pgRenderRuns()}
+  if(n===1)pgRenderAuto();
 }
 function pgOpen(){
   const m=$('#pgModal');if(!m)return;
   pgBusy(false,'');pgClearErrs();
   if(PG.conn&&PG.schemas.length){m.hidden=false;pgSetStep(2);const q=$('#pgSchemaQ');if(q)q.focus();return}
+  const stored=pgStoredSession();
+  if(!stored)pgDropStoredCreds(); // протухший секрет не храним
   const s=pgSaved();
-  $('#pgHost').value=s.host||PG_DEFAULTS.host;
-  $('#pgPort').value=(s.port==null||s.port==='')?PG_DEFAULTS.port:s.port;
-  $('#pgDb').value=s.database||PG_DEFAULTS.database;
-  $('#pgUser').value=s.user||'';
-  $('#pgPass').value='';
-  $('#pgSsl').value=s.ssl||'auto';
-  $('#pgBackend').value=(s.backend!=null&&s.backend!=='')?s.backend:pgDefaultBackend();
-  PG.cols=(s.cols&&typeof s.cols==='object')?s.cols:null; // мэппинг из прошлой сессии
+  $('#pgHost').value=stored?stored.host:(s.host||PG_DEFAULTS.host);
+  $('#pgPort').value=stored?stored.port:((s.port==null||s.port==='')?PG_DEFAULTS.port:s.port);
+  $('#pgDb').value=stored?stored.database:(s.database||PG_DEFAULTS.database);
+  $('#pgUser').value=stored?stored.user:(s.user||'');
+  $('#pgPass').value=stored?stored.password:'';
+  $('#pgSsl').value=stored?stored.ssl:(s.ssl||'auto');
+  $('#pgBackend').value=stored?(stored.backend||pgDefaultBackend()):((s.backend!=null&&s.backend!=='')?s.backend:pgDefaultBackend());
+  PG.cols=stored?stored.cols:((s.cols&&typeof s.cols==='object')?s.cols:null); // мэппинг из прошлой сессии
   m.hidden=false;pgSetStep(1);
+  if(stored){pgAutoResume(stored);return}
   const fu=$('#pgUser'),fp=$('#pgPass');
   if(fu&&!fu.value)fu.focus();else if(fp)fp.focus();
+}
+/* Живая автосессия: молча восстанавливаем вход и идём к схемам без клика.
+   TTL абсолютный от момента входа — авто-продление не делаем. */
+async function pgAutoResume(stored){
+  PG.conn={host:stored.host,port:stored.port,database:stored.database,user:stored.user,password:stored.password,ssl:stored.ssl};
+  if(stored.cols)PG.cols=stored.cols;
+  pgBusy(true,'Восстановление автосессии…');
+  try{
+    const data=await pgApi('/api/pg/schemas',pgBody());
+    pgBusy(false,'');
+    if(pgEnterSchemas(data))toast('Вход в БД восстановлен из автосессии.','ok',3000);
+  }catch(e){
+    pgBusy(false,'');
+    if(e&&e.status===401){
+      // Пароль сменился или отозван: стираем секрет, остаёмся на шаге 1.
+      PG.conn=null;pgDropStoredCreds();
+      const p=$('#pgPass');if(p)p.value='';
+      pgRenderAuto();
+      pgShowErr(1,(e.message||'Неверный логин или пароль.')+'\\nСохранённая автосессия очищена — введите пароль заново.');
+    }else{
+      // Сеть/backend недоступны: пароль уже подставлен — хватит одного клика.
+      pgRenderAuto();
+      pgShowErr(1,'Не удалось восстановить автосессию: '+(e.message||e)+'\\nПароль подставлен — нажмите «Подключиться» для повтора.');
+    }
+  }
+}
+/* Общий финал шага 1 (ручной вход и автовход): схемы → выбор → шаг 2. */
+function pgEnterSchemas(data){
+  PG.schemas=(data.schemas||[]).slice().sort((a,b)=>String(a.schema).localeCompare(String(b.schema),'ru'));
+  PG.sample=null;
+  const m=$('#pgMap');if(m)delete m.dataset.forced;
+  if(!PG.schemas.length){pgShowErr(1,'Таблица optimizer_status не найдена ни в одной схеме.');return false}
+  // сохранённый мэппинг применим только если такие столбцы реально есть
+  if(PG.cols){
+    const all=new Set(pgAllColumns().map(c=>c.toLowerCase()));
+    if(!Object.values(PG.cols).every(v=>!v||all.has(String(v).toLowerCase())))PG.cols=null;
+  }
+  PG.selS=new Set(PG.schemas.filter(s=>pgSchemaUsable(s)).map(s=>s.schema));
+  pgSetStep(2);
+  return true;
 }
 function pgClose(){const m=$('#pgModal');if(m)m.hidden=true}
 /* ── Шаг 1 → 2: подключение и список схем ── */
@@ -2883,20 +3037,12 @@ async function pgConnect(){
   try{
     PG.conn=conn;
     const data=await pgApi('/api/pg/schemas',pgBody());
-    pgRemember();
-    PG.schemas=(data.schemas||[]).slice().sort((a,b)=>String(a.schema).localeCompare(String(b.schema),'ru'));
-    PG.sample=null;
-    const m=$('#pgMap');if(m)delete m.dataset.forced;
-    if(!PG.schemas.length){pgBusy(false,'');pgShowErr(1,'Таблица optimizer_status не найдена ни в одной схеме.');return}
-    // сохранённый мэппинг применим только если такие столбцы реально есть
-    if(PG.cols){
-      const all=new Set(pgAllColumns().map(c=>c.toLowerCase()));
-      if(!Object.values(PG.cols).every(v=>!v||all.has(String(v).toLowerCase())))PG.cols=null;
-    }
-    PG.selS=new Set(PG.schemas.filter(s=>pgSchemaUsable(s)).map(s=>s.schema));
-    pgBusy(false,'');pgSetStep(2);
+    pgRemember(); // успешный вход → новая автосессия на 4 часа
+    pgBusy(false,'');
+    pgEnterSchemas(data);
   }catch(e){
     PG.conn=null;pgBusy(false,'');
+    if(e&&e.status===401)pgDropStoredCreds(); // протухший сохранённый пароль не должен мешать
     let msg=e.message||String(e);
     /* 401: тело запроса одинаково при любом источнике страницы, поэтому при
        «пароль верный, но не пускает» почти всегда виноваты САМИ поля: менеджер
@@ -2907,6 +3053,7 @@ async function pgConnect(){
       msg+='\nПроверьте: браузер мог подставить в «Логин»/«Пароль» свои сохранённые данные — для каждого сайта они свои (у страницы с GitHub и у http://localhost:3000 — разные); в пароле, скопированном из документа, часто есть пробел в начале или в конце; раскладка клавиатуры. Кнопка «глаз» рядом с полем «Пароль» показывает, что именно отправляется.';
     }
     pgShowErr(1,msg);
+    pgRenderAuto();
   }
 }
 /* ── Мэппинг столбцов: какой столбец таблицы = какое поле лога ──
@@ -2995,7 +3142,7 @@ async function pgLoadSample(){
     const data=await pgApi('/api/pg/columns',Object.assign({},PG.conn,{schemas:[{schema:sch.schema,table:sch.table}]}));
     PG.sample={columns:data.columns||[],rows:data.sample||[]};
     pgBusy(false,'');pgRenderSample();
-  }catch(e){pgBusy(false,'');pgShowErr(2,e.message||String(e))}
+  }catch(e){pgBusy(false,'');if(e&&e.status===401)pgDropStoredCreds();pgShowErr(2,e.message||String(e))}
 }
 /* ── Шаг 2: мультивыбор схем ── */
 function pgRenderSchemas(){
@@ -3070,7 +3217,7 @@ async function pgFetchRuns(){
     pgBusy(false,'');
     if(!PG.runs.length){pgSetStep(2);pgShowErr(2,'В выбранных схемах нет прогонов (таблицы optimizer_status пустые).');return}
     pgSetStep(3);
-  }catch(e){pgBusy(false,'');pgShowErr(2,e.message||String(e))}
+  }catch(e){pgBusy(false,'');if(e&&e.status===401)pgDropStoredCreds();pgShowErr(2,e.message||String(e))}
 }
 /* ── Шаг 3: выбор прогонов, группировка конфиг → датасет → прогон ──
    Дерево и групповой выбор (tri-state) — общий компонент renderRunTree. */
@@ -3115,8 +3262,8 @@ async function pgLoad(){
     pgBusy(false,'');pgClose();render();
     const dup=parsed.length-added;
     $('#stat').innerHTML=`<span class="pos">Загружено из Postgres:</span> ${nf(added)} из ${nf(parsed.length)} прогон(ов)<br>Всего в истории: ${nf(DS.runs.length)}`;
-    toast(`Загружено из Postgres: ${added} из ${parsed.length}${dup?` · повторных (уже в истории): ${dup}`:''}${data.truncated?' · Внимание: сервер вернул не все строки (лимит).':''}${okSave?' · Сессия сохранена.':''}`,(dup||data.truncated)?'warn':'ok',6000);
-  }catch(e){pgBusy(false,'');pgShowErr(3,e.message||String(e))}
+    toast(`Загружено из Postgres: ${added} из ${parsed.length}${dup?` · повторных (уже в истории): ${dup}`:''}${data.truncated?' · Внимание: сервер вернул не все строки (лимит).':''}${okSave?' · Сессия сохранена.':' · ⚠ Сессия НЕ сохранена в браузере'+(LOAD_META.persistError?': '+LOAD_META.persistError:'')+'.'}`,(!okSave||dup||data.truncated)?'warn':'ok',6000);
+  }catch(e){pgBusy(false,'');if(e&&e.status===401)pgDropStoredCreds();pgShowErr(3,e.message||String(e))}
 }
 /* ── Привязка модалки ── */
 (function pgWire(){
@@ -3126,6 +3273,7 @@ async function pgLoad(){
   ov.addEventListener('click',e=>{if(e.target===ov)pgClose()});
   ov.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();pgClose()}});
   $('#pgConnect').onclick=pgConnect;
+  const bLo=$('#pgLogout');if(bLo)bLo.onclick=()=>pgLogout(false);
   /* «Глаз» у пароля: показать, что реально уходит на сервер — диагностика
      «пароль точно верный, но Postgres не пускает» (пробелы при вставке,
      подстановка менеджера паролей, раскладка). */
@@ -3158,6 +3306,21 @@ async function pgLoad(){
     pgRemember();pgRenderMap();pgRenderSchemas()};
   const bSmp=$('#pgMapSample');if(bSmp)bSmp.onclick=pgLoadSample;
 })();
+/* Выход в другой вкладке гасит вход и здесь: у автосессии один секрет на origin.
+   Реагируем только на удаление секрета (logout), а не на любой логин рядом. */
+window.addEventListener('storage',e=>{
+  if(!e||e.key!==PG_LS)return;
+  let had=false,has=false;
+  try{had=!!(e.oldValue&&JSON.parse(e.oldValue).enc)}catch(_){}
+  try{has=!!(e.newValue&&JSON.parse(e.newValue).enc)}catch(_){}
+  if(had&&!has&&PG.conn){
+    PG.conn=null;PG.schemas=[];PG.selS=new Set();PG.runs=[];PG.selR=new Set();
+    const m=$('#pgModal');
+    if(m&&!m.hidden){const p=$('#pgPass');if(p)p.value='';pgSetStep(1)}
+    else pgRenderAuto();
+    toast('Автосессия закрыта в другой вкладке.','warn',4000);
+  }
+});
 
 /* ── Старт: восстановление сессии или демо ── */
 (async function boot(){

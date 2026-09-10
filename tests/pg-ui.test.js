@@ -298,10 +298,15 @@ function setCheck(dom, el, checked) {
   await waitFor(dom, d => q(d, '#dtpop').style.display === 'none', 'picker closed after pick');
   ok(q(doc, '#runSel').title.includes('схема public') && !q(doc, '#runSel').title.includes('public_1'),
     'активный прогон переключён: ' + q(doc, '#runSel').title);
-  // пароль не сохраняется
+  // автосессия: пароль сохранён в обфусцированном виде, с TTL 4 часа
   const saved = JSON.parse(dom.window.localStorage.getItem('snp_opt_pg') || '{}');
-  ok(saved.user === 'analyst' && !('password' in saved) && !('pass' in saved), 'no password in localStorage');
-  ok(!JSON.stringify(saved).includes('secret'), 'password value not persisted');
+  const dec = enc => Buffer.from(String(enc || '').replace(/^B64:/, ''), 'base64').toString('utf8');
+  ok(saved.user === 'analyst', 'login persisted');
+  ok(!('password' in saved) && !('pass' in saved), 'пароль не лежит открытым полем password/pass');
+  ok(saved.enc && dec(saved.enc) === 'secret', 'пароль сохранён обфусцированным для автосессии');
+  ok(!JSON.stringify(saved).includes('secret'), 'открытого пароля в localStorage нет');
+  ok(saved.expiresAt > Date.now() && saved.expiresAt <= Date.now() + 4 * 3600 * 1000 + 60000,
+    'автосессия живёт ~4 часа: ' + new Date(saved.expiresAt).toISOString());
 
   console.log('6. Повторное открытие — сразу к схемам; закрытие по Escape/клику');
   q(doc, '#bPg').click();
@@ -501,7 +506,9 @@ function setCheck(dom, el, checked) {
     // мэппинг запоминается между сессиями
     const saved7 = JSON.parse(d7.window.localStorage.getItem('snp_opt_pg') || '{}');
     ok(saved7.cols && saved7.cols.param === 'state' && saved7.cols.value === 'note', 'мэппинг сохранён в localStorage');
-    ok(!JSON.stringify(saved7).includes('"password"'), 'пароль по-прежнему не сохраняется');
+    ok(!JSON.stringify(saved7).includes('"password"'), 'нет открытого поля password');
+    ok(saved7.enc && Buffer.from(String(saved7.enc).replace(/^B64:/, ''), 'base64').toString('utf8') === 'x',
+      'автосессия сохранила пароль обфусцированным');
     d7.window.close();
   }
 
@@ -653,6 +660,76 @@ function setCheck(dom, el, checked) {
     await new Promise(r => setTimeout(r, 20));
     ok(qa(doc17, '#dtpop .rt-leaf').length === 1, 'поиск сузил дерево до одного прогона');
     d17.window.close();
+  }
+
+  console.log('18. Автосессия: новая вкладка входит без пароля, «Закрыть автосессию» выходит');
+  {
+    const d18 = makeDom(apiFetch({}, []));
+    const w18 = d18.window;
+    const doc18 = d18.window.document;
+    await waitFor(d18, d => q(d, '#runSel'), 'boot 18');
+    q(doc18, '#bPg').click();
+    q(doc18, '#pgUser').value = 'analyst';
+    q(doc18, '#pgPass').value = 's3cret-x';
+    q(doc18, '#pgConnect').click();
+    await waitFor(d18, d => q(d, '#pgStep2').hidden === false, 'step 2 after login');
+    const stored18 = () => JSON.parse(w18.localStorage.getItem('snp_opt_pg') || '{}');
+    ok(stored18().enc, 'после входа секрет автосессии записан');
+    // «новая вкладка»: память пуста, localStorage тот же (эмулируем сбросом PG)
+    q(doc18, '#pgClose').click();
+    w18.eval('PG.conn=null;PG.schemas=[];PG.selS=new Set();PG.selR=new Set();PG.runs=[];');
+    q(doc18, '#bPg').click();
+    await waitFor(d18, d => q(d, '#pgStep2').hidden === false, 'auto-resume lands on step 2');
+    ok(qa(doc18, '#pgSchemasList .pg-item').length === 2, 'схемы подтянулись без ввода пароля');
+    ok(q(doc18, '#pgPass').value === 's3cret-x', 'пароль подставлен из автосессии');
+    // выходим кнопкой
+    q(doc18, '#pgBack2').click();
+    const lo18 = q(doc18, '#pgLogout');
+    ok(lo18.hidden === false, 'кнопка «Закрыть автосессию» видна');
+    ok(/активен до/.test(q(doc18, '#pgAutoHint').textContent), 'показан срок автовхода');
+    lo18.click();
+    ok(q(doc18, '#pgStep1').hidden === false, 'после выхода — шаг 1');
+    ok(q(doc18, '#pgPass').value === '', 'поле пароля очищено');
+    ok(!('enc' in stored18()) && !('expiresAt' in stored18()), 'секрет стёрт из localStorage');
+    ok(w18.eval('PG.conn') === null, 'вход стёрт и из памяти');
+    ok(stored18().user === 'analyst', 'не секретные поля (логин) остались');
+    d18.window.close();
+  }
+
+  console.log('19. Автосессия: протухшая не восстанавливается, 401 чистит секрет');
+  {
+    // протухший секрет → шаг 1 с пустым паролем, секрет удалён
+    const d19 = makeDom(apiFetch({}, []));
+    const w19 = d19.window;
+    const doc19 = d19.window.document;
+    await waitFor(d19, d => q(d, '#runSel'), 'boot 19');
+    w19.localStorage.setItem('snp_opt_pg', JSON.stringify({
+      host: 'h', port: 5432, database: 'db', user: 'analyst', ssl: 'auto',
+      enc: 'B64:' + Buffer.from('old-secret', 'utf8').toString('base64'), expiresAt: Date.now() - 1000
+    }));
+    q(doc19, '#bPg').click();
+    await new Promise(r => setTimeout(r, 300));
+    ok(q(doc19, '#pgStep1').hidden === false && q(doc19, '#pgStep2').hidden === true, 'протухшая сессия не восстанавливается');
+    ok(q(doc19, '#pgPass').value === '', 'пароль не подставлен');
+    ok(!('enc' in JSON.parse(w19.localStorage.getItem('snp_opt_pg') || '{}')), 'протухший секрет удалён из хранилища');
+    d19.window.close();
+  }
+  {
+    // 401 при автовходе (пароль сменили) → понятная ошибка + секрет стёрт
+    const d20 = makeDom(apiFetch({ authFail: true }, []));
+    const w20 = d20.window;
+    const doc20 = d20.window.document;
+    await waitFor(d20, d => q(d, '#runSel'), 'boot 20');
+    w20.localStorage.setItem('snp_opt_pg', JSON.stringify({
+      host: 'h', port: 5432, database: 'db', user: 'analyst', ssl: 'auto',
+      enc: 'B64:' + Buffer.from('wrong', 'utf8').toString('base64'), expiresAt: Date.now() + 3600000
+    }));
+    q(doc20, '#bPg').click();
+    await waitFor(d20, d => q(d, '#pgErr1').classList.contains('show'), '401 on auto-resume');
+    ok(/автосессия очищена/i.test(q(doc20, '#pgErr1').textContent), 'ошибка говорит об очистке автосессии');
+    ok(!('enc' in JSON.parse(w20.localStorage.getItem('snp_opt_pg') || '{}')), 'неверный секрет стёрт');
+    ok(q(doc20, '#pgPass').value === '', 'поле пароля очищено');
+    d20.window.close();
   }
 
   console.log('\n' + '─'.repeat(40));
