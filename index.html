@@ -252,7 +252,7 @@ td.trunc,th.trunc{max-width:0}
 canvas[role="img"]{outline:none}
 @media print{
   body{background:#fff!important;color:#000!important}
-  .rail,.hdr-actions,.runbar,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,#pgModal,body.drag::after{display:none!important}
+  .rail,.hdr-actions,.runbar,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,#pgModal,#chartModal,body.drag::after{display:none!important}
   .app{display:block}
   .wrap{width:100%}
   header{border:0;padding:0 0 12px}
@@ -261,6 +261,7 @@ canvas[role="img"]{outline:none}
   .verdict{border:1px solid #999!important}
   .scr{max-height:none!important;overflow:visible!important}
   .colpop{display:none!important}
+  .chart-expand{display:none!important}
   canvas{max-width:100%}
   a[href]::after{content:''}
 }
@@ -332,6 +333,47 @@ canvas[role="img"]{outline:none}
 .pg-sample th,.pg-sample td{border-bottom:1px solid var(--scp-line);padding:5px 8px;text-align:left;max-width:230px;overflow:hidden;text-overflow:ellipsis}
 .pg-sample th{position:sticky;top:0;background:var(--scp-surface);font-weight:600;color:var(--scp-text-2)}
 @media(max-width:560px){.pg-map-grid{grid-template-columns:1fr}}
+
+/* §18 Графики в духе Apache Superset: разворот на весь экран + кликабельная легенда.
+   Легенда — HTML под canvas (как legend в ECharts): клик скрывает/показывает серию,
+   график перестраивается, скрытые пункты сереют. Кнопка ⛶ открывает тот же график
+   в модальном окне на весь экран. */
+.card{position:relative}
+.chart-expand{position:absolute;top:10px;right:10px;width:28px;height:28px;display:inline-flex;align-items:center;justify-content:center;background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-s);color:var(--scp-text-3);cursor:pointer;opacity:0;transition:opacity .15s,border-color .15s,color .15s;z-index:5}
+.card:hover .chart-expand,.card:focus-within .chart-expand{opacity:1}
+.card:has(.chart-expand) h3{padding-right:34px}
+.chart-expand:focus-visible{opacity:1}
+.chart-expand svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.chart-expand:hover{border-color:var(--scp-accent);color:var(--scp-accent)}
+@media(hover:none){.chart-expand{opacity:1}}
+.chart-legend{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;padding:8px 2px 2px;max-height:132px;overflow-y:auto}
+.chart-legend:empty{display:none}
+.cl-item{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid transparent;border-radius:9999px;padding:3px 10px 3px 7px;font:400 12px 'Open Sans',sans-serif;color:var(--scp-text-2);cursor:pointer;max-width:100%}
+.cl-item:hover{border-color:var(--scp-accent-bd);background:var(--scp-b-50)}
+.cl-item i{width:10px;height:10px;border-radius:2px;flex:0 0 10px}
+.cl-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px}
+.cl-item.off{opacity:.45}
+.cl-item.off i{filter:grayscale(1)}
+.cl-item.off span{text-decoration:line-through}
+.cl-reset{background:transparent;border:0;color:var(--scp-accent);cursor:pointer;font-size:12px;padding:3px 6px}
+.cl-reset:hover{text-decoration:underline}
+[data-theme="dark"] .cl-item:hover{background:#2c2140}
+.chart-modal{position:fixed;inset:0;background:rgba(17,17,17,.6);z-index:850;display:flex;align-items:center;justify-content:center;padding:24px}
+.chart-modal[hidden]{display:none}
+.chart-modal-box{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-line-2);border-radius:var(--r-l);width:min(1100px,100%);max-height:calc(100vh - 48px);display:flex;flex-direction:column;box-shadow:0 12px 44px #00000055}
+.chart-modal-head{display:flex;align-items:flex-start;gap:12px;padding:14px 16px 10px;border-bottom:1px solid var(--scp-line)}
+.chart-modal-title{font:600 16px/22px 'Open Sans',sans-serif}
+.chart-modal-sub{font-size:12px;color:var(--scp-text-3);margin-top:2px}
+.chart-modal-x{margin-left:auto;flex:0 0 auto}
+.chart-modal-body{padding:14px 16px 16px;overflow-y:auto}
+
+/* §18 сворачивание групп в пикере прогонов: +/− на шапках конфиг/датасет */
+.rt-tw{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex:0 0 18px;border:1px solid var(--scp-line-2);border-radius:4px;font-size:12px;line-height:1;color:var(--scp-text-2);cursor:pointer;user-select:none;background:var(--scp-surface)}
+.rt-tw:hover{border-color:var(--scp-accent);color:var(--scp-accent)}
+
+/* §18 компактные чипы фильтра статуса в «Истории прогонов» */
+.chip.sm{padding:2px 10px;font-size:12px}
+.tbar-sep{width:1px;height:22px;background:var(--scp-line-2)}
 
 </style>
 </head>
@@ -469,6 +511,17 @@ canvas[role="img"]{outline:none}
       </section>
     </div>
     <div class="pg-status" id="pgStatus" aria-live="polite"></div>
+  </div>
+</div>
+<div id="chartModal" class="chart-modal" hidden>
+  <div class="chart-modal-box" role="dialog" aria-modal="true" aria-labelledby="chartModalTitle">
+    <div class="chart-modal-head">
+      <div><div class="chart-modal-title" id="chartModalTitle">График</div><div class="chart-modal-sub" id="chartModalSub"></div></div>
+      <button class="icon-btn chart-modal-x" id="chartModalX" aria-label="Закрыть полноэкранный просмотр графика">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="chart-modal-body"><canvas id="mChart"></canvas><div class="chart-legend" id="mChart-lg"></div></div>
   </div>
 </div>
 <div id="tip"></div>
@@ -758,7 +811,7 @@ document.addEventListener('click',()=>{
     p.remove();
   });
 });
-window.addEventListener('keydown',e=>{if(e.key==='Escape')dtpHide()});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){dtpHide();closeChartModal()}});
 
 /* ═══════════════ 3. ГРАФИЧЕСКИЙ ДВИЖОК ═══════════════ */
 const TIP=$('#tip');const FNT='Open Sans, sans-serif';
@@ -802,16 +855,45 @@ function xAxis(x,w,h,p,labs,rot){x.fillStyle=CH.lab;x.font='11px '+FNT;x.textAli
   labs.forEach((l,i)=>{const cx=p.l+bw*(i+.5),s=String(l).length>13?String(l).slice(0,12)+'…':l;
     if(rot){x.save();x.translate(cx,h-p.b+7);x.rotate(-.6);x.fillText(s,0,0);x.restore()}else x.fillText(s,cx,h-p.b+7)})}
 function barLab(x,txt,cx,cy){x.fillStyle=CH.lab;x.font='600 10.5px '+FNT;x.textAlign='center';x.textBaseline='bottom';x.fillText(txt,cx,cy)}
-function chBars(id,h,labs,ser,fmt,tips,cb,rot,showLab){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
-  const p={l:64,r:16,t:showLab?24:14,b:rot?56:32},max=Math.max(...ser.flatMap(s=>s.v),1)*1.14;
+function chBars(id,h,labs,ser,fmt,tips,cb,rot,showLab,opts){
+  const key=chartKeyOf(id);
+  CHART_REG[key]={kind:'bars',h,legend:!(opts&&opts.legend===false),
+    draw:(sel,hh,lg)=>drawBars(sel,hh==null?h:hh,labs,ser,fmt,tips,cb,rot,showLab,key,lg)};
+  CHART_REG[key].draw(id,h,null);
+}
+function drawBars(sel,h,labs,ser,fmt,tips,cb,rot,showLab,key,lgHost){
+  const items=ser.map((s,i)=>({key:'s'+i,label:s.name||('Серия '+(i+1)),color:s.c}));
+  const hid=legendHidden(key);
+  const vis=ser.filter((s,i)=>!hid.has('s'+i));
+  const el=typeof sel==='string'?$(sel):sel;
+  const host=legendHostFor(el,key,lgHost);
+  if(!vis.length){chartEmpty(sel,h,'Все серии скрыты — кликните по легенде, чтобы вернуть их на график');
+    renderLegend(host,key,items);ensureExpandButton(el,key);return}
+  const g=cv(sel,h);if(!g)return;const{c,x,w}=g;
+  const p={l:64,r:16,t:showLab?24:14,b:rot?56:32},max=Math.max(...vis.flatMap(s=>s.v),1)*1.14;
   yAxis(x,w,h,p,max,fmt);xAxis(x,w,h,p,labs,rot);
-  const bw=(w-p.l-p.r)/labs.length,iw=Math.max(bw*.72/ser.length,3);
-  const lab=showLab&&labs.length<=9&&ser.length<=2;
-  labs.forEach((l,i)=>{ser.forEach((s,si)=>{const hh=(h-p.t-p.b)*Math.max(s.v[i],0)/max,bx=p.l+bw*i+bw*.14+iw*si;
+  const bw=(w-p.l-p.r)/labs.length,iw=Math.max(bw*.72/vis.length,3);
+  const lab=showLab&&labs.length<=9&&vis.length<=2;
+  labs.forEach((l,i)=>{vis.forEach((s,si)=>{const hh=(h-p.t-p.b)*Math.max(s.v[i],0)/max,bx=p.l+bw*i+bw*.14+iw*si;
     x.fillStyle=s.c;x.fillRect(bx,h-p.b-hh,iw-3,hh);
     if(lab&&s.v[i]>0)barLab(x,fmt(s.v[i]),bx+(iw-3)/2,h-p.b-hh-3)});
-    reg(c,p.l+bw*i,p.t,bw,h-p.t-p.b,tips(i),cb?()=>cb(i):null)});bind(c)}
-function chH(id,h,items,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
+    reg(c,p.l+bw*i,p.t,bw,h-p.t-p.b,tips(i),cb?()=>cb(i):null)});bind(c);
+  renderLegend(host,key,items);ensureExpandButton(el,key)}
+function chH(id,h,items,fmt,cb,opts){
+  const key=chartKeyOf(id);
+  CHART_REG[key]={kind:'h',h,legend:!(opts&&opts.legend===false),
+    draw:(sel,hh,lg)=>drawH(sel,hh==null?h:hh,items,fmt,cb,key,lg)};
+  CHART_REG[key].draw(id,h,null);
+}
+function drawH(sel,h,rows,fmt,cb,key,lgHost){
+  const items0=rows.map((it,i)=>({key:String(it.k),label:String(it.k),color:it.c||PAL[i%PAL.length]}));
+  const hid=legendHidden(key);
+  const items=rows.filter(it=>!hid.has(String(it.k)));
+  const el=typeof sel==='string'?$(sel):sel;
+  const host=legendHostFor(el,key,lgHost);
+  if(!items.length&&rows.length){chartEmpty(sel,h,'Все категории скрыты — кликните по легенде, чтобы вернуть их на график');
+    renderLegend(host,key,items0);ensureExpandButton(el,key);return}
+  const g=cv(sel,h);if(!g)return;const{c,x,w}=g;
   /* Ширина колонки подписей считается от реального текста и ширины холста —
      фиксированные 150 px либо обрезали названия ограничений, либо съедали
      половину узкой карточки. */
@@ -831,11 +913,27 @@ function chH(id,h,items,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
     x.fillStyle=CH.lab;x.font='11.5px '+FNT;x.textAlign='right';x.textBaseline='middle';
     x.fillText(labs[i],p.l-8,y+row/2);
     x.fillStyle=CH.txt;x.font='600 11.5px '+FNT;x.textAlign='left';x.fillText(fmt(it.v),p.l+bw+7,y+row/2);
-    reg(c,0,y,w,row,it.tip||`<b>${it.k}</b><br>${fmt(it.v)}`,cb?()=>cb(it):null)});bind(c)}
+    reg(c,0,y,w,row,it.tip||`<b>${it.k}</b><br>${fmt(it.v)}`,cb?()=>cb(it):null)});bind(c);
+  renderLegend(host,key,items0);ensureExpandButton(el,key)}
 /* Диаграмма «напряжение ограничения»: одна шкала 0–100 %, где слева простой
    (нижняя граница), справа упор в потолок (верхняя граница). Показывает то,
    что раньше приходилось складывать в голове из двух отдельных графиков. */
-function chSpan(id,h,items,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
+function chSpan(id,h,items,cb,opts){
+  const key=chartKeyOf(id);
+  CHART_REG[key]={kind:'span',h,legend:!(opts&&opts.legend===false),
+    draw:(sel,hh,lg)=>drawSpan(sel,hh==null?h:hh,items,cb,key,lg)};
+  CHART_REG[key].draw(id,h,null);
+}
+function drawSpan(sel,h,rows,cb,key,lgHost){
+  const items0=rows.map(it=>({key:String(it.k),label:String(it.k),
+    color:it.c||((it.upper||0)>=50?CH.err:((it.upper||0)>=15?CH.warn:CH.ok))}));
+  const hid=legendHidden(key);
+  const items=rows.filter(it=>!hid.has(String(it.k)));
+  const el=typeof sel==='string'?$(sel):sel;
+  const host=legendHostFor(el,key,lgHost);
+  if(!items.length&&rows.length){chartEmpty(sel,h,'Все категории скрыты — кликните по легенде, чтобы вернуть их на график');
+    renderLegend(host,key,items0);ensureExpandButton(el,key);return}
+  const g=cv(sel,h);if(!g)return;const{c,x,w}=g;
   x.font='11.5px '+FNT;
   const labMax=Math.min(Math.max(w*0.34,90),230);
   const clipTo=(s,px)=>{s=String(s);if(x.measureText(s).width<=px)return s;
@@ -863,11 +961,32 @@ function chSpan(id,h,items,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
   x.fillStyle=CH.sub;x.font='10.5px '+FNT;x.textAlign='left';x.textBaseline='top';
   x.fillText('◀ простой у нижней границы',p.l,h-p.b+6);
   x.textAlign='right';x.fillText('упор в потолок ▶',w-p.r,h-p.b+6);
-  bind(c)}
-function chDonut(id,h,parts,title,fmt,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
-  const narrow=w<360;const lgW=narrow?0:Math.min(180,w*0.4);const area=w-lgW;
-  const cx=narrow?w/2:area/2+8,cy=narrow?(h-parts.length*18)/2:h/2;
-  const R=Math.min(area*.4,(narrow?h-parts.length*18:h)*.42),r0=R*.62,tot=S(parts,p=>Math.abs(p.v))||1;let a=-Math.PI/2;
+  bind(c);
+  renderLegend(host,key,items0);ensureExpandButton(el,key)}
+function chDonut(id,h,parts,title,fmt,cb,opts){
+  const key=chartKeyOf(id);
+  CHART_REG[key]={kind:'donut',h,legend:!(opts&&opts.legend===false),
+    draw:(sel,hh,lg)=>drawDonut(sel,hh==null?h:hh,parts,title,fmt,cb,key,lg)};
+  CHART_REG[key].draw(id,h,null);
+}
+function drawDonut(sel,h,rows,title,fmt,cb,key,lgHost){
+  const items0=rows.map((pt,i)=>({key:String(pt.k),label:String(pt.k),color:pt.c||PAL[i%PAL.length]}));
+  const hid=legendHidden(key);
+  const parts=rows.filter(pt=>!hid.has(String(pt.k)));
+  const el=typeof sel==='string'?$(sel):sel;
+  const host=legendHostFor(el,key,lgHost);
+  if(!parts.length&&rows.length){chartEmpty(sel,h,'Все категории скрыты — кликните по легенде, чтобы вернуть их на график');
+    renderLegend(host,key,items0);ensureExpandButton(el,key);return}
+  const g=cv(sel,h);if(!g)return;const{c,x,w}=g;
+  /* При включённой HTML-легенде боковую подпись внутри canvas не рисуем:
+     как в Superset/ECharts, легенда живёт под графиком, а диаграмма
+     занимает всю ширину карточки. */
+  const sideLegend=CHART_REG[key]&&CHART_REG[key].legend===false;
+  const narrow=sideLegend&&w<360;
+  const lgW=!sideLegend?0:(narrow?0:Math.min(180,w*0.4));
+  const area=w-lgW;
+  const cx=sideLegend?(narrow?w/2:area/2+8):w/2,cy=sideLegend?(narrow?(h-parts.length*18)/2:h/2):h/2;
+  const R=Math.min(area*.4,(sideLegend&&narrow?h-parts.length*18:h)*.42),r0=R*.62,tot=S(parts,p=>Math.abs(p.v))||1;let a=-Math.PI/2;
   parts.forEach((pt,i)=>{const col=pt.c||PAL[i%PAL.length];const sw=2*Math.PI*Math.abs(pt.v)/tot;
     x.beginPath();x.arc(cx,cy,R,a,a+sw);x.arc(cx,cy,r0,a+sw,a,true);x.closePath();x.fillStyle=col;x.fill();
     if(sw>.32){const m=a+sw/2,tr=(R+r0)/2;x.fillStyle=onFill(col);x.textAlign='center';x.textBaseline='middle';x.font='600 10.5px '+FNT;
@@ -875,26 +994,153 @@ function chDonut(id,h,parts,title,fmt,cb){const g=cv(id,h);if(!g)return;const{c,
     const ma=a+sw/2;reg(c,cx+Math.cos(ma)*((R+r0)/2)-16,cy+Math.sin(ma)*((R+r0)/2)-12,32,24,
       `<b>${pt.k}</b><br>${fmt(pt.v)} · ${pc(Math.abs(pt.v)/tot)}`,cb?()=>cb(pt):null);a+=sw});
   x.fillStyle=CH.txt;x.textAlign='center';x.textBaseline='middle';x.font='600 12px '+FNT;x.fillText(title,cx,cy);
-  x.font='11.5px '+FNT;x.textAlign='left';x.textBaseline='middle';
+  if(sideLegend){x.font='11.5px '+FNT;x.textAlign='left';x.textBaseline='middle';
   parts.forEach((pt,i)=>{const lx=narrow?12:area+12,ly=narrow?(h-parts.length*18+9)+i*18:(cy-parts.length*10+i*20);
     x.fillStyle=pt.c||PAL[i%PAL.length];x.fillRect(lx,ly-4.5,9,9);x.fillStyle=CH.lab;
     x.fillText(String(pt.k).slice(0,narrow?24:18)+'  '+pc(Math.abs(pt.v)/tot),lx+15,ly);
-    reg(c,lx,ly-9,narrow?w-lx-6:lgW,18,`<b>${pt.k}</b><br>${fmt(pt.v)} · ${pc(Math.abs(pt.v)/tot)}`,cb?()=>cb(pt):null)});
-  bind(c)}
-function chLine(id,h,labs,ser,fmt,tips,cb){const g=cv(id,h);if(!g)return;const{c,x,w}=g;
-  const p={l:68,r:18,t:24,b:32},all=ser.flatMap(s=>s.v),max=Math.max(...all,1)*1.2,min=Math.min(0,...all);
+    reg(c,lx,ly-9,narrow?w-lx-6:lgW,18,`<b>${pt.k}</b><br>${fmt(pt.v)} · ${pc(Math.abs(pt.v)/tot)}`,cb?()=>cb(pt):null)});}
+  bind(c);
+  renderLegend(host,key,items0);ensureExpandButton(el,key)}
+function chLine(id,h,labs,ser,fmt,tips,cb,opts){
+  const key=chartKeyOf(id);
+  CHART_REG[key]={kind:'line',h,legend:!(opts&&opts.legend===false),
+    draw:(sel,hh,lg)=>drawLine(sel,hh==null?h:hh,labs,ser,fmt,tips,cb,key,lg)};
+  CHART_REG[key].draw(id,h,null);
+}
+function drawLine(sel,h,labs,ser,fmt,tips,cb,key,lgHost){
+  const items=ser.map((s,i)=>({key:'s'+i,label:s.name||('Серия '+(i+1)),color:s.c}));
+  const hid=legendHidden(key);
+  const vis=ser.filter((s,i)=>!hid.has('s'+i));
+  const el=typeof sel==='string'?$(sel):sel;
+  const host=legendHostFor(el,key,lgHost);
+  if(!vis.length){chartEmpty(sel,h,'Все серии скрыты — кликните по легенде, чтобы вернуть их на график');
+    renderLegend(host,key,items);ensureExpandButton(el,key);return}
+  const g=cv(sel,h);if(!g)return;const{c,x,w}=g;
+  const p={l:68,r:18,t:24,b:32},all=vis.flatMap(s=>s.v),max=Math.max(...all,1)*1.2,min=Math.min(0,...all);
   yAxis(x,w,h,p,max,fmt);xAxis(x,w,h,p,labs);
   const sx=i=>p.l+(w-p.l-p.r)*(labs.length>1?i/(labs.length-1):.5),sy=v=>h-p.b-(h-p.t-p.b)*v/max;
   x.save();x.beginPath();x.rect(p.l-2,p.t-2,w-p.l-p.r+4,h-p.t-p.b+4);x.clip();
-  ser.forEach(s=>{if(s.fill){const gr=x.createLinearGradient(0,p.t,0,h-p.b);gr.addColorStop(0,rgba(s.c,.2));gr.addColorStop(1,rgba(s.c,0));
+  vis.forEach(s=>{if(s.fill){const gr=x.createLinearGradient(0,p.t,0,h-p.b);gr.addColorStop(0,rgba(s.c,.2));gr.addColorStop(1,rgba(s.c,0));
       x.beginPath();s.v.forEach((v,i)=>i?x.lineTo(sx(i),sy(v)):x.moveTo(sx(i),sy(v)));
       x.lineTo(sx(s.v.length-1),h-p.b);x.lineTo(sx(0),h-p.b);x.closePath();x.fillStyle=gr;x.fill()}
     x.beginPath();s.v.forEach((v,i)=>i?x.lineTo(sx(i),sy(v)):x.moveTo(sx(i),sy(v)));
     x.strokeStyle=s.c;x.lineWidth=2.2;x.stroke();
     s.v.forEach((v,i)=>{x.fillStyle=s.c;x.beginPath();x.arc(sx(i),sy(v),3.4,0,7);x.fill()})});
   x.restore();
-  if(labs.length<=9&&ser.length===1)ser[0].v.forEach((v,i)=>barLab(x,fmt(v),sx(i),sy(v)-8));
-  labs.forEach((_,i)=>reg(c,sx(i)-15,p.t,30,h-p.t-p.b,tips(i),cb?()=>cb(i):null));bind(c)}
+  if(labs.length<=9&&vis.length===1)vis[0].v.forEach((v,i)=>barLab(x,fmt(v),sx(i),sy(v)-8));
+  labs.forEach((_,i)=>reg(c,sx(i)-15,p.t,30,h-p.t-p.b,tips(i),cb?()=>cb(i):null));bind(c);
+  renderLegend(host,key,items);ensureExpandButton(el,key)}
+
+/* ═══════════════ 3b. ЛЕГЕНДА И ПОЛНЫЙ ЭКРАН (подход Apache Superset) ═══════════════
+   Каждый график при отрисовке регистрируется в CHART_REG вместе с замыканием
+   draw(), умеющим перерисовать его в любой canvas. Поверх этого два механизма
+   в духе BI-отчётов Superset (ECharts):
+   • кликабельная HTML-легенда под графиком: клик скрывает/показывает серию
+     или категорию (аналог legend.selected), график тут же перестраивается
+     по видимым данным, скрытые пункты сереют; кнопка «Все» всё возвращает;
+   • кнопка ⛶ в углу карточки разворачивает тот же график в модальном окне
+     на весь экран (Superset: fullscreen chart), ✕/Escape сворачивают обратно.
+   Состояние легенды живёт в LEGEND_HIDDEN и общее для карточки и модалки. */
+const CHART_REG={};
+const LEGEND_HIDDEN={};
+function chartKeyOf(id){return String(id).replace(/^#/,'')}
+function legendHidden(key){if(!LEGEND_HIDDEN[key])LEGEND_HIDDEN[key]=new Set();return LEGEND_HIDDEN[key]}
+/* Заглушка вместо графика, когда легендой скрыты все серии. */
+function chartEmpty(sel,h,msg){
+  const g=cv(sel,h);if(!g)return;const{c,x,w}=g;
+  x.fillStyle=CH.sub;x.font='13px '+FNT;x.textAlign='center';x.textBaseline='middle';
+  const words=String(msg).split(' ');let line='',yy=h/2-8;
+  words.forEach(wd=>{const t=line?line+' '+wd:wd;
+    if(x.measureText(t).width>w-40&&line){x.fillText(line,w/2,yy);line=wd;yy+=18}else line=t});
+  x.fillText(line,w/2,yy);
+  bind(c);
+}
+/* Контейнер легенды: явный (модалка) либо автосозданный сразу за canvas. */
+function legendHostFor(canvasEl,key,explicitSel){
+  if(explicitSel)return typeof explicitSel==='string'?$(explicitSel):explicitSel;
+  if(!canvasEl||!canvasEl.parentElement)return null;
+  const n=canvasEl.nextElementSibling;
+  if(n&&n.classList&&n.classList.contains('chart-legend')&&n.dataset.for===key)return n;
+  const d=document.createElement('div');
+  d.className='chart-legend';d.dataset.for=key;
+  canvasEl.after(d);return d;
+}
+function renderLegend(host,key,items){
+  if(!host)return;
+  const reg=CHART_REG[key];
+  if(reg&&reg.legend===false){host.style.display='none';host.innerHTML='';return}
+  const hid=legendHidden(key);
+  const uniq=[],seen=new Set();
+  (items||[]).forEach(it=>{if(!seen.has(it.key)){seen.add(it.key);uniq.push(it)}});
+  host.style.display='';
+  host.setAttribute('role','group');
+  host.setAttribute('aria-label','Легенда графика: нажмите, чтобы скрыть или показать серию');
+  const anyOff=uniq.some(it=>hid.has(it.key));
+  host.innerHTML=uniq.map(it=>{
+    const off=hid.has(it.key);
+    return `<button type="button" class="cl-item${off?' off':''}" data-k="${esc(it.key)}" aria-pressed="${off?'false':'true'}" title="${off?'Показать «'+esc(it.label)+'»':'Скрыть «'+esc(it.label)+'»'}"><i style="background:${esc(it.color)}" aria-hidden="true"></i><span title="${esc(it.label)}">${esc(it.label)}</span></button>`;
+  }).join('')+(anyOff?'<button type="button" class="cl-reset" title="Показать все серии">Все</button>':'');
+  host.querySelectorAll('.cl-item').forEach(b=>b.onclick=e=>{e.stopPropagation();toggleLegend(key,b.dataset.k)});
+  const rs=host.querySelector('.cl-reset');
+  if(rs)rs.onclick=e=>{e.stopPropagation();legendHidden(key).clear();redrawChart(key)};
+}
+function toggleLegend(key,k){
+  const hid=legendHidden(key);
+  if(hid.has(k))hid.delete(k);else hid.add(k);
+  redrawChart(key);
+}
+/* Перерисовать все живые экземпляры графика: карточку и модалку, если открыта. */
+function redrawChart(key){
+  const reg=CHART_REG[key];if(!reg)return;
+  const main=document.getElementById(key);
+  if(main&&main.tagName==='CANVAS')reg.draw('#'+key,reg.h,null);
+  const m=$('#chartModal');
+  if(MODAL_KEY===key&&m&&!m.hidden)reg.draw('#mChart',modalChartH(),'#mChart-lg');
+}
+function ensureExpandButton(canvasEl,key){
+  if(!canvasEl||!canvasEl.closest)return;
+  const card=canvasEl.closest('.card');
+  if(!card||card.querySelector('.chart-expand'))return;
+  const b=document.createElement('button');
+  b.type='button';b.className='chart-expand';b.dataset.chart=key;
+  const h3=card.querySelector('h3');
+  b.title='Развернуть график на весь экран';
+  b.setAttribute('aria-label','Развернуть график'+(h3?(' «'+h3.textContent.trim()+'»'):'')+' на весь экран');
+  b.innerHTML='<svg viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+  b.onclick=e=>{e.stopPropagation();openChartModal(key)};
+  card.appendChild(b);
+}
+/* ── Полноэкранный просмотр графика ── */
+let MODAL_KEY=null;
+function modalChartH(){return Math.max(340,Math.round((window.innerHeight||800)*0.58))}
+function openChartModal(key){
+  const reg=CHART_REG[key];if(!reg)return;
+  const cvEl=document.getElementById(key);
+  const card=cvEl&&cvEl.closest?cvEl.closest('.card'):null;
+  $('#chartModalTitle').textContent=card&&card.querySelector('h3')?card.querySelector('h3').textContent:'График';
+  $('#chartModalSub').textContent=card&&card.querySelector('.sub')?card.querySelector('.sub').textContent:'';
+  MODAL_KEY=key;
+  const m=$('#chartModal');if(!m)return;
+  m.hidden=false;
+  try{document.body.style.overflow='hidden'}catch(e){}
+  reg.draw('#mChart',modalChartH(),'#mChart-lg');
+  const mc=$('#mChart');
+  if(mc)mc.setAttribute('aria-label','График: '+$('#chartModalTitle').textContent);
+  const x=$('#chartModalX');if(x)try{x.focus()}catch(e){}
+}
+function closeChartModal(){
+  const m=$('#chartModal');if(!m||m.hidden)return;
+  m.hidden=true;
+  try{document.body.style.overflow=''}catch(e){}
+  const k=MODAL_KEY;MODAL_KEY=null;
+  if(k)redrawChart(k); // синхронизировать карточку с легендой, покликаной в модалке
+}
+(function chartModalWire(){
+  const m=$('#chartModal');if(!m)return;
+  const x=$('#chartModalX');if(x)x.onclick=e=>{e.stopPropagation();closeChartModal()};
+  m.addEventListener('click',e=>{if(e.target===m)closeChartModal()});
+  m.addEventListener('keydown',e=>{if(e.key==='Escape'){e.stopPropagation();closeChartModal()}});
+})();
 
 /* ═══════════════ 4. ПАРСЕР optimizer_status ═══════════════ */
 /* Автоподбор столбцов для XLSX. Это тот же смысловой мэппинг, что и у
@@ -1122,7 +1368,8 @@ function runGroupValue(r,k){return String(r&&r[k]!=null&&r[k]!==''?r[k]:'—')}
    • шаг 3 модалки PostgreSQL — mode 'multi' с двухстрочными подписями.
    В multi-режиме шапки конфигов/датасетов — tri-state чекбоксы:
    ✓ выбраны все, «−» выбрана часть, пусто — не выбран ни один; клик по шапке
-   переключает всю группу. Рядом счётчик «выбрано/всего». */
+   переключает всю группу. Рядом счётчик «выбрано/всего». Кнопка +/− на шапке
+   сворачивает/разворачивает группу, не меняя выбор. */
 function runPickerMatch(r,q){
   return [r.label,rOpt(r),r.ctx,r.schema,r.runid,r.datasetid,r.configid,r.startTime,
     r.meta&&r.meta.startTime,r.meta&&r.meta.alias].filter(Boolean).join(' ').toLowerCase().includes(q);
@@ -1145,9 +1392,13 @@ function runTreeGroups(runs){
  * Отрисовывает дерево в контейнере box и навешивает обработчики.
  * o: {mode:'single'|'multi', runs, q, keyOf, selected:Set, activeKey,
  *     leafMeta(r)->html второй строки, leafLabel(r)->текст, match(r,q),
- *     onPick(key) для single, onChanged() для multi после любого изменения}
+ *     onPick(key) для single, onChanged() для multi после любого изменения,
+ *     onToggle(groupKey) после сворачивания/разворачивания группы}
  * В multi компонент сам мутирует множество o.selected.
  */
+/* Свёрнутые группы пикера прогонов: 'C:<конфиг>' и 'D:<конфиг>|<датасет>'.
+   При активном поиске дерево всегда развёрнуто целиком. */
+const RT_COLLAPSED=new Set();
 function renderRunTree(box,o){
   const keyOf=o.keyOf||runKey;
   const q=(o.q||'').toLowerCase();
@@ -1155,24 +1406,30 @@ function renderRunTree(box,o){
   const visible=o.runs.filter(r=>!q||match(r,q));
   const multi=o.mode!=='single';
   const isOn=k=>multi?o.selected.has(k):(k===o.activeKey);
-  /* Фокус сохраняем при перерисовке после клика по чекбоксу/группе. */
+  const isCol=k=>!q&&RT_COLLAPSED.has(k);
+  /* Фокус сохраняем при перерисовке после клика по чекбоксу/группе/тоглу. */
   const af=document.activeElement;
-  const afSel=(af&&box.contains(af))?{k:af.dataset.k||null,gcfg:af.dataset.gcfg||null,gds:af.dataset.gds??null}:null;
+  const afSel=(af&&box.contains(af))?{k:af.dataset.k||null,gcfg:af.dataset.gcfg||null,gds:af.dataset.gds??null,tw:af.dataset.tw||null}:null;
   let html='';
   if(!visible.length)html='<div class="dtp-e">ничего не найдено</div>';
   const inGroup=(r,gcfg,gds)=>runGroupValue(r,'configid')===gcfg&&
     (gds==null||runGroupValue(r,'datasetid')===gds);
+  const twBtn=(k,col)=>`<span class="rt-tw" role="button" tabindex="0" data-tw="${esc(k)}" aria-expanded="${col?'false':'true'}" title="${col?'Развернуть группу':'Свернуть группу'}">${col?'+':'−'}</span>`;
   runTreeGroups(visible).forEach(g=>{
+    const ck='C:'+g.cfg,ccol=isCol(ck);
     const cfgKeys=visible.filter(r=>inGroup(r,g.cfg)).map(keyOf);
     const cfgOn=cfgKeys.filter(isOn).length;
     if(multi){
-      html+=`<label class="rt-grp cfg clickable"><input type="checkbox" data-gcfg="${esc(g.cfg)}" data-on="${cfgOn}" data-tot="${cfgKeys.length}" ${cfgOn===cfgKeys.length?'checked':''} aria-label="Выбрать все прогоны конфига ${esc(g.cfg)}"><b>Конфиг ${esc(g.cfg)}</b><span class="rt-gc">${cfgOn}/${cfgKeys.length}</span></label>`;
-    }else html+=`<div class="rt-grp cfg"><b>Конфиг ${esc(g.cfg)}</b></div>`;
+      html+=`<label class="rt-grp cfg clickable">${twBtn(ck,ccol)}<input type="checkbox" data-gcfg="${esc(g.cfg)}" data-on="${cfgOn}" data-tot="${cfgKeys.length}" ${cfgOn===cfgKeys.length?'checked':''} aria-label="Выбрать все прогоны конфига ${esc(g.cfg)}"><b>Конфиг ${esc(g.cfg)}</b><span class="rt-gc">${cfgOn}/${cfgKeys.length}</span></label>`;
+    }else html+=`<div class="rt-grp cfg">${twBtn(ck,ccol)}<b>Конфиг ${esc(g.cfg)}</b></div>`;
+    if(ccol)return;
     g.dsGroups.forEach(dg=>{
+      const dk='D:'+g.cfg+'|'+dg.ds,dcol=isCol(dk);
       const dsKeys=dg.runs.map(keyOf),dsOn=dsKeys.filter(isOn).length;
       if(multi){
-        html+=`<label class="rt-grp ds clickable"><input type="checkbox" data-gcfg="${esc(g.cfg)}" data-gds="${esc(dg.ds)}" data-on="${dsOn}" data-tot="${dsKeys.length}" ${dsOn===dsKeys.length?'checked':''} aria-label="Выбрать все прогоны датасета ${esc(dg.ds)}"><span>Датасет ${esc(dg.ds)}</span><span class="rt-gc">${dsOn}/${dsKeys.length}</span></label>`;
-      }else html+=`<div class="rt-grp ds"><span>Датасет ${esc(dg.ds)}</span></div>`;
+        html+=`<label class="rt-grp ds clickable">${twBtn(dk,dcol)}<input type="checkbox" data-gcfg="${esc(g.cfg)}" data-gds="${esc(dg.ds)}" data-on="${dsOn}" data-tot="${dsKeys.length}" ${dsOn===dsKeys.length?'checked':''} aria-label="Выбрать все прогоны датасета ${esc(dg.ds)}"><span>Датасет ${esc(dg.ds)}</span><span class="rt-gc">${dsOn}/${dsKeys.length}</span></label>`;
+      }else html+=`<div class="rt-grp ds">${twBtn(dk,dcol)}<span>Датасет ${esc(dg.ds)}</span></div>`;
+      if(dcol)return;
       dg.runs.forEach(r=>{
         const k=keyOf(r),on=isOn(k);
         const inp=multi
@@ -1208,8 +1465,19 @@ function renderRunTree(box,o){
       o.onChanged&&o.onChanged();
     };
   });
+  /* Кнопки +/− сворачивают группу, не трогая выбор (клик не доходит до label). */
+  box.querySelectorAll('.rt-tw').forEach(t=>{
+    const flip=e=>{e.preventDefault();e.stopPropagation();
+      const k=t.dataset.tw;
+      if(RT_COLLAPSED.has(k))RT_COLLAPSED.delete(k);else RT_COLLAPSED.add(k);
+      if(o.onToggle)o.onToggle(k);};
+    t.onclick=flip;
+    t.onkeydown=ev=>{if(ev.key==='Enter'||ev.key===' '){flip(ev)}};
+  });
   if(afSel){
-    const refocus=[...box.querySelectorAll('input')].find(i=>
+    let refocus=null;
+    if(afSel.tw!=null)refocus=[...box.querySelectorAll('.rt-tw')].find(t=>t.dataset.tw===afSel.tw);
+    else refocus=[...box.querySelectorAll('input')].find(i=>
       (afSel.k!=null&&i.dataset.k===afSel.k)||
       (afSel.k==null&&i.dataset.gcfg===afSel.gcfg&&(i.dataset.gds??null)===afSel.gds));
     if(refocus)try{refocus.focus()}catch(e){}
@@ -1240,7 +1508,9 @@ function openRunPicker(anchor,o){
       P.querySelector('[data-all]').onclick=()=>{runPickerVisible(o,fq).forEach(k=>o.selected.add(k));o.onChanged&&o.onChanged();rebuild()};
       P.querySelector('[data-non]').onclick=()=>{runPickerVisible(o,fq).forEach(k=>o.selected.delete(k));o.onChanged&&o.onChanged();rebuild()};
     }
-    renderRunTree(P.querySelector('.dtp-l'),Object.assign({},o,{q:fq,onChanged:()=>{o.onChanged&&o.onChanged();rebuild()}}));
+    renderRunTree(P.querySelector('.dtp-l'),Object.assign({},o,{q:fq,
+      onChanged:()=>{o.onChanged&&o.onChanged();rebuild()},
+      onToggle:k=>{rebuild();const t=[...P.querySelectorAll('.rt-tw')].find(el=>el.dataset.tw===k);if(t)try{t.focus()}catch(e){}}}));
     /* фокус — обратно в поиск, если перестроение вызвано им; иначе renderRunTree
        сам вернёт фокус на чекбокс/радио */
   };
@@ -1303,6 +1573,8 @@ let CUR_KEY=null,TAB='ov';
 let HIST_A=0,HIST_B=0;
 // Ключи прогонов, выбранных пользователем на вкладке «История прогонов»
 let SEL_HIST=new Set();
+// Доп. фильтр по статусу решения (OPTIMAL и др.): пустое множество = «все статусы»
+let HIST_STATUS=new Set();
 /* Метаданные последней загрузки / сессии */
 let LOAD_META={source:'demo',files:[],sheetNote:'',loadedAt:null,persisted:false};
 let IS_DEMO=true;
@@ -1310,6 +1582,7 @@ let IS_DEMO=true;
 // Дефолт: последние 2 прогона (графики остаются читаемыми при большом числе прогонов)
 function resetHistSel(runs){
   SEL_HIST.clear();
+  HIST_STATUS.clear();
   runs.slice(-2).forEach(r=>SEL_HIST.add(runKey(r)));
   HIST_A=0;HIST_B=1;
 }
@@ -1374,7 +1647,7 @@ function persistSession(){
     v:1,savedAt:new Date().toISOString(),
     runs:serializeRuns(DS.runs),
     curKey:CUR_KEY,tab:TAB,
-    selHist:[...SEL_HIST],histA:HIST_A,histB:HIST_B,
+    selHist:[...SEL_HIST],histA:HIST_A,histB:HIST_B,histStatus:[...HIST_STATUS],
     loadMeta:LOAD_META
   };
   return idbSet('current',payload).then(ok=>{
@@ -1393,6 +1666,7 @@ async function restoreSession(){
   SEL_HIST=new Set(payload.selHist||[]);
   if(!SEL_HIST.size)resetHistSel(DS.runs);
   HIST_A=payload.histA||0;HIST_B=payload.histB||1;
+  HIST_STATUS=new Set(payload.histStatus||[]);
   LOAD_META=Object.assign({source:'session',files:[],sheetNote:'',loadedAt:payload.savedAt,persisted:true},payload.loadMeta||{});
   LOAD_META.persisted=true;IS_DEMO=false;
   return true;
@@ -1842,13 +2116,21 @@ function tabHIST(){
   if(runs.length<2){
     return '<div class="empty"><h2>Загружен только один прогон</h2><p>Загрузите ещё один файл optimizer_status (за другую дату/прогон) — здесь появится динамика качества оптимизации во времени и сравнение прогонов A/B.</p></div>';
   }
-  // Выбранные прогоны — в хронологическом порядке DS.runs
-  const sel=()=>runs.filter(r=>SEL_HIST.has(runKey(r)));
+  // Выбранные прогоны — в хронологическом порядке DS.runs.
+  // selBase — выбор в фильтре «Прогоны для анализа», sel — он же после
+  // дополнительного фильтра по статусу (действует поверх выбора).
+  const selBase=()=>runs.filter(r=>SEL_HIST.has(runKey(r)));
+  const sel=()=>{const b=selBase();return HIST_STATUS.size?b.filter(r=>HIST_STATUS.has(r.solve.status||'—')):b};
   const html=`
   <div class="tbar" style="margin-bottom:14px">
     <span class="tbar-lbl">Прогоны для анализа</span>
     <button class="chip" id="histSelBtn">Выбрать прогоны</button>
     <span class="dt-info" id="histSelInfo"></span>
+    <span id="histStatusWrap" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <span class="tbar-sep" aria-hidden="true"></span>
+      <span class="tbar-lbl">Статус</span>
+      <span id="histStatusChips" style="display:flex;gap:6px;flex-wrap:wrap"></span>
+    </span>
     <span style="flex:1"></span>
     <button class="dt-btn" id="histSelAll">Все прогоны</button>
   </div>
@@ -1858,18 +2140,53 @@ function tabHIST(){
     const body=$('#histBody'),btn=$('#histSelBtn'),info=$('#histSelInfo');
 
     const updateChip=()=>{
-      const s=sel();
-      btn.classList.toggle('on',s.length>0);
-      btn.textContent=s.length===0?'Прогоны не выбраны'
-        :(s.length===1?clip(rOpt(s[0]),34):`Выбрано прогонов: ${s.length}`);
-      info.textContent=`из ${nf(runs.length)} доступных · кликните чип для выбора`;
+      const b=selBase(),s=sel();
+      btn.classList.toggle('on',b.length>0);
+      btn.textContent=b.length===0?'Прогоны не выбраны'
+        :(b.length===1?clip(rOpt(b[0]),34):`Выбрано прогонов: ${b.length}`);
+      info.textContent=`из ${nf(runs.length)} доступных · кликните чип для выбора`
+        +(HIST_STATUS.size?` · статус ${[...HIST_STATUS].join(', ')}: показано ${s.length} из ${b.length}`:'');
+      renderStatusChips();
+    };
+
+    /* Доп. фильтр по статусу решения (OPTIMAL и др.): применяется поверх
+       выбора прогонов и сужает графики, KPI, таблицу и сравнение A/B. */
+    const renderStatusChips=()=>{
+      const box=$('#histStatusChips'),wrap=$('#histStatusWrap');
+      if(!box||!wrap)return;
+      const base=selBase();
+      wrap.style.display=base.length?'':'none';
+      if(!base.length){box.innerHTML='';return}
+      const counts=new Map();
+      base.forEach(r=>{const st=r.solve.status||'—';counts.set(st,(counts.get(st)||0)+1)});
+      const sts=[...counts.keys()].sort((a,b)=>String(a).localeCompare(String(b),'ru'));
+      [...HIST_STATUS].forEach(st=>{if(!counts.has(st))HIST_STATUS.delete(st)}); // протухшие статусы
+      const allOn=HIST_STATUS.size===0;
+      box.innerHTML=`<button type="button" class="chip sm${allOn?' on':''}" data-st="" title="Показать прогоны с любым статусом">Все (${base.length})</button>`
+        +sts.map(st=>`<button type="button" class="chip sm${!allOn&&HIST_STATUS.has(st)?' on':''}" data-st="${esc(st)}" title="Показать только прогоны со статусом ${esc(st)}">${esc(st)} (${counts.get(st)})</button>`).join('');
+      box.querySelectorAll('button').forEach(b=>b.onclick=()=>{
+        const st=b.dataset.st;
+        if(st==='')HIST_STATUS.clear();
+        else{
+          if(HIST_STATUS.has(st))HIST_STATUS.delete(st);else HIST_STATUS.add(st);
+          if(HIST_STATUS.size>=sts.length)HIST_STATUS.clear(); // выбраны все = фильтр не нужен
+        }
+        if(!IS_DEMO)persistSession();
+        drawAll();
+      });
     };
 
     const drawAll=()=>{
       const s=sel();
       updateChip();
-      if(!s.length){
+      if(!selBase().length){
         body.innerHTML='<div class="empty"><h2>Прогоны не выбраны</h2><p>Нажмите «Выбрать прогоны» и отметьте хотя бы один прогон для анализа.</p></div>';
+        return;
+      }
+      if(!s.length){
+        body.innerHTML=`<div class="empty"><h2>Нет прогонов с выбранным статусом</h2><p>Среди отмеченных для анализа прогонов нет ни одного со статусом ${esc([...HIST_STATUS].join(', '))}. Ослабьте фильтр статуса или отметьте другие прогоны.</p><p><button type="button" class="dt-btn" id="histStatusReset">Показать все статусы</button></p></div>`;
+        const rs=$('#histStatusReset');
+        if(rs)rs.onclick=()=>{HIST_STATUS.clear();if(!IS_DEMO)persistSession();drawAll()};
         return;
       }
       HIST_A=Math.min(Math.max(0,HIST_A),s.length-1);
@@ -1884,6 +2201,12 @@ function tabHIST(){
       const objArr=s.map(r=>r.solve.objectiveValue),
         slvArr=s.map(r=>r.solve.solveTimeSec),
         saleArr=s.map(r=>{const e=r.entities.find(x=>x.entity==='sale');return e?e.pct:0});
+      /* Мультисерийный график использования блоков: каждая серия — блок модели,
+         легенда кликабельна (подход Superset/ECharts). */
+      const h6Ser=['sale','production','procurement','movement','stock'].map(ek=>({
+        c:CH[ENT_COL[ek]]||PAL[0],name:ENT_LBL[ek]||ek,
+        v:s.map(r=>{const e=r.entities.find(x=>x.entity===ek);return e?e.pct:0})
+      })).filter(ss=>ss.v.some(v=>v>0));
       const multi=s.length>=2;
       const gapDeltaOk=multi&&gapKnownArr[gapKnownArr.length-1]&&gapKnownArr[gapKnownArr.length-2];
 
@@ -1926,6 +2249,7 @@ function tabHIST(){
           <div class="card"><h3>Экономический эффект плана</h3><div class="sub">Значение целевой функции, млрд · выше — лучше</div><canvas id="h3"></canvas></div>
           <div class="card"><h3>Отклонение от оптимума (gap)</h3><div class="sub">${anyGap?(allGap?'Ниже — лучше':'Ниже — лучше · у части прогонов gap не рассчитывался'):'Gap не рассчитывался ни в одном выбранном прогоне'}</div>${anyGap?'<canvas id="h1"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных о gap: в логе этих прогонов нет строки «Result gap %» — типично для линейных (LP) моделей.</div>'}</div>
           <div class="card"><h3>Время решения по прогонам</h3><div class="sub">Секунды на полное решение · ниже — лучше</div><canvas id="h2"></canvas></div>
+          <div class="card"><h3>Использование блоков по прогонам</h3><div class="sub">Доля задействованных переменных каждого блока, % · нажмите на легенду, чтобы скрыть блок</div>${h6Ser.length?'<canvas id="h6"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных по блокам модели в выбранных прогонах.</div>'}</div>
         </div>`:'';
       const abCard=multi?`
         <div class="card w">
@@ -1939,19 +2263,24 @@ function tabHIST(){
 
       body.innerHTML=kpiBlock+charts+`
         <div class="grid" style="margin-top:12px">
-          <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Только выбранные прогоны · поиск, сортировка, экспорт</div><div id="h5"></div></div>
+          <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Только выбранные прогоны${HIST_STATUS.size?` · статус: ${esc([...HIST_STATUS].join(', '))}`:''} · поиск, сортировка, экспорт</div><div id="h5"></div></div>
           ${abCard}
         </div>`+histSummary(s,gapArr,objArr,slvArr);
 
       if(multi){
-        if(anyGap)chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,v:gapArr,fill:1}],v=>nf(v,3)+'%',
+        if(anyGap)chLine('#h1',H('#h1',220,0.4),labs,[{c:CH.err,name:'Gap, %',v:gapArr,fill:1}],v=>nf(v,3)+'%',
           i=>`<b>${labs[i]}</b><br>Gap: ${gapKnownArr[i]?pctFmt(gapRaw[i]):'не рассчитывался'}<br>Статус: ${esc(s[i].solve.status)}`,null);
-        chLine('#h2',H('#h2',220,0.4),labs,[{c:CH.d2,v:slvArr,fill:1}],v=>nf(v,2)+' с',
+        chLine('#h2',H('#h2',220,0.4),labs,[{c:CH.d2,name:'Время решения, с',v:slvArr,fill:1}],v=>nf(v,2)+' с',
           i=>`<b>${labs[i]}</b><br>Время решения: ${nf(slvArr[i],3)} сек<br>Итераций: ${nf(s[i].solve.iterations)}`,null);
-        chBars('#h3',H('#h3',220,0.4),labs,[{c:CH.d3,v:objArr.map(v=>v/1e9)}],v=>nf(v,1)+' млрд',
+        chBars('#h3',H('#h3',220,0.4),labs,[{c:CH.d3,name:'Эффект плана, млрд',v:objArr.map(v=>v/1e9)}],v=>nf(v,1)+' млрд',
           i=>`<b>${labs[i]}</b><br>Эффект плана: ${bn(objArr[i])}`,null);
-        chLine('#h4',H('#h4',220,0.4),labs,[{c:CH.d4,v:saleArr,fill:1}],v=>nf(v,1)+'%',
+        chLine('#h4',H('#h4',220,0.4),labs,[{c:CH.d4,name:'Покрытие спроса, %',v:saleArr,fill:1}],v=>nf(v,1)+'%',
           i=>`<b>${labs[i]}</b><br>Покрытие спроса: ${pctFmt(saleArr[i])}`,null);
+        if(h6Ser.length)chLine('#h6',H('#h6',220,0.4),labs,h6Ser,v=>nf(v,1)+'%',
+          i=>{const hid=legendHidden('h6');
+            const rows=h6Ser.map((ss,idx)=>({ss,idx})).filter(o=>!hid.has('s'+o.idx))
+              .map(o=>`${esc(o.ss.name)}: ${pctFmt(o.ss.v[i])}`).join('<br>');
+            return `<b>${labs[i]}</b><br>${rows||'все серии скрыты'}`},null);
       }
 
       dtable('#h5',[
@@ -2360,7 +2689,7 @@ if(window.ResizeObserver){
   const ro=new window.ResizeObserver(()=>redraw(false));
   ro.observe(document.getElementById('main'));
 }
-window.addEventListener('keydown',e=>{if(e.key==='Escape')dtpHide()});
+window.addEventListener('keydown',e=>{if(e.key==='Escape'){dtpHide();closeChartModal()}});
 
 /* ── HTML-отчёт и печать ── */
 function buildReportHtml(r){
@@ -2748,13 +3077,14 @@ async function pgFetchRuns(){
 function pgRenderRuns(){
   const q=(($('#pgRunQ')||{}).value||'').toLowerCase();
   const list=$('#pgRunsList');if(!list)return;
-  $('#pgRunsInfo').textContent=`Найдено прогонов: ${PG.runs.length}. Группировка: конфиг → датасет → прогон; клик по заголовку группы выбирает её целиком.`+
+  $('#pgRunsInfo').textContent=`Найдено прогонов: ${PG.runs.length}. Группировка: конфиг → датасет → прогон; клик по заголовку группы выбирает её целиком, кнопка +/− сворачивает группу.`+
     (PG.runsTruncated?' Показаны не все прогоны (лимит сервера).':'');
   renderRunTree(list,{
     mode:'multi',runs:PG.runs,q,keyOf:pgRunKey,selected:PG.selR,
     match:(r,qq)=>(r.schema+' '+r.runid+' '+r.datasetid+' '+r.configid+' '+(r.startTime||'')).toLowerCase().includes(qq),
     leafMeta:r=>`${r.rows==null?'':nf(r.rows)+' строк · '}${r.startTime?esc(r.startTime):'дата запуска неизвестна'}`,
-    onChanged:()=>pgRenderRuns()
+    onChanged:()=>pgRenderRuns(),
+    onToggle:()=>pgRenderRuns()
   });
   const b=$('#pgDoLoad');if(b)b.textContent=`Загрузить в дашборд (${PG.selR.size})`;
 }
