@@ -2,13 +2,17 @@
  * UI tests for §18 features (index.html) via jsdom.
  * Run: node tests/charts-ui.test.js
  *
- * Проверяются четыре доработки дашборда:
+ * Проверяются доработки дашборда:
  * 1. разворот графика на весь экран (кнопка ⛶ → модалка → ✕/Escape обратно);
  * 2. кликабельная легенда в духе Superset/ECharts (серии скрываются,
  *    график перестраивается, скрытые пункты сереют, «Все» возвращает);
  * 3. сворачивание групп (+/−) в пикере «Прогоны для анализа»;
  * 4. доп. фильтр по статусу (OPTIMAL и др.) в «Истории прогонов» поверх
- *    выбора прогонов.
+ *    выбора прогонов;
+ * 5. автопрореживание подписей оси X при большом числе прогонов;
+ * 6. график «Прогоны по статусам решения» (счётчики статусов из данных,
+ *    клик по полосе фильтрует вкладку);
+ * 7. пустой статус отображается как «(пусто)».
  */
 'use strict';
 const assert = require('assert');
@@ -224,6 +228,74 @@ const ROWS = runRows(1, 300, 15, 'OPTIMAL', 80, 0.1)
   qa(doc, '#histStatusChips .chip')[0].click();
   await tick();
   ok(qa(doc, '#h5 tbody tr').length === 3, 'чип «Все» сбросил фильтр статуса');
+
+  /* ── 5. Автопрореживание подписей оси X ── */
+  console.log('\n5. Автопрореживание подписей прогонов на оси X');
+  const axisCalls = (wPx, n, rot) => w.eval(`(function(){
+    const calls=[];
+    const ctx={fillStyle:'',font:'',textAlign:'',textBaseline:'',strokeStyle:'',lineWidth:0,
+      measureText:s=>({width:String(s).length*7}),
+      fillText:s=>calls.push(String(s)),
+      save(){},restore(){},translate(){},rotate(){},beginPath(){},moveTo(){},lineTo(){},stroke(){}};
+    const labs=Array.from({length:${n}},(_,i)=>'#'+(i+1));
+    xAxis(ctx,${wPx},220,{l:64,r:16,t:24,b:32},labs,${rot});
+    return calls;
+  })()`);
+  const few = axisCalls(800, 5, false);
+  ok(few.length === 5 && few.includes('#1') && few.includes('#5'),
+    'когда прогонов мало, все подписи рисуются как есть');
+  const many = axisCalls(800, 40, false);
+  ok(many.length < 40, `при множестве прогонов подписи прореживаются (нарисовано ${many.length} из 40)`);
+  ok(many.includes('#40'), 'последний (самый свежий) прогон подписан всегда');
+  ok(!many.includes('#39'), 'соседняя с последней подпись пропускается — нагромождения нет');
+  const manyRot = axisCalls(800, 40, true);
+  ok(manyRot.length < 40 && manyRot.includes('#40'),
+    'прореживание работает и для повёрнутых подписей');
+  const wide = axisCalls(1400, 40, false);
+  ok(wide.length > many.length, 'на широком canvas (полноэкранный режим) подписей помещается больше');
+
+  /* ── 6. График «Прогоны по статусам решения» ── */
+  console.log('\n6. График количества прогонов по статусам');
+  w.eval("TAB='hist';SEL_HIST=new Set(DS.runs.map(runKey));HIST_STATUS.clear();render();");
+  await tick();
+  const h7 = q(doc, '#h7');
+  ok(!!h7, 'на вкладке истории появился график распределения по статусам (#h7)');
+  ok(q(doc, '#h7').closest('.card').querySelector('h3').textContent === 'Прогоны по статусам решения',
+    'заголовок карточки графика статусов');
+  ok(qa(doc, '#h7 ~ .chart-legend .cl-item').length === 0,
+    'легенды у графика нет — статусы подписаны слева от полос');
+  ok(w.eval(`document.getElementById('h7')._h.length`) === 2,
+    'две кликабельные полосы — по числу статусов в загруженном наборе');
+  // клик по полосе OPTIMAL (первая, её прогонов больше) включает фильтр вкладки
+  h7.dispatchEvent(new w.MouseEvent('click', { clientX: 30, clientY: 20, bubbles: true }));
+  await tick();
+  ok(w.eval(`HIST_STATUS.has('OPTIMAL')`), 'клик по полосе статуса включил фильтр вкладки');
+  ok(qa(doc, '#h5 tbody tr').length === 2, 'таблица истории отфильтрована кликом по графику статусов');
+  ok(!!q(doc, '#h7'), 'сам график статусов остался видимым после применения фильтра');
+  // повторный клик по той же полосе снимает фильтр
+  q(doc, '#h7').dispatchEvent(new w.MouseEvent('click', { clientX: 30, clientY: 20, bubbles: true }));
+  await tick();
+  ok(qa(doc, '#h5 tbody tr').length === 3, 'повторный клик по той же полосе снял фильтр');
+  // выбраны кликами все статусы — фильтр теряет смысл и сбрасывается
+  q(doc, '#h7').dispatchEvent(new w.MouseEvent('click', { clientX: 30, clientY: 20, bubbles: true }));
+  await tick();
+  q(doc, '#h7').dispatchEvent(new w.MouseEvent('click', { clientX: 30, clientY: 80, bubbles: true }));
+  await tick();
+  ok(w.eval('HIST_STATUS.size') === 0, 'выбор всех статусов полосами сбрасывает фильтр (как в чипах)');
+  ok(qa(doc, '#h5 tbody tr').length === 3, 'после сброса снова показаны все прогоны');
+
+  /* ── 7. Пустой статус → «(пусто)» ── */
+  console.log('\n7. Пустой статус прогона отображается как «(пусто)»');
+  const ROWS2 = runRows(11, 305, 20, 'OPTIMAL', 85, 0.05)
+    .concat(runRows(12, 305, 20, '', 0, null));
+  w.eval(`initFromRows(${JSON.stringify(ROWS2)}, {source:'file',files:['t2.xlsx'],loadedAt:new Date().toISOString()});IS_DEMO=false;TAB='hist';render();`);
+  await tick();
+  const chips2 = qa(doc, '#histStatusChips .chip').map(c => c.textContent.trim());
+  ok(chips2.some(t => t.startsWith('(пусто)')),
+    'чип пустого статуса подписан «(пусто)»: ' + chips2.join(' / '));
+  ok(!!q(doc, '#h7'), 'график статусов построен и для набора с пустым статусом');
+  ok(w.eval(`document.getElementById('h7')._h.length`) === 2,
+    'на графике две полосы: OPTIMAL и «(пусто)»');
 
   dom.window.close();
   console.log('\n────────────────────────────────────────');
