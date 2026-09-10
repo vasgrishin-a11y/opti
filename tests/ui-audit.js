@@ -149,25 +149,26 @@ async function walkTabs(dom, label) {
   await waitFor(dom, d => q(d, '#runSel'), 'boot');
   await load(dom, fullRun(22, LONG_ALIAS));
   const sel = q(doc, '#runSel');
-  const opt = sel.options[0];
-  ok(opt.textContent.length <= 60,
-    `подпись в селекторе укорочена до ${opt.textContent.length} симв.: «${opt.textContent}»`);
-  ok(opt.getAttribute('title') && opt.getAttribute('title').includes(LONG_ALIAS),
-    'полное имя доступно в подсказке option');
+  ok(sel.tagName === 'BUTTON', '#runSel — чип-кнопка, открывающая пикер с деревом');
+  const chipTxt = sel.textContent.replace('▾', '').trim();
+  ok(chipTxt.length <= 60,
+    `подпись на чипе укорочена до ${chipTxt.length} симв.: «${chipTxt}»`);
+  ok(sel.getAttribute('title') && sel.getAttribute('title').includes(LONG_ALIAS),
+    'полное имя доступно в подсказке чипа');
   ok(/max-width/.test(HTML.match(/#runSel\{[^}]*\}/)[0]),
-    'у #runSel задан max-width — селектор не тянется под длинное имя');
+    'у #runSel задан max-width — чип не тянется под длинное имя');
   const ctx = q(doc, '.run-ctx');
   ok(ctx && /прогон 22/.test(ctx.textContent) && /датасет 15/.test(ctx.textContent),
     'техническая идентификация вынесена в отдельную строку контекста: ' + ctx.textContent.trim());
-  ok(!/датасет/.test(opt.textContent) && !/конфиг/.test(opt.textContent),
-    'датасет/конфиг убраны из подписи прогона в селекторе');
+  ok(!/датасет/.test(chipTxt) && !/конфиг/.test(chipTxt),
+    'датасет/конфиг убраны из подписи прогона на чипе');
   const statName = q(doc, '#stat span');
   ok(statName && statName.textContent.length <= 38,
     `имя прогона в шапке усечено до ${statName ? statName.textContent.length : '?'} симв.`);
   ok(statName && statName.getAttribute('title').includes(LONG_ALIAS),
     'полное имя прогона доступно в подсказке шапки');
-  ok(opt.textContent === 'Прогон 22' && !opt.textContent.includes('SNP_'),
-    'в селекторе только номер прогона, без технического Alias: «'+opt.textContent+'»');
+  ok(chipTxt === 'Прогон 22' && !chipTxt.includes('SNP_'),
+    'на чипе только номер прогона, без технического Alias: «'+chipTxt+'»');
   dom.window.eval("TAB='ov';render();");
   await tick();
   const o4 = q(doc, '#o4');
@@ -259,7 +260,9 @@ async function walkTabs(dom, label) {
   let many = [];
   for (let i = 1; i <= 12; i++) many = many.concat(fullRun(i, 'ПРОГОН_' + i, { salePct: 60 + i * 2 }));
   await load(d4, many);
-  ok(qa(d4.window.document, '#runSel option').length === 12, '12 прогонов загружены');
+  await tick();
+  const runbarTxt = q(d4.window.document, '#runbar').textContent;
+  ok(/12\s?прогонов в истории/.test(runbarTxt), '12 прогонов загружены: ' + /\d+[^<]*в истории/.exec(runbarTxt)[0]);
   await walkTabs(d4, '12 прогонов');
   d4.window.eval("TAB='hist';SEL_HIST=new Set(DS.runs.map(runKey));render();");
   await tick();
