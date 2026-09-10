@@ -1031,8 +1031,9 @@ function buildRun(g){
 
   const schema=g.schema||'';
   const alias=meta.alias?` · ${meta.alias}`:'';
-  const runLabel=(schema?`${schema} · Прогон ${g.runid}`:`Прогон ${g.runid}`)+
-    (g.datasetid?` · датасет ${g.datasetid}`:'')+(g.configid?` · конфиг ${g.configid}`:'')+alias;
+  const runLabel=(g.configid?`Конфиг ${g.configid} · `:'')+
+    (g.datasetid?`Датасет ${g.datasetid} · `:'')+`Прогон ${g.runid}`+
+    (schema?` · схема ${schema}`:'')+alias;
   /* У прогона четыре представления, чтобы одна и та же длинная строка не
      служила одновременно идентификатором и подписью в интерфейсе:
        label — полное имя (CSV, подсказки) — может содержать технический Alias;
@@ -1043,9 +1044,9 @@ function buildRun(g){
   const runName=friendlyAlias(meta.alias)||`Прогон ${g.runid}`;
   const ctxParts=[];
   if(schema)ctxParts.push(`схема ${schema}`);
-  ctxParts.push(`прогон ${g.runid}`);
-  if(g.datasetid)ctxParts.push(`датасет ${g.datasetid}`);
   if(g.configid)ctxParts.push(`конфиг ${g.configid}`);
+  if(g.datasetid)ctxParts.push(`датасет ${g.datasetid}`);
+  ctxParts.push(`прогон ${g.runid}`);
   const dups=[...(g.dups||new Map()).entries()].map(([param,values])=>({param,values}));
   return {schema,runid:g.runid,datasetid:g.datasetid,configid:g.configid,label:runLabel,
     name:runName,short:runShort,ctx:ctxParts.join(' · '),
@@ -1076,8 +1077,14 @@ function rCtx(r){
 const clip=(s,n)=>{s=String(s==null?'':s);return s.length>n?s.slice(0,n-1)+'…':s};
 function rOpt(r){
   if(!r)return '—';
-  return (r.schema?r.schema+' · ':'')+'Прогон '+r.runid;
+  const p=[];
+  if(r.configid!==''&&r.configid!=null)p.push('Конфиг '+r.configid);
+  if(r.datasetid!==''&&r.datasetid!=null)p.push('Датасет '+r.datasetid);
+  p.push('Прогон '+(r.runid==null?'—':r.runid));
+  return (r.schema?r.schema+' · ':'')+p.join(' · ');
 }
+function runGroupValue(r,k){return String(r&&r[k]!=null&&r[k]!==''?r[k]:'—')}
+
 
 /* ═══════════════ 5. ВСТРОЕННОЕ ДЕМО ═══════════════ */
 function mkRow(p,v){return {runid:19,'Параметр':p,'Значение':v,datasetid:14,configid:300}}
@@ -1828,8 +1835,7 @@ function tabHIST(){
         P.innerHTML=`<div class="dtp-h"><span>Выбор прогонов для анализа</span><span class="dtp-x">✕</span></div>
           <input class="dtp-q" type="text" placeholder="Поиск прогона" value="${esc(fq)}">
           <div class="dtp-a"><button data-all="1">Выбрать все</button><button data-non="1">Снять все</button></div>
-          <div class="dtp-l">${list.map(r=>{const on=SEL_HIST.has(runKey(r));
-            return `<label class="dtp-i${on?' on':''}" title="${esc(r.label)}"><input type="checkbox" ${on?'checked':''} data-k="${esc(runKey(r))}"><span>${esc(rOpt(r))}</span></label>`}).join('')||'<div class="dtp-e">ничего не найдено</div>'}</div>`;
+          <div class="dtp-l">${(()=>{const gs={};list.forEach(r=>{const c=runGroupValue(r,'configid'),d=runGroupValue(r,'datasetid');(gs[c]??={})[d]??=[];gs[c][d].push(r)});return Object.entries(gs).map(([c,ds])=>`<div class="dtp-grp"><b>Конфиг ${esc(c)}</b>${Object.entries(ds).map(([d,rs])=>`<div class="dtp-grp" style="padding-left:12px"><span>Датасет ${esc(d)}</span>${rs.map(r=>{const on=SEL_HIST.has(runKey(r));return `<label class="dtp-i${on?' on':''}" title="${esc(r.label)}"><input type="checkbox" ${on?'checked':''} data-k="${esc(runKey(r))}"><span>${esc(rOpt(r))}</span></label>`}).join('')}</div>`).join('')}</div>`).join('')||'<div class="dtp-e">ничего не найдено</div>'})()}</div>`;
         P.querySelector('.dtp-x').onclick=dtpHide;
         const fi=P.querySelector('.dtp-q');
         fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();rebuild();const n=P.querySelector('.dtp-q');n.value=fq?fi.value:'';n.focus();n.selectionStart=n.selectionEnd=p};
@@ -2570,31 +2576,25 @@ async function pgFetchRuns(){
 function pgRenderRuns(){
   const q=(($('#pgRunQ')||{}).value||'').toLowerCase();
   const list=$('#pgRunsList');if(!list)return;
-  const schemas=[...new Set(PG.runs.map(r=>r.schema))];
-  $('#pgRunsInfo').textContent=
-    `Найдено прогонов: ${PG.runs.length} в схемах: ${schemas.join(', ')}. `+
-    (PG.runs.length>25?'По умолчанию отмечены последние 10 прогонов каждой схемы (по runid).':'')+
-    (PG.runsTruncated?' Показаны не все прогоны (лимит сервера).':'');
   const match=r=>!q||(r.schema+' '+r.runid+' '+r.datasetid+' '+r.configid+' '+(r.startTime||'')).toLowerCase().includes(q);
+  const filtered=PG.runs.filter(match), cfgs=[...new Set(filtered.map(r=>runGroupValue(r,'configid')))];
+  $('#pgRunsInfo').textContent=`Найдено прогонов: ${PG.runs.length}. Группировка: конфиг → датасет → прогон.`+
+    (PG.runsTruncated?' Показаны не все прогоны (лимит сервера).':'');
   let html='';
-  schemas.forEach(sch=>{
-    const gr=PG.runs.filter(r=>r.schema===sch&&match(r));
-    if(!gr.length)return;
-    const keys=gr.map(pgRunKey),allOn=keys.every(k=>PG.selR.has(k));
-    html+=`<div class="pg-grp"><span>${esc(sch)}</span><span class="s dt-info">${gr.filter(r=>PG.selR.has(pgRunKey(r))).length}/${gr.length}</span><button class="dt-btn" type="button" data-grp="${esc(sch)}" data-on="${allOn?0:1}">${allOn?'Снять':'Выбрать'}</button></div>`;
-    html+=gr.map(r=>{const k=pgRunKey(r),on=PG.selR.has(k);
-      return `<label class="pg-item"><input type="checkbox" data-k="${esc(k)}" ${on?'checked':''}><span class="t"><b>Прогон ${esc(r.runid)} · датасет ${esc(r.datasetid)} · конфиг ${esc(r.configid)}</b><br><span class="s">${r.rows==null?'':nf(r.rows)+' строк · '}${r.startTime?esc(r.startTime):'дата запуска неизвестна'}</span></span></label>`}).join('');
+  cfgs.forEach(cfg=>{
+    const cr=filtered.filter(r=>runGroupValue(r,'configid')===cfg), ds=[...new Set(cr.map(r=>runGroupValue(r,'datasetid')))], keys=cr.map(pgRunKey);
+    const allOn=keys.length>0&&keys.every(k=>PG.selR.has(k));
+    html+=`<div class="pg-grp"><b>Конфиг ${esc(cfg)}</b><span class="s dt-info">${cr.filter(r=>PG.selR.has(pgRunKey(r))).length}/${cr.length}</span><button class="dt-btn" type="button" data-cfg="${esc(cfg)}" data-on="${allOn?0:1}">${allOn?'Снять':'Выбрать'}</button></div>`;
+    ds.forEach(dsv=>{
+      const dr=cr.filter(r=>runGroupValue(r,'datasetid')===dsv), dkeys=dr.map(pgRunKey), dOn=dkeys.length>0&&dkeys.every(k=>PG.selR.has(k));
+      html+=`<div class="pg-grp" style="padding-left:22px"><span>Датасет ${esc(dsv)}</span><span class="s dt-info">${dr.filter(r=>PG.selR.has(pgRunKey(r))).length}/${dr.length}</span><button class="dt-btn" type="button" data-ds-cfg="${esc(cfg)}" data-ds="${esc(dsv)}" data-on="${dOn?0:1}">${dOn?'Снять':'Выбрать'}</button></div>`;
+      html+=dr.map(r=>{const k=pgRunKey(r),on=PG.selR.has(k);return `<label class="pg-item" style="padding-left:42px"><input type="checkbox" data-k="${esc(k)}" ${on?'checked':''}><span class="t"><b>${esc(rOpt(r))}</b><br><span class="s">${r.schema?esc(r.schema)+' · ':''}${r.rows==null?'':nf(r.rows)+' строк · '}${r.startTime?esc(r.startTime):'дата запуска неизвестна'}</span></span></label>`}).join('');
+    });
   });
   list.innerHTML=html||'<div class="dtp-e">ничего не найдено</div>';
-  list.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
-    if(i.checked)PG.selR.add(i.dataset.k);else PG.selR.delete(i.dataset.k);
-    pgRenderRuns();
-  });
-  list.querySelectorAll('button[data-grp]').forEach(b=>b.onclick=()=>{
-    const sch=b.dataset.grp,on=b.dataset.on==='1';
-    PG.runs.filter(r=>r.schema===sch).forEach(r=>{const k=pgRunKey(r);if(on)PG.selR.add(k);else PG.selR.delete(k)});
-    pgRenderRuns();
-  });
+  list.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{if(i.checked)PG.selR.add(i.dataset.k);else PG.selR.delete(i.dataset.k);pgRenderRuns()});
+  list.querySelectorAll('button[data-cfg]').forEach(b=>b.onclick=()=>{const cfg=b.dataset.cfg,on=b.dataset.on==='1';PG.runs.filter(r=>runGroupValue(r,'configid')===cfg).forEach(r=>{const k=pgRunKey(r);if(on)PG.selR.add(k);else PG.selR.delete(k)});pgRenderRuns()});
+  list.querySelectorAll('button[data-ds-cfg]').forEach(b=>b.onclick=()=>{const cfg=b.dataset.dsCfg,ds=b.dataset.ds,on=b.dataset.on==='1';PG.runs.filter(r=>runGroupValue(r,'configid')===cfg&&runGroupValue(r,'datasetid')===ds).forEach(r=>{const k=pgRunKey(r);if(on)PG.selR.add(k);else PG.selR.delete(k)});pgRenderRuns()});
   const b=$('#pgDoLoad');if(b)b.textContent=`Загрузить в дашборд (${PG.selR.size})`;
 }
 /* ── Шаг 3 → дашборд: загрузка строк и слияние с историей ── */
