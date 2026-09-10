@@ -271,6 +271,23 @@ console.log('2. English column names');
   assertEq(runs[0].penalties[0].kind, 'max', 'softmax kind');
 }
 
+console.log('2b. Excel export with DB column names status/message');
+{
+  const rows = [
+    { ' RUNID ': 19, status: 'Solution', message: 'OPTIMAL', datasetid: 14, configid: 300 },
+    { ' RUNID ': 19, status: 'Result gap %', message: '0.25', datasetid: 14, configid: 300 },
+    { ' RUNID ': 19, status: 'Alias', message: 'SNP_ОСНОВНОЙ_ПЛАН', datasetid: 14, configid: 300 }
+  ];
+  const runs = parseOptimizerRows(rows);
+  assertEq(runs.length, 1, 'status/message xlsx one run');
+  assertEq(runs[0].runid, '19', 'runid from header with spaces');
+  assertEq(runs[0].datasetid, '14', 'datasetid from db export');
+  assertEq(runs[0].configid, '300', 'configid from db export');
+  assertEq(runs[0].solve.status, 'OPTIMAL', 'Solution value read from message');
+  assertEq(runs[0].solve.gapPct, 0.25, 'gap read from message');
+  assertEq(runs[0].meta.alias, 'SNP_ОСНОВНОЙ_ПЛАН', 'Alias read from status/message');
+}
+
 console.log('3. Multiple runs + grouping');
 {
   const rows = [

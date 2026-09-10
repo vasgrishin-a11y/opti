@@ -867,6 +867,33 @@ function chLine(id,h,labs,ser,fmt,tips,cb){const g=cv(id,h);if(!g)return;const{c
   labs.forEach((_,i)=>reg(c,sx(i)-15,p.t,30,h-p.t-p.b,tips(i),cb?()=>cb(i):null));bind(c)}
 
 /* ═══════════════ 4. ПАРСЕР optimizer_status ═══════════════ */
+/* Автоподбор столбцов для XLSX. Это тот же смысловой мэппинг, что и у
+   Postgres-загрузки в server.js: в Excel-выгрузке из БД поля параметра и
+   значения часто называются status/message, а не «Параметр»/«Значение». */
+const OPT_COL_CANDIDATES={
+  run:['runid','RunId','RUNID','run_id','Run','run','id_run','Прогон','прогон','run id'],
+  param:['Параметр','параметр','Parameter','parameter','param','metric','Показатель','показатель','attribute','атрибут','status'],
+  value:['Значение','значение','Value','value','val','значения','message'],
+  ds:['datasetid','DatasetId','DATASETID','dataset_id','dataset','Датасет','датасет'],
+  cfg:['configid','ConfigId','CONFIGID','config_id','config','Конфиг','конфиг']
+};
+const optColNorm=s=>String(s==null?'':s).replace(/\u00a0/g,' ').trim().replace(/\s+/g,' ').toLowerCase();
+function optCell(row,names){
+  for(const n of names)if(row[n]!==undefined&&row[n]!==null&&row[n]!=='')return row[n];
+  const want=new Set(names.map(optColNorm));
+  for(const k of Object.keys(row||{}))if(want.has(optColNorm(k))&&row[k]!==undefined&&row[k]!==null&&row[k]!=='')return row[k];
+  return undefined;
+}
+function optHeaders(rows){
+  const seen=new Set(),out=[];
+  (rows||[]).slice(0,50).forEach(r=>Object.keys(r||{}).forEach(k=>{const n=String(k);if(!seen.has(n)){seen.add(n);out.push(n)}}));
+  return out;
+}
+function xlsxParseErr(rows){
+  const cols=optHeaders(rows).filter(c=>!/^__EMPTY/.test(c));
+  const shown=cols.length?cols.slice(0,18).join(', '):'не найдены (возможно, строка заголовков не первая)';
+  return 'Не удалось распознать ни одного прогона optimizer_status. Нужны столбцы с прогоном (runid) и именем параметра (Параметр/parameter/status); столбец значения — Значение/value/message. Найдены столбцы: '+shown+(cols.length>18?' …':'')+'.';
+}
 const ENT_LBL={movement:'Логистика (перемещения)',procurement:'Закупки сырья',production:'Производство',sale:'Продажи (спрос)',stock:'Запасы (склад)'};
 const ENT_COL={movement:'d1',procurement:'d4',production:'d2',sale:'d3',stock:'d6'};
 const CONS_LBL={
@@ -889,15 +916,14 @@ function parseCalcTime(s){if(!s)return 0;const m=String(s).match(/(\d+):(\d+):([
   if(!m)return parseFloat(s)||0;return (+m[1])*3600+(+m[2])*60+parseFloat(m[3])}
 
 function parseOptimizerRows(rows){
-  const getF=(row,names)=>{for(const n of names)if(row[n]!==undefined&&row[n]!==null&&row[n]!=='')return row[n];return undefined};
   const groups=new Map();
   rows.forEach(r=>{
-    const runid=getF(r,['runid','RunId','run_id','Run']);
-    const param=getF(r,['Параметр','параметр','Parameter','parameter']);
-    const value=getF(r,['Значение','значение','Value','value']);
-    const dsid=getF(r,['datasetid','DatasetId','dataset_id']);
-    const cfgid=getF(r,['configid','ConfigId','config_id']);
-    const schema=getF(r,['__schema','schema']); // источник Postgres (§9); у файлов — пусто
+    const runid=optCell(r,OPT_COL_CANDIDATES.run);
+    const param=optCell(r,OPT_COL_CANDIDATES.param);
+    const value=optCell(r,OPT_COL_CANDIDATES.value);
+    const dsid=optCell(r,OPT_COL_CANDIDATES.ds);
+    const cfgid=optCell(r,OPT_COL_CANDIDATES.cfg);
+    const schema=optCell(r,['__schema','schema']); // источник Postgres (§9); у файлов — пусто
     if(runid===undefined||param===undefined)return;
     const sch=(schema===undefined||schema===null)?'':String(schema);
     const key=sch+'|'+String(runid)+'|'+String(dsid)+'|'+String(cfgid);
@@ -2074,7 +2100,7 @@ async function loadFiles(fileList){
     }
     if(!allRows.length)throw new Error('В файле не найдено строк с данными');
     const parsed=parseOptimizerRows(allRows);
-    if(!parsed.length)throw new Error('Не удалось распознать ни одного прогона optimizer_status. Проверьте столбцы runid/Параметр/Значение/datasetid/configid.');
+    if(!parsed.length)throw new Error(xlsxParseErr(allRows));
 
     const wasDemo=IS_DEMO||!DS;
     if(!DS||IS_DEMO)DS={runs:[]};
