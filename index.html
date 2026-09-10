@@ -169,8 +169,34 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
 .mtbl tbody tr:hover{background:transparent}
 
 /* Селектор активного прогона: жёсткий предел ширины, чтобы длинное имя
-   прогона не растягивало шапку и не давало горизонтальный скролл. */
-#runSel{max-width:min(420px,46vw);text-overflow:ellipsis}
+   прогона не растягивало шапку и не давало горизонтальный скролл.
+   Теперь это чип-кнопка, открывающая общий пикер с деревом группировки. */
+#runSel{max-width:min(460px,52vw);overflow:hidden;text-overflow:ellipsis;font-weight:600;padding:6px 12px}
+#runSel .rt-caret{color:var(--scp-text-3);font-size:9px;margin-left:7px}
+#runSel.on{border-color:var(--scp-accent)}
+
+/* Единый пикер прогонов: дерево Конфиг → Датасет → Прогон.
+   Используется и в попапах дашборда (#dtpop), и в модалке PostgreSQL. */
+#dtpop.rt-pop{width:304px}
+#dtpop.rt-pop .dtp-l{max-height:min(330px,58vh)}
+.rt-grp{display:flex;align-items:center;gap:8px;padding:6px;font-size:12.5px;font-weight:600;border-bottom:1px solid var(--scp-line);border-radius:var(--r-s)}
+.rt-grp.clickable{cursor:pointer;user-select:none}
+.rt-grp.clickable:hover{background:#eee7f3}
+.rt-grp input{accent-color:var(--scp-accent);margin:0;width:14px;height:14px;flex:0 0 14px;cursor:pointer}
+.rt-grp .rt-gc{margin-left:auto;font-weight:400;font-size:11.5px;color:var(--scp-text-3);white-space:nowrap}
+.rt-grp.ds{padding-left:24px;font-weight:400;font-size:12px}
+.rt-leaf{display:flex;align-items:flex-start;gap:8px;padding:5px 6px;border-radius:var(--r-s);font-size:13px;cursor:pointer}
+.rt-leaf:hover{background:#eee7f3}
+.rt-leaf.sel{background:var(--scp-accent-bg)}
+.rt-leaf input{accent-color:var(--scp-accent);margin:3px 0 0;width:14px;height:14px;flex:0 0 14px}
+.rt-leaf .rt-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt-leaf .rt-s{display:block;font-size:11.5px;color:var(--scp-text-3);font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-theme="dark"] .rt-grp.clickable:hover,[data-theme="dark"] .rt-leaf:hover{background:#2c2140}
+/* В модалке PG список шире и листы — двухстрочные (схема/дата) */
+#pgRunsList .rt-grp.cfg{position:sticky;top:-6px;background:var(--scp-surface);z-index:1}
+#pgRunsList .rt-leaf{padding:8px}
+#pgRunsList .rt-leaf .rt-t{font-weight:600;white-space:normal}
+#pgRunsList .rt-leaf .rt-s{margin-top:1px}
 .runbar .run-ctx{font-size:12px;color:var(--scp-text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .runbar .run-nav{display:inline-flex;gap:4px}
 .runbar .run-nav button{width:28px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:var(--scp-surface);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);color:var(--scp-text-2);cursor:pointer;font-size:13px;line-height:1}
@@ -275,8 +301,6 @@ canvas[role="img"]{outline:none}
 .pg-item .s{font-size:12px;color:var(--scp-text-3)}
 .pg-item.bad{opacity:.65;cursor:not-allowed}
 .pg-item.bad:hover{background:transparent}
-.pg-grp{position:sticky;top:-6px;background:var(--scp-surface);padding:8px;border-bottom:1px solid var(--scp-line);font-weight:600;font-size:12.5px;display:flex;align-items:center;gap:8px}
-.pg-grp button{margin-left:auto}
 .pg-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
 .pg-tools{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
 .pg-tools .dt-q{flex:1;min-width:160px}
@@ -531,12 +555,16 @@ function dtp(){
 function dtpHide(){
   if(!DTP||DTP.style.display==='none')return;
   DTP.style.display='none';
+  DTP.classList.remove('rt-pop');
   DTP.removeAttribute('aria-labelledby');
   DTP.removeAttribute('data-col-key');
   if(DTP_TRAP){document.removeEventListener('keydown',DTP_TRAP,true);DTP_TRAP=null}
   document.querySelectorAll('.dt-fn[aria-expanded="true"]').forEach(el=>el.setAttribute('aria-expanded','false'));
   const back=DTP_PREV_FOCUS;DTP_PREV_FOCUS=null;
   if(back&&typeof back.focus==='function'){try{back.focus()}catch(e){}}
+  const after=DTP_AFTER_HIDE;DTP_AFTER_HIDE=null;
+  delete DTP.dataset.owner;
+  if(after)try{after()}catch(e){}
 }
 function dtpFocusables(root){
   return [...root.querySelectorAll('button,input,select,textarea,[tabindex]:not([tabindex="-1"])')]
@@ -672,6 +700,8 @@ function dtable(sel,cols,rows,opts){
   function openFlt(anchor,k){
     const c=cols.find(z=>z.k===k);if(!c)return;
     const P=dtp(),vals=uqv(c);let fq='';
+    if(P.style.display==='block')dtpHide(); // закрыть возможный открытый пикер прогонов
+    P.classList.remove('rt-pop');
     DTP_PREV_FOCUS=anchor||document.activeElement;
     P.setAttribute('aria-label','Фильтр: '+(c.t||k));
     P.dataset.colKey=k;
@@ -1030,10 +1060,14 @@ function buildRun(g){
   const penalties=[...penMap.values()].filter(p=>p.sum!==0||p.nonzeroPct!==0);
 
   const schema=g.schema||'';
-  const alias=meta.alias?` · ${meta.alias}`:'';
-  const runLabel=(g.configid?`Конфиг ${g.configid} · `:'')+
-    (g.datasetid?`Датасет ${g.datasetid} · `:'')+`Прогон ${g.runid}`+
-    (schema?` · схема ${schema}`:'')+alias;
+  /* Полная подпись для подсказок/CSV: сначала деловой «Прогон N» и Alias,
+     затем уточнения датасет → конфиг → схема (строчными). Группировку в
+     пикерах показывают шапки групп, поэтому листы — короткие. */
+  const runLabel=`Прогон ${g.runid}`+
+    (meta.alias?` · ${meta.alias}`:'')+
+    (g.datasetid?` · датасет ${g.datasetid}`:'')+
+    (g.configid?` · конфиг ${g.configid}`:'')+
+    (schema?` · схема ${schema}`:'');
   /* У прогона четыре представления, чтобы одна и та же длинная строка не
      служила одновременно идентификатором и подписью в интерфейсе:
        label — полное имя (CSV, подсказки) — может содержать технический Alias;
@@ -1071,19 +1105,159 @@ function rCtx(r){
   if(r.configid)p.push('конфиг '+r.configid);
   return p.join(' · ');
 }
-/** Подпись прогона для списков и таблиц: схема и номер.
-    Alias лога — технический идентификатор; в короткой подписи его нет
-    (полное имя остаётся в title/label и в необязательном столбце истории). */
+/** Короткая подпись прогона для списков и таблиц: только схема (если есть)
+    и номер — конфиг/датасет в пикерах показывают шапки групп, в истории —
+    контекст. Полное имя остаётся в label/title и в CSV. */
 const clip=(s,n)=>{s=String(s==null?'':s);return s.length>n?s.slice(0,n-1)+'…':s};
 function rOpt(r){
   if(!r)return '—';
-  const p=[];
-  if(r.configid!==''&&r.configid!=null)p.push('Конфиг '+r.configid);
-  if(r.datasetid!==''&&r.datasetid!=null)p.push('Датасет '+r.datasetid);
-  p.push('Прогон '+(r.runid==null?'—':r.runid));
-  return (r.schema?r.schema+' · ':'')+p.join(' · ');
+  return (r.schema?r.schema+' · ':'')+'Прогон '+(r.runid==null?'—':r.runid);
 }
 function runGroupValue(r,k){return String(r&&r[k]!=null&&r[k]!==''?r[k]:'—')}
+
+/* ═══════════════ 4b. ОБЩИЙ ПИКЕР ПРОГОНОВ (дерево Конфиг → Датасет → Прогон) ═══════════════
+   Один компонент для трёх мест:
+   • активный прогон в #runbar — mode 'single' (radio, клик выбирает и закрывает);
+   • «Прогоны для анализа» на вкладке истории — mode 'multi' (чекбоксы);
+   • шаг 3 модалки PostgreSQL — mode 'multi' с двухстрочными подписями.
+   В multi-режиме шапки конфигов/датасетов — tri-state чекбоксы:
+   ✓ выбраны все, «−» выбрана часть, пусто — не выбран ни один; клик по шапке
+   переключает всю группу. Рядом счётчик «выбрано/всего». */
+function runPickerMatch(r,q){
+  return [r.label,rOpt(r),r.ctx,r.schema,r.runid,r.datasetid,r.configid,r.startTime,
+    r.meta&&r.meta.startTime,r.meta&&r.meta.alias].filter(Boolean).join(' ').toLowerCase().includes(q);
+}
+/* Группировка отфильтрованного списка в дерево конфиг → датасет → прогоны. */
+function runTreeGroups(runs){
+  const cfgs=[],byCfg=new Map();
+  runs.forEach(r=>{
+    const c=runGroupValue(r,'configid');
+    let g=byCfg.get(c);
+    if(!g){g={cfg:c,byDs:new Map(),dsGroups:[]};byCfg.set(c,g);cfgs.push(g)}
+    const d=runGroupValue(r,'datasetid');
+    let dg=g.byDs.get(d);
+    if(!dg){dg={ds:d,runs:[]};g.byDs.set(d,dg);g.dsGroups.push(dg)}
+    dg.runs.push(r);
+  });
+  return cfgs;
+}
+/**
+ * Отрисовывает дерево в контейнере box и навешивает обработчики.
+ * o: {mode:'single'|'multi', runs, q, keyOf, selected:Set, activeKey,
+ *     leafMeta(r)->html второй строки, leafLabel(r)->текст, match(r,q),
+ *     onPick(key) для single, onChanged() для multi после любого изменения}
+ * В multi компонент сам мутирует множество o.selected.
+ */
+function renderRunTree(box,o){
+  const keyOf=o.keyOf||runKey;
+  const q=(o.q||'').toLowerCase();
+  const match=o.match||runPickerMatch;
+  const visible=o.runs.filter(r=>!q||match(r,q));
+  const multi=o.mode!=='single';
+  const isOn=k=>multi?o.selected.has(k):(k===o.activeKey);
+  /* Фокус сохраняем при перерисовке после клика по чекбоксу/группе. */
+  const af=document.activeElement;
+  const afSel=(af&&box.contains(af))?{k:af.dataset.k||null,gcfg:af.dataset.gcfg||null,gds:af.dataset.gds??null}:null;
+  let html='';
+  if(!visible.length)html='<div class="dtp-e">ничего не найдено</div>';
+  const inGroup=(r,gcfg,gds)=>runGroupValue(r,'configid')===gcfg&&
+    (gds==null||runGroupValue(r,'datasetid')===gds);
+  runTreeGroups(visible).forEach(g=>{
+    const cfgKeys=visible.filter(r=>inGroup(r,g.cfg)).map(keyOf);
+    const cfgOn=cfgKeys.filter(isOn).length;
+    if(multi){
+      html+=`<label class="rt-grp cfg clickable"><input type="checkbox" data-gcfg="${esc(g.cfg)}" data-on="${cfgOn}" data-tot="${cfgKeys.length}" ${cfgOn===cfgKeys.length?'checked':''} aria-label="Выбрать все прогоны конфига ${esc(g.cfg)}"><b>Конфиг ${esc(g.cfg)}</b><span class="rt-gc">${cfgOn}/${cfgKeys.length}</span></label>`;
+    }else html+=`<div class="rt-grp cfg"><b>Конфиг ${esc(g.cfg)}</b></div>`;
+    g.dsGroups.forEach(dg=>{
+      const dsKeys=dg.runs.map(keyOf),dsOn=dsKeys.filter(isOn).length;
+      if(multi){
+        html+=`<label class="rt-grp ds clickable"><input type="checkbox" data-gcfg="${esc(g.cfg)}" data-gds="${esc(dg.ds)}" data-on="${dsOn}" data-tot="${dsKeys.length}" ${dsOn===dsKeys.length?'checked':''} aria-label="Выбрать все прогоны датасета ${esc(dg.ds)}"><span>Датасет ${esc(dg.ds)}</span><span class="rt-gc">${dsOn}/${dsKeys.length}</span></label>`;
+      }else html+=`<div class="rt-grp ds"><span>Датасет ${esc(dg.ds)}</span></div>`;
+      dg.runs.forEach(r=>{
+        const k=keyOf(r),on=isOn(k);
+        const inp=multi
+          ?`<input type="checkbox" data-k="${esc(k)}" ${on?'checked':''}>`
+          :`<input type="radio" name="rtActiveRun" data-k="${esc(k)}" ${on?'checked':''}>`;
+        const meta=o.leafMeta?o.leafMeta(r):'';
+        const name=o.leafLabel?o.leafLabel(r):rOpt(r);
+        html+=`<label class="rt-leaf ${o.leafClass||''} ${on?'sel':''}" title="${esc(r.label||rOpt(r))}">${inp}<span class="rt-t"><span class="rt-n">${esc(name)}</span>${meta?`<span class="rt-s">${meta}</span>`:''}</span></label>`;
+      });
+    });
+  });
+  box.innerHTML=html;
+  /* Tri-state: частично выбранная группа получает «−» на чекбоксе. */
+  box.querySelectorAll('.rt-grp input[type=checkbox]').forEach(inp=>{
+    const n=+inp.dataset.on,tot=+inp.dataset.tot;
+    inp.indeterminate=n>0&&n<tot;
+  });
+  box.querySelectorAll('.rt-leaf').forEach(lab=>{
+    const inp=lab.querySelector('input');
+    inp.onchange=()=>{
+      if(!multi){o.onPick&&o.onPick(inp.dataset.k);return}
+      if(inp.checked)o.selected.add(inp.dataset.k);else o.selected.delete(inp.dataset.k);
+      o.onChanged&&o.onChanged();
+    };
+  });
+  box.querySelectorAll('.rt-grp.clickable input[type=checkbox]').forEach(inp=>{
+    inp.onchange=()=>{
+      const keys=visible.filter(r=>inGroup(r,inp.dataset.gcfg,inp.dataset.gds)).map(keyOf);
+      /* Целевое состояние считаем от фактического выбора, а не от inp.checked:
+         клик по indeterminate-чекбоксу в разных браузерах ведёт себя по-разному. */
+      const turnOn=keys.some(k=>!o.selected.has(k));
+      keys.forEach(k=>turnOn?o.selected.add(k):o.selected.delete(k));
+      o.onChanged&&o.onChanged();
+    };
+  });
+  if(afSel){
+    const refocus=[...box.querySelectorAll('input')].find(i=>
+      (afSel.k!=null&&i.dataset.k===afSel.k)||
+      (afSel.k==null&&i.dataset.gcfg===afSel.gcfg&&(i.dataset.gds??null)===afSel.gds));
+    if(refocus)try{refocus.focus()}catch(e){}
+  }
+}
+/* Видимые по поиску ключи (для «Выбрать все / Снять все» внутри попапа). */
+function runPickerVisible(o,fq){
+  const q=(fq||'').toLowerCase(),match=o.match||runPickerMatch,keyOf=o.keyOf||runKey;
+  return o.runs.filter(r=>!q||match(r,q)).map(keyOf);
+}
+let DTP_AFTER_HIDE=null;
+/** Попап с деревом прогонов поверх якоря (чипа). Обёртка над #dtpop. */
+function openRunPicker(anchor,o){
+  const P=dtp();
+  P.classList.add('rt-pop');
+  DTP_PREV_FOCUS=anchor||document.activeElement;
+  let fq='';
+  const multi=o.mode!=='single';
+  const rebuild=()=>{
+    P.innerHTML=`<div class="dtp-h"><span>${esc(o.title||'Выбор прогонов')}</span><button type="button" class="dtp-x" aria-label="Закрыть">✕</button></div>
+      <input class="dtp-q" type="text" placeholder="Поиск прогона" aria-label="Поиск прогона" value="${esc(fq)}">
+      ${multi?`<div class="dtp-a"><button type="button" data-all="1">Выбрать все</button><button type="button" data-non="1">Снять все</button></div>`:''}
+      <div class="dtp-l" role="group" aria-label="${esc(o.title||'Выбор прогонов')}"></div>`;
+    P.querySelector('.dtp-x').onclick=e=>{e.stopPropagation();dtpHide()};
+    const fi=P.querySelector('.dtp-q');
+    fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value;rebuild();const n=P.querySelector('.dtp-q');n.focus();n.selectionStart=n.selectionEnd=p};
+    if(multi){
+      P.querySelector('[data-all]').onclick=()=>{runPickerVisible(o,fq).forEach(k=>o.selected.add(k));o.onChanged&&o.onChanged();rebuild()};
+      P.querySelector('[data-non]').onclick=()=>{runPickerVisible(o,fq).forEach(k=>o.selected.delete(k));o.onChanged&&o.onChanged();rebuild()};
+    }
+    renderRunTree(P.querySelector('.dtp-l'),Object.assign({},o,{q:fq,onChanged:()=>{o.onChanged&&o.onChanged();rebuild()}}));
+    /* фокус — обратно в поиск, если перестроение вызвано им; иначе renderRunTree
+       сам вернёт фокус на чекбокс/радио */
+  };
+  rebuild();
+  P.style.display='block';
+  P.dataset.owner=o.title||'Выбор прогонов';
+  P.setAttribute('aria-label',o.title||'Выбор прогонов');
+  if(anchor&&anchor.setAttribute){
+    anchor.setAttribute('aria-expanded','true');
+    DTP_AFTER_HIDE=()=>anchor.setAttribute('aria-expanded','false');
+  }
+  const r=anchor.getBoundingClientRect();
+  P.style.left=Math.max(8,Math.min(r.left-12,innerWidth-P.offsetWidth-12))+'px';
+  P.style.top=Math.min(r.bottom+6,Math.max(8,innerHeight-P.offsetHeight-12))+'px';
+  dtpTrapOn();
+  const fi0=P.querySelector('.dtp-q');if(fi0)fi0.focus();
+}
 
 
 /* ═══════════════ 5. ВСТРОЕННОЕ ДЕМО ═══════════════ */
@@ -1827,40 +2001,23 @@ function tabHIST(){
       }
     };
 
-    // Попап мультивыбора прогонов (в стиле фильтров таблиц)
-    const openPicker=(anchor)=>{
-      const P=dtp();let fq='';
-      const rebuild=()=>{
-        const list=runs.filter(r=>!fq||r.label.toLowerCase().includes(fq));
-        P.innerHTML=`<div class="dtp-h"><span>Выбор прогонов для анализа</span><span class="dtp-x">✕</span></div>
-          <input class="dtp-q" type="text" placeholder="Поиск прогона" value="${esc(fq)}">
-          <div class="dtp-a"><button data-all="1">Выбрать все</button><button data-non="1">Снять все</button></div>
-          <div class="dtp-l">${(()=>{const gs={};list.forEach(r=>{const c=runGroupValue(r,'configid'),d=runGroupValue(r,'datasetid');(gs[c]??={})[d]??=[];gs[c][d].push(r)});return Object.entries(gs).map(([c,ds])=>`<div class="dtp-grp"><b>Конфиг ${esc(c)}</b>${Object.entries(ds).map(([d,rs])=>`<div class="dtp-grp" style="padding-left:12px"><span>Датасет ${esc(d)}</span>${rs.map(r=>{const on=SEL_HIST.has(runKey(r));return `<label class="dtp-i${on?' on':''}" title="${esc(r.label)}"><input type="checkbox" ${on?'checked':''} data-k="${esc(runKey(r))}"><span>${esc(rOpt(r))}</span></label>`}).join('')}</div>`).join('')}</div>`).join('')||'<div class="dtp-e">ничего не найдено</div>'})()}</div>`;
-        P.querySelector('.dtp-x').onclick=dtpHide;
-        const fi=P.querySelector('.dtp-q');
-        fi.oninput=()=>{const p=fi.selectionStart;fq=fi.value.toLowerCase();rebuild();const n=P.querySelector('.dtp-q');n.value=fq?fi.value:'';n.focus();n.selectionStart=n.selectionEnd=p};
-        P.querySelector('[data-all]').onclick=()=>{list.forEach(r=>SEL_HIST.add(runKey(r)));if(!IS_DEMO)persistSession();rebuild();drawAll()};
-        P.querySelector('[data-non]').onclick=()=>{SEL_HIST.clear();if(!IS_DEMO)persistSession();rebuild();drawAll()};
-        P.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{
-          const k=i.dataset.k;
-          if(i.checked)SEL_HIST.add(k);else SEL_HIST.delete(k);
-          i.closest('.dtp-i').classList.toggle('on',i.checked);
+    // Попап мультивыбора прогонов — общий компонент с деревом
+    // Конфиг → Датасет → Прогон и групповым выбором (tri-state на шапках).
+    btn.onclick=e=>{
+      e.stopPropagation();
+      const P=dtp();
+      if(P.style.display==='block'){
+        if(P.dataset.owner==='Прогоны для анализа'){dtpHide();return}
+        dtpHide(); // переключаемся с пикера активного прогона на аналитический
+      }
+      openRunPicker(btn,{
+        title:'Прогоны для анализа',mode:'multi',runs,keyOf:runKey,selected:SEL_HIST,
+        onChanged:()=>{
           if(!IS_DEMO)persistSession();
-          drawAll();updateChip();
-        });
-      };
-      rebuild();
-      P.style.display='block';
-      P.setAttribute('aria-label','Выбор прогонов для анализа');
-      DTP_PREV_FOCUS=document.activeElement;
-      const r=anchor.getBoundingClientRect();
-      P.style.left=Math.max(8,Math.min(r.left-12,innerWidth-272))+'px';
-      P.style.top=Math.min(r.bottom+6,Math.max(8,innerHeight-370))+'px';
-      dtpTrapOn();
-      const fi0=P.querySelector('.dtp-q');if(fi0)fi0.focus();
+          updateChip();drawAll();
+        }
+      });
     };
-
-    btn.onclick=e=>{e.stopPropagation();openPicker(btn)};
     $('#histSelAll').onclick=()=>{runs.forEach(r=>SEL_HIST.add(runKey(r)));dtpHide();drawAll()};
     drawAll();
   },0);
@@ -2052,7 +2209,8 @@ function render(){
       <button type="button" id="runPrev" ${curIdx<=0?'disabled':''} title="Предыдущий прогон" aria-label="Предыдущий прогон">‹</button>
       <button type="button" id="runNext" ${curIdx<0||curIdx>=DS.runs.length-1?'disabled':''} title="Следующий прогон" aria-label="Следующий прогон">›</button>
     </span>
-    <select id="runSel" aria-label="Активный прогон" title="${curR?esc(curR.label):''}">${DS.runs.map(r=>`<option value="${runKey(r)}" ${runKey(r)===CUR_KEY?'selected':''} title="${esc(r.label)}">${esc(rOpt(r))}</option>`).join('')}</select>
+    <button type="button" class="chip" id="runSel" aria-haspopup="dialog" aria-expanded="false"
+      title="${curR?esc(curR.label):'Выбрать активный прогон'}">${curR?esc(clip(rName(curR),44)):'Выбрать прогон'}<span class="rt-caret" aria-hidden="true">▾</span></button>
     <span class="run-ctx" title="${curR?esc(curR.label):''}">${curR?esc(rCtx(curR)):''}${curR&&curR.meta.startTime?' · '+esc(String(curR.meta.startTime).slice(0,16)):''}</span>
     <span class="tag">${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])} в истории</span>
     ${loadMetaHtml()}`;
@@ -2060,8 +2218,21 @@ function render(){
   const bPrev=$('#runPrev');if(bPrev)bPrev.onclick=()=>goRun(-1);
   const bNext=$('#runNext');if(bNext)bNext.onclick=()=>goRun(1);
   const bPgH=$('#bPg');if(bPgH)bPgH.classList.toggle('on',!!(LOAD_META&&LOAD_META.source==='postgres'));
-  const sel=$('#runSel');
-  if(sel)sel.onchange=()=>{CUR_KEY=sel.value;if(!IS_DEMO)persistSession();render()};
+  /* Активный прогон: чип открывает общий пикер с деревом Конфиг → Датасет →
+     Прогон (single-режим: клик по прогону сразу выбирает его и закрывает). */
+  const runChip=$('#runSel');
+  if(runChip)runChip.onclick=ev=>{
+    ev.stopPropagation();
+    const P=dtp();
+    if(P.style.display==='block'){
+      if(P.dataset.owner==='Активный прогон'){dtpHide();return}
+      dtpHide(); // закрыть чужой открытый пикер и переключиться на этот
+    }
+    openRunPicker(runChip,{
+      title:'Активный прогон',mode:'single',runs:DS.runs,keyOf:runKey,activeKey:CUR_KEY,
+      onPick:k=>{dtpHide();CUR_KEY=k;if(!IS_DEMO)persistSession();render()}
+    });
+  };
   const bSave=$('#bSaveSession');
   if(bSave)bSave.onclick=async()=>{
     bSave.disabled=true;bSave.textContent='Сохранение…';
@@ -2572,29 +2743,19 @@ async function pgFetchRuns(){
     pgSetStep(3);
   }catch(e){pgBusy(false,'');pgShowErr(2,e.message||String(e))}
 }
-/* ── Шаг 3: выбор прогонов, группировка по схемам ── */
+/* ── Шаг 3: выбор прогонов, группировка конфиг → датасет → прогон ──
+   Дерево и групповой выбор (tri-state) — общий компонент renderRunTree. */
 function pgRenderRuns(){
   const q=(($('#pgRunQ')||{}).value||'').toLowerCase();
   const list=$('#pgRunsList');if(!list)return;
-  const match=r=>!q||(r.schema+' '+r.runid+' '+r.datasetid+' '+r.configid+' '+(r.startTime||'')).toLowerCase().includes(q);
-  const filtered=PG.runs.filter(match), cfgs=[...new Set(filtered.map(r=>runGroupValue(r,'configid')))];
-  $('#pgRunsInfo').textContent=`Найдено прогонов: ${PG.runs.length}. Группировка: конфиг → датасет → прогон.`+
+  $('#pgRunsInfo').textContent=`Найдено прогонов: ${PG.runs.length}. Группировка: конфиг → датасет → прогон; клик по заголовку группы выбирает её целиком.`+
     (PG.runsTruncated?' Показаны не все прогоны (лимит сервера).':'');
-  let html='';
-  cfgs.forEach(cfg=>{
-    const cr=filtered.filter(r=>runGroupValue(r,'configid')===cfg), ds=[...new Set(cr.map(r=>runGroupValue(r,'datasetid')))], keys=cr.map(pgRunKey);
-    const allOn=keys.length>0&&keys.every(k=>PG.selR.has(k));
-    html+=`<div class="pg-grp"><b>Конфиг ${esc(cfg)}</b><span class="s dt-info">${cr.filter(r=>PG.selR.has(pgRunKey(r))).length}/${cr.length}</span><button class="dt-btn" type="button" data-cfg="${esc(cfg)}" data-on="${allOn?0:1}">${allOn?'Снять':'Выбрать'}</button></div>`;
-    ds.forEach(dsv=>{
-      const dr=cr.filter(r=>runGroupValue(r,'datasetid')===dsv), dkeys=dr.map(pgRunKey), dOn=dkeys.length>0&&dkeys.every(k=>PG.selR.has(k));
-      html+=`<div class="pg-grp" style="padding-left:22px"><span>Датасет ${esc(dsv)}</span><span class="s dt-info">${dr.filter(r=>PG.selR.has(pgRunKey(r))).length}/${dr.length}</span><button class="dt-btn" type="button" data-ds-cfg="${esc(cfg)}" data-ds="${esc(dsv)}" data-on="${dOn?0:1}">${dOn?'Снять':'Выбрать'}</button></div>`;
-      html+=dr.map(r=>{const k=pgRunKey(r),on=PG.selR.has(k);return `<label class="pg-item" style="padding-left:42px"><input type="checkbox" data-k="${esc(k)}" ${on?'checked':''}><span class="t"><b>${esc(rOpt(r))}</b><br><span class="s">${r.schema?esc(r.schema)+' · ':''}${r.rows==null?'':nf(r.rows)+' строк · '}${r.startTime?esc(r.startTime):'дата запуска неизвестна'}</span></span></label>`}).join('');
-    });
+  renderRunTree(list,{
+    mode:'multi',runs:PG.runs,q,keyOf:pgRunKey,selected:PG.selR,
+    match:(r,qq)=>(r.schema+' '+r.runid+' '+r.datasetid+' '+r.configid+' '+(r.startTime||'')).toLowerCase().includes(qq),
+    leafMeta:r=>`${r.rows==null?'':nf(r.rows)+' строк · '}${r.startTime?esc(r.startTime):'дата запуска неизвестна'}`,
+    onChanged:()=>pgRenderRuns()
   });
-  list.innerHTML=html||'<div class="dtp-e">ничего не найдено</div>';
-  list.querySelectorAll('input[type=checkbox]').forEach(i=>i.onchange=()=>{if(i.checked)PG.selR.add(i.dataset.k);else PG.selR.delete(i.dataset.k);pgRenderRuns()});
-  list.querySelectorAll('button[data-cfg]').forEach(b=>b.onclick=()=>{const cfg=b.dataset.cfg,on=b.dataset.on==='1';PG.runs.filter(r=>runGroupValue(r,'configid')===cfg).forEach(r=>{const k=pgRunKey(r);if(on)PG.selR.add(k);else PG.selR.delete(k)});pgRenderRuns()});
-  list.querySelectorAll('button[data-ds-cfg]').forEach(b=>b.onclick=()=>{const cfg=b.dataset.dsCfg,ds=b.dataset.ds,on=b.dataset.on==='1';PG.runs.filter(r=>runGroupValue(r,'configid')===cfg&&runGroupValue(r,'datasetid')===ds).forEach(r=>{const k=pgRunKey(r);if(on)PG.selR.add(k);else PG.selR.delete(k)});pgRenderRuns()});
   const b=$('#pgDoLoad');if(b)b.textContent=`Загрузить в дашборд (${PG.selR.size})`;
 }
 /* ── Шаг 3 → дашборд: загрузка строк и слияние с историей ── */

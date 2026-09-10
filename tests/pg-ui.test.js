@@ -244,25 +244,60 @@ function setCheck(dom, el, checked) {
   q(doc, '#pgSchemaQ').value = '';
   q(doc, '#pgSchemaQ').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
 
-  console.log('4. Прогоны по схемам');
+  console.log('4. Прогоны по схемам: дерево конфиг → датасет → прогон и групповой выбор');
   q(doc, '#pgToRuns').click();
   await waitFor(dom, d => q(d, '#pgStep3').hidden === false, 'step 3');
-  ok(qa(doc, '#pgRunsList .pg-grp').length === 2, 'runs grouped by schema');
-  ok(qa(doc, '#pgRunsList .pg-item').length === 3, 'three runs listed');
+  ok(qa(doc, '#pgRunsList .rt-grp.cfg').length === 1, 'дерево: один заголовок конфига');
+  ok(qa(doc, '#pgRunsList .rt-grp.ds').length === 1, 'дерево: один заголовок датасета');
+  ok(qa(doc, '#pgRunsList .rt-leaf').length === 3, 'three runs listed');
+  const cfgChk = () => q(doc, '#pgRunsList .rt-grp.cfg input');
+  const dsChk = () => q(doc, '#pgRunsList .rt-grp.ds input');
+  ok(cfgChk().checked === true && cfgChk().indeterminate === false, 'конфиг выбран полностью');
+  ok(q(doc, '#pgRunsList .rt-grp.cfg .rt-gc').textContent === '3/3', 'счётчик конфига 3/3');
   ok(q(doc, '#pgDoLoad').textContent.includes('(3)'), 'default selection = all (<=25)');
   ok(log.some(e => e.url.endsWith('/api/pg/runs')), 'runs API called');
 
+  // сняли один прогон — шапки групп уходят в tri-state «частично» (indeterminate)
+  setCheck(dom, qa(doc, '#pgRunsList .rt-leaf input')[1], false);
+  ok(q(doc, '#pgDoLoad').textContent.includes('(2)'), 'one run unchecked');
+  ok(cfgChk().indeterminate === true && cfgChk().checked === false, 'конфиг: состояние «частично» (indeterminate)');
+  ok(dsChk().indeterminate === true, 'датасет: состояние «частично» (indeterminate)');
+  ok(q(doc, '#pgRunsList .rt-grp.cfg .rt-gc').textContent === '2/3', 'счётчик конфига 2/3');
+  // клик по шапке конфига при частичном выборе — выбирает всю группу
+  setCheck(dom, cfgChk(), false);
+  ok(q(doc, '#pgDoLoad').textContent.includes('(3)'), 'клик по конфигу выбрал все прогоны группы');
+  // повторный клик по полностью выбранной группе — снимает все прогоны конфига
+  setCheck(dom, cfgChk(), true);
+  ok(q(doc, '#pgDoLoad').textContent.includes('(0)'), 'повторный клик по конфигу снял все прогоны группы');
+  // клик по датасету выбирает все его прогоны
+  setCheck(dom, dsChk(), false);
+  ok(q(doc, '#pgDoLoad').textContent.includes('(3)'), 'клик по датасету выбрал все прогоны датасета');
+
   console.log('5. Загрузка в дашборд (2 из 3 прогонов)');
-  setCheck(dom, q(doc, '#pgRunsList .pg-item input'), false);
+  setCheck(dom, qa(doc, '#pgRunsList .rt-leaf input')[0], false);
   ok(q(doc, '#pgDoLoad').textContent.includes('(2)'), 'one run unchecked');
   q(doc, '#pgDoLoad').click();
   await waitFor(dom, d => q(d, '#pgModal').hidden === true, 'modal closed after load');
-  const opts = qa(doc, '#runSel option');
-  ok(opts.length === 2, 'two runs in history, got ' + opts.length);
-  ok(opts.some(o => o.textContent.includes('public_1 · Прогон 20')), 'schema in run label: ' + opts.map(o => o.textContent).join(' / '));
+  const chip = q(doc, '#runSel');
+  ok(chip.tagName === 'BUTTON', 'активный прогон — чип-кнопка, а не select');
+  ok(chip.title.includes('public_1'), 'в подсказке чипа видна схема активного прогона: ' + chip.title);
   ok(q(doc, '#stat').textContent.includes('Загружено из Postgres'), 'stat updated');
   ok(q(doc, '#bPg').classList.contains('on'), 'PG button marked active');
   ok(q(doc, '#runbar').textContent.includes('PostgreSQL: public'), 'source meta shows schemas');
+  // общий пикер активного прогона: дерево с группировкой и radio-выбором
+  chip.click();
+  await waitFor(dom, d => qa(d, '#dtpop .rt-leaf').length === 2, 'run picker shows two runs');
+  ok(qa(doc, '#dtpop .rt-grp.cfg').length === 1, 'пикер активного прогона сгруппирован по конфигу');
+  ok(qa(doc, '#dtpop .rt-leaf input[type=radio]').length === 2, 'single-режим: radio вместо чекбоксов');
+  ok(qa(doc, '#dtpop .dtp-a').length === 0, 'в single-режиме нет кнопок «выбрать все»');
+  const popTxt = q(doc, '#dtpop .dtp-l').textContent;
+  ok(popTxt.includes('public_1') && popTxt.includes('public'), 'схемы видны в подписях листов');
+  // клик по листу переключает активный прогон и закрывает попап
+  const publicRun = qa(doc, '#dtpop .rt-leaf input').find(i => i.dataset.k.startsWith('public|'));
+  setCheck(dom, publicRun, true);
+  await waitFor(dom, d => q(d, '#dtpop').style.display === 'none', 'picker closed after pick');
+  ok(q(doc, '#runSel').title.includes('схема public') && !q(doc, '#runSel').title.includes('public_1'),
+    'активный прогон переключён: ' + q(doc, '#runSel').title);
   // пароль не сохраняется
   const saved = JSON.parse(dom.window.localStorage.getItem('snp_opt_pg') || '{}');
   ok(saved.user === 'analyst' && !('password' in saved) && !('pass' in saved), 'no password in localStorage');
@@ -391,7 +426,7 @@ function setCheck(dom, el, checked) {
     await waitFor(d7, d => q(d, '#pgModal').hidden === true, 'loaded with auto mapping');
     const loadReq = log7.filter(e => e.url.endsWith('/api/pg/load')).pop();
     ok(!loadReq.body.columns, 'и в /api/pg/load columns не уходит');
-    ok(qa(doc7, '#runSel option').some(o => o.textContent.includes('public_1841')), 'прогон из схемы со status/message попал в дашборд');
+    ok(q(doc7, '#runSel').title.includes('public_1841'), 'прогон из схемы со status/message попал в дашборд (чип активного прогона): ' + q(doc7, '#runSel').title);
     d7.window.close();
   }
 
@@ -461,7 +496,7 @@ function setCheck(dom, el, checked) {
     await waitFor(d7, d => q(d, '#pgModal').hidden === true, 'loaded with mapping');
     const loadReq = log7.filter(e => e.url.endsWith('/api/pg/load')).pop();
     ok(loadReq.body.columns.param === 'state', 'мэппинг ушёл и в /api/pg/load');
-    ok(qa(doc7, '#runSel option').some(o => o.textContent.includes('public_1841')), 'прогон из «неправильной» схемы попал в дашборд');
+    ok(q(doc7, '#runSel').title.includes('public_1841'), 'прогон из «неправильной» схемы попал в дашборд (чип активного прогона)');
 
     // мэппинг запоминается между сессиями
     const saved7 = JSON.parse(d7.window.localStorage.getItem('snp_opt_pg') || '{}');
@@ -552,6 +587,72 @@ function setCheck(dom, el, checked) {
     eye.click();
     ok(pass.type === 'password', 'повторный клик снова скрывает');
     d16.window.close();
+  }
+
+  console.log('17. Фильтр «Прогоны для анализа»: групповой выбор конфиг/датасет');
+  {
+    const d17 = makeDom(apiFetch({}, []));
+    const w17 = d17.window;
+    const doc17 = d17.window.document;
+    await waitFor(d17, d => q(d, '#runSel'), 'boot 17');
+    // 4 прогона в двух конфигах: cfg300/ds14 (#1,#2), cfg300/ds15 (#3), cfg301/ds14 (#4)
+    const mkRows = (runid, cfg, ds) => {
+      const mk = (p, v) => ({ runid: String(runid), 'Параметр': p, 'Значение': v, datasetid: String(ds), configid: String(cfg) });
+      return [
+        mk('Solution', 'OPTIMAL'),
+        mk('Start time', '2026-06-0' + runid + ' 09:00:00'),
+        mk('Non-zero values of sale variables', '5 / 10'),
+        mk('Non-zero values of sale variables %', '50')
+      ];
+    };
+    let rows17 = [];
+    [[1, 300, 14], [2, 300, 14], [3, 300, 15], [4, 301, 14]].forEach(([r, c, d]) => { rows17 = rows17.concat(mkRows(r, c, d)); });
+    w17.eval(`initFromRows(${JSON.stringify(rows17)}, {source:'file',files:['g.xlsx'],loadedAt:new Date().toISOString()});IS_DEMO=false;TAB='hist';render();`);
+    await new Promise(r => setTimeout(r, 40));
+    q(doc17, '#histSelBtn').click();
+    await waitFor(d17, d => qa(d, '#dtpop .rt-leaf').length === 4, 'аналитический пикер показывает 4 прогона');
+    const grpCfg = () => qa(doc17, '#dtpop .rt-grp.cfg input');
+    const grpDs = () => qa(doc17, '#dtpop .rt-grp.ds input');
+    ok(grpCfg().length === 2, 'два конфига в дереве');
+    ok(grpDs().length === 3, 'три датасета в дереве');
+    // по умолчанию выбраны последние 2 прогона — счётчики и indeterminate отражают это
+    const gc = grpCfg();
+    ok(gc[0].indeterminate === true, 'конфиг 300 выбран частично (один из его датасетов в дефолте)');
+    // начнём с чистого листа
+    q(doc17, '#dtpop [data-non]').click();
+    await new Promise(r => setTimeout(r, 20));
+    ok(qa(doc17, '#dtpop .rt-leaf input:checked').length === 0, '«Снять все» обнулил выбор');
+    // клик по шапке конфига 300 выбирает все 3 его прогона (оба датасета)
+    const cfg300 = grpCfg().find(i => i.dataset.gcfg === '300');
+    setCheck(d17, cfg300, true);
+    await new Promise(r => setTimeout(r, 20));
+    ok(qa(doc17, '#dtpop .rt-leaf input:checked').length === 3, 'выбраны все 3 прогона конфига 300');
+    ok(/Выбрано прогонов: 3/.test(q(doc17, '#histSelBtn').textContent), 'чип показывает «Выбрано прогонов: 3»');
+    const afterCfg = grpCfg().find(i => i.dataset.gcfg === '300');
+    ok(afterCfg.checked === true && afterCfg.indeterminate === false, 'конфиг 300 теперь выбран полностью');
+    // счётчик конфига 300 — 3/3
+    const gc300 = qa(doc17, '#dtpop .rt-grp.cfg').find(l => l.textContent.includes('Конфиг 300'));
+    ok(gc300.querySelector('.rt-gc').textContent === '3/3', 'счётчик конфига 300 — 3/3');
+    // клик по датасету cfg301/ds14 добавляет оставшийся прогон
+    const ds301 = grpDs().find(i => i.dataset.gcfg === '301' && i.dataset.gds === '14');
+    setCheck(d17, ds301, true);
+    await new Promise(r => setTimeout(r, 20));
+    ok(qa(doc17, '#dtpop .rt-leaf input:checked').length === 4, 'клик по датасету выбрал его прогон — всего 4');
+    // сняли один лист конфига 300 — его шапка ушла в indeterminate, счётчик 2/3
+    const leafOf300 = qa(doc17, '#dtpop .rt-leaf input').find(i => i.dataset.k === '1|14|300');
+    setCheck(d17, leafOf300, false);
+    await new Promise(r => setTimeout(r, 20));
+    const partial = grpCfg().find(i => i.dataset.gcfg === '300');
+    ok(partial.indeterminate === true && partial.checked === false, 'после снятия листа конфиг — indeterminate');
+    const gc300b = qa(doc17, '#dtpop .rt-grp.cfg').find(l => l.textContent.includes('Конфиг 300'));
+    ok(gc300b.querySelector('.rt-gc').textContent === '2/3', 'счётчик конфига стал 2/3');
+    // поиск: «Выбрать все» действует только на видимые прогоны
+    const fi = q(doc17, '#dtpop .dtp-q');
+    fi.value = 'Прогон 4';
+    fi.dispatchEvent(new w17.Event('input', { bubbles: true }));
+    await new Promise(r => setTimeout(r, 20));
+    ok(qa(doc17, '#dtpop .rt-leaf').length === 1, 'поиск сузил дерево до одного прогона');
+    d17.window.close();
   }
 
   console.log('\n' + '─'.repeat(40));
