@@ -217,6 +217,7 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
 .kpi .t{display:flex;align-items:baseline;gap:6px}
 .kpi .d{font-size:12px;font-weight:600;margin-top:5px}
 .kpi .d.pos{color:var(--scp-ok)} .kpi .d.neg{color:var(--scp-err)} .kpi .d.flat{color:var(--scp-text-3)}
+.dlt{font-weight:600;font-size:12px;white-space:nowrap}.dlt.pos{color:var(--scp-ok)}.dlt.neg{color:var(--scp-err)}.dlt.flat{color:var(--scp-text-3)}
 .kpi .hint{cursor:help;color:var(--scp-text-3);font-size:11px;border:1px solid var(--scp-line-2);border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 14px}
 
 /* Выбор столбцов таблицы */
@@ -250,9 +251,90 @@ td.trunc,th.trunc{max-width:0}
 .csv-sep-wrap{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--scp-text-3)}
 .csv-sep-wrap select{padding:4px 8px;font-size:12px}
 canvas[role="img"]{outline:none}
+
+/* §19 Переключение меню «слева / сверху». В режиме .app.top боковая панель
+   скрыта, а разделы показаны горизонтальной полосой над шапкой. */
+.topnav{display:none;background:var(--scp-rail);padding:0 20px;align-items:center;gap:16px;height:48px;position:sticky;top:0;z-index:300}
+.app.top .rail{display:none}
+.app.top .topnav{display:flex}
+.app.top #bRailToggleHdr{display:none}
+.topnav-brand{display:flex;align-items:center;gap:5px;color:#d6d6d6;font-size:12.5px;font-weight:600;white-space:nowrap;padding-right:14px;border-right:1px solid #2e2e2e;height:26px}
+.topnav-brand .ip-sq{width:9px;height:9px}
+.topnav-brand span.tt{margin-left:6px}
+.topnav-tabs{display:flex;align-items:stretch;gap:2px;height:100%;overflow-x:auto;flex:1;scrollbar-width:none}
+.topnav-tabs button{display:flex;align-items:center;gap:8px;background:transparent;border:0;border-bottom:3px solid transparent;border-top:3px solid transparent;color:#d6d6d6;padding:0 14px;font:400 13px 'Open Sans',sans-serif;cursor:pointer;white-space:nowrap}
+.topnav-tabs button:hover{background:var(--scp-rail-hover);color:#fff}
+.topnav-tabs button.on{color:#fff;font-weight:600;border-bottom-color:var(--scp-accent);background:var(--scp-rail-2)}
+.topnav-tabs .dot{width:6px;height:6px;border-radius:50%;background:var(--scp-warn);flex:0 0 6px}
+.topnav-tabs button.on .dot{background:#c57aff}
+.btn-rail-menu[aria-pressed="true"]{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
+.btn-rail-menu[data-tip]{position:relative}
+.btn-rail-menu[data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 7px);left:0;background:var(--scp-n-900);color:#fff;font-size:12px;white-space:nowrap;padding:5px 9px;border-radius:var(--r-s);opacity:0;pointer-events:none;transition:opacity .15s;z-index:500}
+.btn-rail-menu[data-tip]:hover::after,.btn-rail-menu[data-tip]:focus-visible::after{opacity:1}
+
+/* §19 Подшкала якорей длинного раздела «Анализ прогона» */
+.subnav{position:sticky;top:0;z-index:20;display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;margin:-8px 0 8px;background:var(--scp-bg)}
+.app.top .subnav{top:48px}
+.subnav .lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--scp-text-3);margin-right:4px}
+.subnav a{text-decoration:none;color:var(--scp-text-2);font-size:12.5px;padding:4px 12px;border-radius:9999px;border:1px solid var(--scp-ctrl);background:var(--scp-surface);white-space:nowrap}
+.subnav a:hover,.subnav a.on{border-color:var(--scp-accent);color:var(--scp-accent);background:var(--scp-b-50)}
+[id^="sec-"]{scroll-margin-top:58px}
+.app.top [id^="sec-"]{scroll-margin-top:106px}
+.sech{margin:22px 0 10px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.sech h2{margin:0;font:600 18px/24px 'Open Sans',sans-serif;color:var(--scp-text)}
+.sech .sub{font-size:12.5px;color:var(--scp-text-3)}
+
+/* §19 Сводная таблица KPI прогона: три группы показателей */
+.kt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px 26px;margin-top:6px}
+.kt-h{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--scp-text-3);padding-bottom:6px;border-bottom:2px solid var(--scp-line-2);margin-bottom:2px;display:flex;align-items:center;gap:6px}
+.kt-t{table-layout:fixed}
+.kt-t td{height:auto;padding:6px 6px;white-space:normal;line-height:17px;vertical-align:top;font-size:13px;border-bottom:1px solid var(--scp-line);overflow:visible}
+.kt-t td.k{text-align:left;color:var(--scp-text-2);width:44%;padding-left:2px}
+.kt-t td.v{text-align:right;font-weight:600;color:var(--scp-text);width:36%;font-variant-numeric:tabular-nums}
+.kt-t td.v .s{font-weight:400;font-size:11.5px;color:var(--scp-text-3);line-height:15px;margin-top:1px}
+.kt-t td.d{text-align:right;width:20%;font-size:12px;padding-right:2px}
+.kt-t td.d .d{margin:0;font-size:12px;white-space:nowrap}
+.kt-t tr[data-x]{cursor:help}
+.kt-t tr[data-x]:hover td{background:var(--scp-b-50)}
+.kt-t tr.kt-sub td{color:var(--scp-text-3);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:10px 2px 3px;border-bottom:0;text-align:left;background:transparent!important}
+.kt-t td.v.pos{color:var(--scp-ok)} .kt-t td.v.neg{color:var(--scp-err)} .kt-t td.v.mid{color:#c47512}
+[data-theme="dark"] .kt-t tr[data-x]:hover td{background:#2c2140}
+
+/* §19 Пояснения при наведении: «что это / зачем / результат» */
+#xpop{position:fixed;z-index:660;width:max-content;max-width:min(420px,calc(100vw - 24px));background:var(--scp-surface);color:var(--scp-text-2);border:1px solid var(--scp-menu-bd);border-radius:var(--r-m);box-shadow:0 8px 26px #00000033;padding:10px 13px;font-size:12.5px;line-height:18px;pointer-events:none}
+#xpop[hidden]{display:none}
+#xpop b{color:var(--scp-text)}
+#xpop .xp-h{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--scp-accent);margin:8px 0 2px}
+#xpop .xp-h:first-child{margin-top:0}
+#xpop .xp-t{font-weight:600;color:var(--scp-text);margin-bottom:3px}
+.xi{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;border:1px solid var(--scp-line-2);color:var(--scp-text-3);font:600 10px/1 'Open Sans',sans-serif;cursor:help;flex:0 0 15px;user-select:none}
+.xi:hover{border-color:var(--scp-accent);color:var(--scp-accent)}
+.ch{display:flex;align-items:center;gap:7px;min-width:0}
+.ch h3{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.card:has(.chart-expand) .ch{padding-right:34px}
+.card:has(.chart-expand) .ch h3{padding-right:0}
+.kpi[data-x]{cursor:help}
+.kpi[data-x]:hover{border-color:var(--scp-accent-bd)}
+.sech h2[data-x],.kt-h[data-x]{cursor:help}
+
+/* §19 Расширенное сравнение A/B и разница настроек */
+.ab-t td.k{width:34%}
+.ab-t td.a,.ab-t td.b{text-align:right;width:20%;font-variant-numeric:tabular-nums;color:var(--scp-text)}
+.ab-t td.dd{text-align:right;width:16%;font-weight:600;font-variant-numeric:tabular-nums}
+.ab-t td.ev{text-align:right;width:10%;font-size:11.5px}
+.ab-t th{text-align:right;font-size:12px;height:30px}
+.ab-t th.l{text-align:left}
+.ab-t .same{color:var(--scp-text-3);font-weight:400}
+.risk-list .dq{margin-bottom:6px}
+.risk-more{font-size:12.5px;color:var(--scp-text-3);margin:4px 0 8px}
+.risk-more summary{cursor:pointer;color:var(--scp-accent)}
+.sum ol{margin:0 0 12px;padding-left:22px}
+.sum ol li{margin:5px 0;font-size:13.5px;line-height:19px;color:var(--scp-text-2)}
+.raw-chips{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+
 @media print{
   body{background:#fff!important;color:#000!important}
-  .rail,.hdr-actions,.runbar,.dt-bar,.tbar,.rail-foot,#toast,#tip,#dtpop,#pgModal,#chartModal,body.drag::after{display:none!important}
+  .rail,.topnav,.subnav,.hdr-actions,.runbar,.dt-bar,.tbar,.rail-foot,#toast,#tip,#xpop,#dtpop,#pgModal,#chartModal,body.drag::after{display:none!important}
   .app{display:block}
   .wrap{width:100%}
   header{border:0;padding:0 0 12px}
@@ -390,10 +472,18 @@ canvas[role="img"]{outline:none}
     <div class="rail-foot"><button id="railToggle" aria-label="Свернуть или раскрыть боковую панель">‹ Свернуть панель</button></div>
   </aside>
   <div class="wrap">
+    <nav class="topnav" id="topnav" aria-label="Разделы дашборда">
+      <div class="topnav-brand"><span class="ip-sq ip-s1"></span><span class="ip-sq" style="background:#af47ff"></span><span class="ip-sq" style="background:#c57aff"></span><span class="tt">SNP Optimizer Insight</span></div>
+      <div class="topnav-tabs" id="topnavTabs"></div>
+    </nav>
     <header>
       <div class="hdr-left">
         <button class="btn-rail-menu" id="bRailToggleHdr" title="Свернуть/раскрыть меню" aria-label="Свернуть или раскрыть боковое меню">
           <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <button class="btn-rail-menu" id="bNavLayout" data-tip="Меню сверху" aria-label="Переключить расположение меню: слева или сверху" aria-pressed="false">
+          <svg id="iconNavTop" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/></svg>
+          <svg id="iconNavLeft" viewBox="0 0 24 24" style="display:none"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="9" y1="4" x2="9" y2="20"/></svg>
         </button>
         <div><h1 id="pgTitle">Обзор</h1><div class="h-sub" id="pgSub">Как отработал оптимизатор и чему верить в результате</div></div>
       </div>
@@ -526,6 +616,7 @@ canvas[role="img"]{outline:none}
   </div>
 </div>
 <div id="tip"></div>
+<div id="xpop" role="tooltip" hidden></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -1588,8 +1679,10 @@ const SEED_ROWS=[
 
 /* ═══════════════ 6. СОСТОЯНИЕ ═══════════════ */
 let DS=null; // {runs:[...]}
-let CUR_KEY=null,TAB='ov';
+let CUR_KEY=null,TAB='run';
 let HIST_A=0,HIST_B=0;
+// Пара A/B по умолчанию = предыдущий → активный прогон, пока пользователь не выбрал свою
+let HIST_AB_AUTO=true;
 // Ключи прогонов, выбранных пользователем на вкладке «История прогонов»
 let SEL_HIST=new Set();
 // Доп. фильтр по статусу решения (OPTIMAL и др.): пустое множество = «все статусы»
@@ -1603,7 +1696,7 @@ function resetHistSel(runs){
   SEL_HIST.clear();
   HIST_STATUS.clear();
   runs.slice(-2).forEach(r=>SEL_HIST.add(runKey(r)));
-  HIST_A=0;HIST_B=1;
+  HIST_A=0;HIST_B=1;HIST_AB_AUTO=true;
 }
 function initFromRows(rows,meta){
   const runs=parseOptimizerRows(rows);
@@ -1675,7 +1768,7 @@ function persistSession(){
     v:1,savedAt:new Date().toISOString(),
     runs:serializeRuns(DS.runs),
     curKey:CUR_KEY,tab:TAB,
-    selHist:[...SEL_HIST],histA:HIST_A,histB:HIST_B,histStatus:[...HIST_STATUS],
+    selHist:[...SEL_HIST],histA:HIST_A,histB:HIST_B,histAuto:HIST_AB_AUTO,histStatus:[...HIST_STATUS],
     loadMeta:LOAD_META
   };
   return idbSet('current',payload).then(ok=>{
@@ -1698,10 +1791,10 @@ async function restoreSession(){
   DS={runs:payload.runs};
   DS.runs.forEach(r=>{if(!r.dups)r.dups=[]}); // сессии, сохранённые до появления dups
   CUR_KEY=payload.curKey||runKey(DS.runs[DS.runs.length-1]);
-  TAB=payload.tab||'ov';
+  TAB=normTab(payload.tab||'run');
   SEL_HIST=new Set(payload.selHist||[]);
   if(!SEL_HIST.size)resetHistSel(DS.runs);
-  HIST_A=payload.histA||0;HIST_B=payload.histB||1;
+  HIST_A=payload.histA||0;HIST_B=payload.histB||1;HIST_AB_AUTO=payload.histAuto!==false;
   HIST_STATUS=new Set(payload.histStatus||[]);
   LOAD_META=Object.assign({source:'session',files:[],sheetNote:'',loadedAt:payload.savedAt,persisted:true},payload.loadMeta||{});
   LOAD_META.persisted=true;IS_DEMO=false;
@@ -1727,15 +1820,14 @@ function loadMetaHtml(){
 function curRun(){if(!DS||!DS.runs.length)return null;
   return DS.runs.find(r=>runKey(r)===CUR_KEY)||DS.runs[DS.runs.length-1]}
 
-const TABS=[['ov','Обзор'],['ent','Использование сущностей'],['bnd','Ограничения и узкие места'],
-  ['pen','Штрафы (SOFT)'],['hist','История прогонов'],['raw','Данные'],['dq','Качество и аномалии']];
-const TSUB={ov:'Можно ли брать этот план в работу и что он даёт бизнесу',
-  ent:'Сколько спроса покрыто и как задействованы производство, закупки, логистика и запасы',
-  bnd:'Что сдерживает план и какие мощности простаивают',
-  pen:'Отступления от мягких плановых целей и во что они обходятся',
-  hist:'Улучшается или деградирует качество планирования от прогона к прогону',
-  raw:'Исходные строки лога optimizer_status — технический срез',
-  dq:'Что не так, почему это важно и что с этим делать'};
+const TABS=[['run','Анализ прогона'],['hist','Сравнение версий'],['raw','Данные']];
+const TSUB={run:'Результат, состав и экономика активного прогона: от KPI до выводов, рисков и рекомендаций',
+  hist:'Как меняется качество планирования от версии к версии и что именно изменилось между двумя прогонами',
+  raw:'Исходные строки лога optimizer_status — технический срез для сверки с ИТ и поставщиком'};
+/* Ключи вкладок старых сессий (Обзор, Сущности, Ограничения, Штрафы,
+   Качество) теперь ведут в единый раздел «Анализ прогона». */
+const TAB_LEGACY={ov:'run',ent:'run',bnd:'run',pen:'run',dq:'run'};
+const normTab=t=>TABS.some(x=>x[0]===t)?t:(TAB_LEGACY[t]||'run');
 
 /* ═══════════════ 6b. ВЕРДИКТ И ДЕЛЬТЫ ═══════════════
    Бизнес-пользователю нужен один ответ в начале раздела: можно ли
@@ -1761,13 +1853,76 @@ function deltaHtml(cur,prev,fmt,good){
   const cls=good===0?'flat':((d>0?1:-1)===good?'pos':'neg');
   return `<div class="d ${cls}">${d>0?'▲':'▼'} ${fmt(Math.abs(d))} к предыдущему прогону</div>`;
 }
-/** Единая отрисовка плитки KPI. */
+/** Короткая дельта для табличных ячеек: «▲ 1,4 п.п.» с подсказкой. */
+function deltaShort(cur,prev,fmt,good){
+  if(cur==null||prev==null||!isFinite(cur)||!isFinite(prev))return '';
+  const d=cur-prev;
+  if(Math.abs(d)<1e-9)return `<span class="dlt flat" title="без изменений к предыдущему прогону">=</span>`;
+  const cls=good===0?'flat':((d>0?1:-1)===good?'pos':'neg');
+  return `<span class="dlt ${cls}" title="к предыдущему прогону: ${d>0?'+':'−'}${fmt(Math.abs(d))}">${d>0?'▲':'▼'} ${fmt(Math.abs(d))}</span>`;
+}
+/* ═══════════════ 6c. ПОЯСНЕНИЯ ПРИ НАВЕДЕНИИ ═══════════════
+   У каждой карточки KPI, строки сводной таблицы и графика есть пояснение
+   «что это → зачем смотреть → результат в этом прогоне» бизнес-языком.
+   Пояснение регистрируется в XPL, элемент получает data-x, а единый
+   обработчик показывает всплывающее окно #xpop при наведении. */
+let XPL={},XPL_N=0;
+function xpId(o){const id='x'+(++XPL_N);XPL[id]=o;return id}
+function xAttr(o){return o?` data-x="${xpId(o)}"`:''}
+const XI='<span class="xi" aria-hidden="true">i</span>';
+function xpHtml(o){
+  if(typeof o==='string')return `<div>${o}</div>`;
+  let h='';
+  if(o.t)h+=`<div class="xp-t">${o.t}</div>`;
+  if(o.what)h+=`<div class="xp-h">Что это</div><div>${o.what}</div>`;
+  if(o.why)h+=`<div class="xp-h">Зачем смотреть</div><div>${o.why}</div>`;
+  if(o.how)h+=`<div class="xp-h">Как читать</div><div>${o.how}</div>`;
+  if(o.res)h+=`<div class="xp-h">Результат в этом прогоне</div><div>${o.res}</div>`;
+  return h;
+}
+(function xpopWire(){
+  const pop=document.getElementById('xpop');if(!pop)return;
+  let cur=null;
+  const hide=()=>{cur=null;pop.hidden=true};
+  const show=el=>{const o=XPL[el.dataset.x];if(!o){hide();return}
+    cur=el;pop.innerHTML=xpHtml(o);pop.hidden=false;
+    const b=el.getBoundingClientRect(),pw=pop.offsetWidth,ph=pop.offsetHeight;
+    let L=b.left,T=b.bottom+8;
+    if(L+pw>innerWidth-12)L=Math.max(12,innerWidth-12-pw);
+    if(T+ph>innerHeight-12)T=Math.max(12,b.top-8-ph);
+    pop.style.left=L+'px';pop.style.top=T+'px'};
+  document.addEventListener('mouseover',e=>{
+    const el=e.target&&e.target.closest?e.target.closest('[data-x]'):null;
+    if(!el){if(cur)hide();return}
+    if(el!==cur)show(el);
+  });
+  document.addEventListener('scroll',()=>{if(cur)hide()},true);
+  document.addEventListener('mousedown',()=>{if(cur)hide()},true);
+  window.addEventListener('blur',hide);
+})();
+/** Единая отрисовка плитки KPI. hint (строка) или x (объект пояснения). */
 function kpiHtml(k){
-  return `<div class="kpi"><div class="t">${k.t}${k.hint?`<span class="hint" title="${esc(k.hint)}">?</span>`:''}</div>
+  const x=k.x||(k.hint?{t:k.t,what:k.hint}:null);
+  return `<div class="kpi"${xAttr(x)}><div class="t">${k.t}${x?'<span class="xi hint" aria-hidden="true">?</span>':''}</div>
     <div class="v ${k.cls||''}">${k.v}</div>
     <div class="s">${k.s||''}</div>${k.d||''}</div>`;
 }
 const kpis=arr=>`<div class="kpis">${arr.map(kpiHtml).join('')}</div>`;
+/** Заголовок карточки с пояснением при наведении: сохраняет чистый <h3>. */
+function cardHead(title,sub,x){
+  return `<div class="ch"${xAttr(x)}><h3>${title}</h3>${x?XI:''}</div>${sub!=null?`<div class="sub">${sub}</div>`:''}`;
+}
+/** Сводная таблица KPI: группы → строки {k,v,s,cls,d,x} или подзаголовки {sub:true,t}. */
+function kpiTable(groups){
+  return `<div class="kt-grid">${groups.map(g=>`<div><div class="kt-h"${xAttr(g.x)}>${g.t}${g.x?XI:''}</div>
+    <table class="kt-t"><tbody>${g.rows.filter(Boolean).map(r=>r.sub
+      ?`<tr class="kt-sub"><td colspan="3">${r.t}</td></tr>`
+      :`<tr${xAttr(r.x)}><td class="k">${r.k}</td><td class="v ${r.cls||''}">${r.v}${r.s?`<div class="s">${r.s}</div>`:''}</td><td class="d">${r.d||''}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div>`;
+}
+/** Заголовок подраздела с якорем для подшкалы. */
+function secHead(id,title,sub,x){
+  return `<div class="sech" id="sec-${id}"><h2${xAttr(x)}>${title}</h2>${sub?`<span class="sub">${sub}</span>`:''}</div>`;
+}
 
 /* ═══════════════ 7. РЕЗЮМЕ ═══════════════ */
 function summary(title,blocks){return `<div class="sum"><h4>${title}</h4>`+blocks.map(b=>{
@@ -1775,95 +1930,311 @@ function summary(title,blocks){return `<div class="sum"><h4>${title}</h4>`+block
   return `<div class="sec">${b.t}</div><ul>${items.length?items.map(s=>`<li>${s}</li>`).join(''):'<li>Существенных наблюдений по этому блоку не выявлено.</li>'}</ul>`;
 }).join('')+`</div>`}
 
-/* ═══════════════ 8. ОБЗОР ═══════════════ */
-function tabOV(){
-  const r=curRun();if(!r)return '<div class="empty"><h2>Нет данных</h2><p>Загрузите XLSX с листом optimizer_status.</p></div>';
+/* ═══════════════ 8. КОММЕНТАРИИ К БЛОКАМ И ОГРАНИЧЕНИЯМ ═══════════════ */
+function entComment(e){
+  if(e.entity==='sale')return e.pct<70?'Значительная доля спроса не получила план продаж — материальный риск для выручки.':(e.pct<90?'Основная часть спроса покрыта, но есть заметный необслуженный остаток.':'Спрос покрыт почти полностью.');
+  if(e.entity==='stock')return e.pct<5?'Модель почти не использует буферные запасы — план работает «в поток», чувствителен к сбоям поставок.':'Запасы используются как рабочий буфер плана.';
+  if(e.entity==='movement')return e.pct<5?'Задействована малая доля возможных маршрутов — либо сеть выбирает узкий набор оптимальных плеч, либо часть направлений структурно недоступна.':'Существенная часть сети маршрутов используется активно.';
+  if(e.entity==='production')return e.pct<15?'Производство запускается по узкому набору связок «завод-рецепт-период» — проверить, не ограничена ли доступность альтернативных мощностей.':'Производственные мощности используются достаточно широко.';
+  if(e.entity==='procurement')return e.pct<30?'Закупки идут по ограниченному кругу поставщиков/материалов — риск концентрации.':'Закупочная база используется широко, признаков концентрации не видно.';
+  return '';
+}
+function bndComment(b){
+  const parts=[];
+  if(b.upperPct!=null&&b.upperPct>=50)parts.push('часто ограничивает решение сверху — вероятный дефицит мощности/ресурса');
+  else if(b.upperPct!=null&&b.upperPct>=15)parts.push('периодически становится узким местом');
+  if(b.lowerPct!=null&&b.lowerPct>=85)parts.push('почти всегда на нижней границе — потенциал сильно недоиспользован');
+  else if(b.lowerPct!=null&&b.lowerPct>=50)parts.push('более половины объектов простаивают у минимума');
+  if(b.status==='OFF')parts.push('ограничение отключено в конфигурации — не влияет на решение');
+  if(!parts.length)parts.push('сбалансировано, системного давления не создаёт');
+  return parts.join('; ');
+}
+
+/* ═══════════════ 9. АВТОПРОВЕРКИ КАЧЕСТВА ═══════════════
+   Каждая проверка отвечает на три вопроса бизнес-пользователя:
+   что не так → почему это важно → что делать. Результат идёт в блок
+   «Риски» раздела «Анализ прогона» и в вердикт. sev: e — блокирует
+   публикацию, w — требует внимания, i — норма. */
+function qualityChecks(r){
+  const ch=[];
+  const add=(sev,tag,msg,why,rec)=>ch.push({sev,tag,msg,why:why||'',rec:rec||'—'});
+  const statusOk=/OPTIMAL/i.test(r.solve.status);
+  const infeasible=/INFEASIBLE|UNBOUNDED/i.test(r.solve.status);
+  add(statusOk?'i':'e','Результат расчёта',
+    statusOk?`Солвер вернул статус ${esc(r.solve.status)} — оптимальный план найден и математически подтверждён.`
+      :(infeasible?`Солвер вернул статус ${esc(r.solve.status)} — допустимого плана не существует: ограничения модели противоречат друг другу или входным данным.`
+        :`Солвер вернул статус ${esc(r.solve.status)||'—'} — расчёт завершился без подтверждённого оптимума.`),
+    statusOk?'':'Без корректного решения любые цифры на дашборде описывают незавершённый расчёт, а не план.',
+    statusOk?'—':(infeasible
+      ?'Найти конфликтующее ограничение: чаще всего это жёсткий минимум спроса при недостаточной мощности либо замороженный горизонт, несовместимый с планом. Ослабьте самое спорное ограничение до SOFT и перезапустите.'
+      :'Увеличить лимит времени и перезапустить расчёт; если статус повторяется — проверить корректность входных данных.'));
+
   const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
-  // gap может отсутствовать в логе (LP-модели) — тогда судить о нём нельзя
   const gapKnown=r.solve.gapPct!=null;
   const gapOk=gapKnown?r.solve.gapPct<=gapThr:true;
-  const statusOk=/OPTIMAL/i.test(r.solve.status);
-  const ent=k=>r.entities.find(e=>e.entity===k);
-  const sale=ent('sale'),mv=ent('movement'),pd=ent('production'),pc_=ent('procurement'),st=ent('stock');
+  add(!gapKnown?'i':(gapOk?'i':'w'),'Точность решения',
+    gapKnown
+      ?`Отклонение от теоретического оптимума — ${pctFmt(r.solve.gapPct)}${r.meta.gapLimit!=null?`, при заданном пороге ${pctFmt(r.meta.gapLimit)}`:''}.`
+      :(statusOk
+        ?'Показатель отклонения (gap) в логе отсутствует, потому что модель линейная (LP): симплекс-метод даёт точный оптимум, зазору неоткуда взяться.'
+        :'Показатель отклонения (gap) отсутствует, потому что допустимого решения нет — сравнивать не с чем.'),
+    gapKnown&&!gapOk?'Чем больше отклонение, тем дальше найденный план от лучшего возможного — часть выгоды остаётся неполученной.':'',
+    gapKnown?(gapOk?'—':'Увеличить лимит времени на решение либо согласовать более мягкий порог точности, если важнее скорость расчёта.')
+            :(statusOk?'—':'Сначала добиться допустимого решения — см. пункт «Результат расчёта».'));
+
+  const dups=r.dups||[];
+  add(dups.length?'w':'i','Повторяющиеся параметры лога',
+    dups.length
+      ?`У ${nf(dups.length)} ${plural(dups.length,['параметра','параметров','параметров'])} внутри одного прогона встретилось несколько разных значений: ${dups.slice(0,3).map(d=>`«${esc(d.param)}» (${d.values.map(esc).join(' → ')})`).join('; ')}${dups.length>3?' и др.':''}.`
+      :'Противоречащих друг другу повторов параметров не обнаружено.',
+    dups.length?'Дашборд берёт последнее значение — если в одном runid записано несколько этапов расчёта, показатели относятся только к последнему из них.':'',
+    dups.length?'Если этапы нужно анализировать раздельно, добавьте в выгрузку признак этапа. Иначе трактуйте цифры как итог последнего этапа.':'—');
+
+  const timeNearLimit=r.meta.timeLimit&&r.solve.solveTimeSec>=r.meta.timeLimit*0.9;
+  add(timeNearLimit?'w':'i','Лимит времени расчёта',
+    r.meta.timeLimit?`Расчёт занял ${timeFmt(r.solve.solveTimeSec)} из лимита ${timeFmt(r.meta.timeLimit)} (${pc(r.solve.solveTimeSec/r.meta.timeLimit)}).`
+      :'Лимит времени в конфигурации не задан — солвер работал до сходимости.',
+    timeNearLimit?'Расчёт остановлен по таймеру, а не по достижению нужной точности: план мог быть улучшен, если бы времени хватило.':'',
+    timeNearLimit?'Увеличить лимит времени и сравнить результат: если эффект плана заметно вырастет — лимит был узким местом.':'—');
+
+  const sale=r.entities.find(e=>e.entity==='sale');
+  const unmet=sale?sale.total-sale.nonzero:0;
+  add(sale&&sale.pct<70?'e':(sale&&sale.pct<90?'w':'i'),'Покрытие спроса',
+    sale?`План продаж построен для ${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса (${pctFmt(sale.pct)}).`:'Данных по блоку продаж в логе нет.',
+    sale&&sale.pct<90?`${nf(unmet)} ${plural(unmet,['строка спроса осталась','строки спроса остались','строк спроса остались'])} без плана — это прямые потери выручки и риск для уровня сервиса.`:'',
+    sale&&sale.pct<90?'Разобрать непокрытый спрос по причинам в блоке «Ограничения»: нехватка мощности, сырья или отсутствие маршрута до клиента.':'—');
+
+  const delRate=(r.solve.deletedVars+r.solve.deletedConstraints)/Math.max(r.solve.variables+r.solve.constraints,1);
+  add(delRate>0.05?'w':'i','Избыточность модели',
+    (r.solve.deletedVars>0||r.solve.deletedConstraints>0)
+      ?`Солвер отбросил как избыточные ${nf(r.solve.deletedVars)} переменных и ${nf(r.solve.deletedConstraints)} ограничений — ${pc(delRate)} размера модели.`
+      :'Избыточных переменных и ограничений не обнаружено — модель построена компактно.',
+    delRate>0.05?'Высокая доля отброшенного означает, что модель описывает объекты, которые не влияют на решение: расчёт дороже, а результат тот же.':'',
+    delRate>0.05?'Передать ИТ-команде: проверить логику формирования модели на дублирующие и заведомо невыполнимые ограничения.':'—');
+
+  const zeroEnt=r.entities.filter(e=>e.total>0&&e.nonzero===0);
+  add(zeroEnt.length?'e':'i','Незадействованные блоки плана',
+    zeroEnt.length?`Ни одного ненулевого значения не получили блоки: ${zeroEnt.map(e=>ENT_LBL[e.entity]||e.entity).join(', ')}.`
+      :'Все включённые в расчёт блоки участвуют в решении.',
+    zeroEnt.length?'Блок присутствует в модели, но полностью не используется — обычно это признак недогруженных справочников, а не оптимального решения.':'',
+    zeroEnt.length?'Проверить, выгружены ли для этих блоков входные данные: мощности, цены, маршруты, нормы.':'—');
+
+  const cfgOk=r.meta.cfgParsed;
+  add(cfgOk?'i':'w','Настройки расчёта',
+    cfgOk?`Конфигурация прочитана: солвер ${esc(r.meta.solver)||'—'}, ${r.meta.threads||'—'} ${plural(r.meta.threads||0,['поток','потока','потоков'])}, целевая точность ${r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'не задана'}.`
+      :'Поле «Config» не удалось прочитать как JSON — часть настроек расчёта неизвестна.',
+    cfgOk?'':'Без настроек нельзя судить, был ли достигнут заданный порог точности и не был ли расчёт обрезан по времени.',
+    cfgOk?'—':'Проверить формат выгрузки поля Config в источнике данных.');
+
+  const strictLowMax=r.bounds.filter(b=>b.status==='STRICT'&&b.lowerPct!=null&&b.lowerPct>=90);
+  add(strictLowMax.length?'w':'i','Простаивающие мощности',
+    strictLowMax.length?`${nf(strictLowMax.length)} ${plural(strictLowMax.length,['жёсткое ограничение почти всегда стоит','жёстких ограничения почти всегда стоят','жёстких ограничений почти всегда стоят'])} на нижней границе: ${strictLowMax.slice(0,3).map(b=>(ENT_LBL[b.entity]||b.entity)+' · '+consLbl(b.constraint)).join(', ')}.`
+      :'Систематически простаивающих жёстких ограничений не выявлено.',
+    strictLowMax.length?'Ресурс формально доступен, но решение им не пользуется: либо он реально не нужен, либо лимиты в справочнике занижены и модель его «не видит».':'',
+    strictLowMax.length?'Сверить лимиты с фактическими мощностями: занижение в справочнике — частая причина недополученного плана.':'—');
+
+  const critical=r.bounds.filter(b=>b.upperPct!=null&&b.upperPct>=50).sort((a,b)=>b.upperPct-a.upperPct);
+  add(critical.length?'w':'i','Узкие места',
+    critical.length?`${nf(critical.length)} ${plural(critical.length,['ограничение упирается','ограничения упираются','ограничений упираются'])} в потолок более чем в половине случаев: ${critical.slice(0,3).map(b=>(ENT_LBL[b.entity]||b.entity)+' · '+consLbl(b.constraint)+' ('+pctFmt(b.upperPct)+')').join(', ')}.`
+      :'Ни одно ограничение не давит на решение системно — мощностей хватает под текущий объём плана.',
+    critical.length?'Именно эти ограничения сдерживают план: их расширение даст наибольший прирост результата на вложенный рубль.':'',
+    critical.length?'Обсудить с производством/логистикой расширение мощности в этих точках сети либо пересмотреть приоритеты спроса.':'—');
+
+  const totalPen=S(r.penalties,p=>p.sum);
+  const penRatio=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
+  add(penRatio>0.01?'w':'i','Нарушения мягких целей',
+    r.penalties.length?`Суммарный штраф за нарушение мягких ограничений — ${pc(penRatio)} экономического эффекта плана.`:'Мягкие цели плана выполнены без нарушений.',
+    penRatio>0.01?'Модель систематически отступает от согласованных мягких лимитов, и это уже заметно в деньгах.':'',
+    penRatio>0.01?'Пересмотреть с планировщиками: либо лимит нереалистичен, либо штраф за его нарушение слишком мал.':'—');
+  return ch;
+}
+
+/* ═══════════════ 10. РАЗДЕЛ «АНАЛИЗ ПРОГОНА» ═══════════════
+   Единый раздел вместо пяти вкладок: вердикт → сводная таблица KPI
+   (результат · состав модели · экономика) → детализация по блокам,
+   ограничениям и штрафам → выводы, риски, рекомендации. Каждый график и
+   таблица встречаются один раз; у каждого показателя — пояснение при
+   наведении. */
+function tabRUN(){
+  const r=curRun();if(!r)return '<div class="empty"><h2>Нет данных</h2><p>Загрузите XLSX с листом optimizer_status.</p></div>';
+  XPL={};XPL_N=0;
   const prev=prevRun(r);
+  const ent=k=>r.entities.find(e=>e.entity===k);
   const pEnt=k=>prev?prev.entities.find(e=>e.entity===k):null;
-  const pSale=pEnt('sale');
-
-  /* Вердикт: единственный ответ, который бизнес-пользователь ищет первым —
-     можно ли брать этот план в работу. */
+  const sale=ent('sale'),pSale=pEnt('sale');
   const salePct=sale?sale.pct:null;
-  const blockers=[];
-  if(!statusOk)blockers.push(`солвер вернул статус ${esc(r.solve.status)||'—'}`);
-  if(gapKnown&&!gapOk)blockers.push(`точность ниже порога: gap ${pctFmt(r.solve.gapPct)} против ${pctFmt(gapThr)}`);
-  if(salePct!=null&&salePct<70)blockers.push(`спрос покрыт лишь на ${pctFmt(salePct)}`);
-  const warnsOv=[];
-  if(salePct!=null&&salePct>=70&&salePct<90)warnsOv.push(`не покрыто ${pctFmt(100-salePct)} строк спроса`);
-  if(r.meta.timeLimit&&r.solve.solveTimeSec>=r.meta.timeLimit*0.9)warnsOv.push('расчёт почти исчерпал лимит времени — solver мог остановиться принудительно');
-  if(!gapKnown&&!statusOk)warnsOv.push('точность решения оценить нечем: gap в логе нет, статус не подтверждает оптимум');
-  const vLevel=blockers.length?'err':(warnsOv.length?'warn':'ok');
-  const vTitle=blockers.length?'План публиковать нельзя без разбора'
-    :(warnsOv.length?'План можно публиковать с оговорками':'План можно публиковать');
-  const vMsg=blockers.length
-    ? `Что мешает: ${blockers.join('; ')}. Разбор причин и что делать — на вкладке «Качество и аномалии».`
-    : (warnsOv.length
-      ? `Расчёт завершён корректно (${esc(r.solve.status)}), но обратите внимание: ${warnsOv.join('; ')}.`
-      : `Расчёт завершён со статусом <b>${esc(r.solve.status)}</b>${gapKnown?`, отклонение от оптимума ${pctFmt(r.solve.gapPct)}`:''}${salePct!=null?`, спрос покрыт на <b>${pctFmt(salePct)}</b>`:''}. Критичных отклонений автопроверки не нашли.`);
+  const statusOk=/OPTIMAL/i.test(r.solve.status);
+  const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
+  const gapKnown=r.solve.gapPct!=null,gapOk=gapKnown?r.solve.gapPct<=gapThr:true;
+  const checks=qualityChecks(r);
+  const errs=checks.filter(c=>c.sev==='e'),warns=checks.filter(c=>c.sev==='w'),oks=checks.filter(c=>c.sev==='i');
+  const score=Math.max(0,Math.round(100-errs.length*18-warns.length*7));
 
-  const K=[
-    {t:'Можно ли доверять расчёту',v:esc(r.solve.status)||'—',
-      s:statusOk?'Оптимум найден и подтверждён солвером':'Решение неполное — план требует проверки',
-      cls:statusOk?'pos':'neg',hint:'Статус, который вернул солвер. OPTIMAL — найден и доказан оптимум.'},
-    {t:'Покрытие спроса',v:salePct!=null?pctFmt(salePct):'—',
-      s:sale?`${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса получили план продаж`:'Нет данных по блоку продаж',
-      cls:salePct==null?'':(salePct<70?'neg':(salePct<90?'mid':'pos')),
-      d:deltaHtml(salePct,pSale?pSale.pct:null,v=>nf(v,1)+' п.п.',1),
-      hint:'Доля строк спроса, для которых оптимизатор построил план продаж. Непокрытые строки — заказы без плана.'},
-    {t:'Экономический эффект плана',v:bn(r.solve.objectiveValue),
-      s:'Значение целевой функции — суммарный экономический результат плана',
-      d:deltaHtml(r.solve.objectiveValue,prev?prev.solve.objectiveValue:null,v=>bn(v),1),
-      hint:'Целевая функция модели: выручка от продаж за вычетом затрат на производство, закупку, логистику и хранение.'},
-    {t:'Точность решения (gap)',v:gapKnown?pctFmt(r.solve.gapPct):'н/д',
-      s:gapKnown?(r.meta.gapLimit!=null?`Порог по настройке: ${pctFmt(r.meta.gapLimit)}`:'Расстояние до теоретического оптимума')
-        :(statusOk?'Точный оптимум: зазор не возникает — модель линейная (LP)'
-                 :'Решения нет, поэтому и зазора до оптимума нет'),
-      cls:gapKnown?(gapOk?'pos':'neg'):'',
-      d:gapKnown?deltaHtml(r.solve.gapPct,prev?prev.solve.gapPct:null,v=>nf(v,3)+' п.п.',-1):'',
-      hint:'Насколько найденное решение может отличаться от теоретически лучшего. Чем меньше, тем надёжнее план.'},
-    {t:'Время расчёта',v:timeFmt(r.solve.solveTimeSec),
-      s:`Полный цикл ${timeFmt(r.solve.calcTimeSec)}${r.meta.timeLimit?` из лимита ${timeFmt(r.meta.timeLimit)}`:''}`,
-      d:deltaHtml(r.solve.solveTimeSec,prev?prev.solve.solveTimeSec:null,v=>nf(v,2)+' с',-1),
-      hint:'Время работы солвера. Рост при неизменном масштабе модели — ранний признак проблем во входных данных.'},
-    {t:'Масштаб задачи',v:nf(r.solve.variables),
-      s:`переменных · ${nf(r.solve.constraints)} ограничений · горизонт ${r.meta.periods||'—'} период(ов)`,
-      d:deltaHtml(r.solve.variables,prev?prev.solve.variables:null,v=>nf(v),0),
-      hint:'Размер оптимизационной задачи. Резкое изменение говорит о смене состава данных или конфигурации.'}
-  ];
+  /* — экономика — */
+  const revenue=S(r.entities.filter(e=>e.value>0),e=>e.value);
+  const costs=S(r.entities.filter(e=>e.value<0),e=>-e.value);
+  const pRevenue=prev?S(prev.entities.filter(e=>e.value>0),e=>e.value):null;
+  const pCosts=prev?S(prev.entities.filter(e=>e.value<0),e=>-e.value):null;
+  const costRows=r.entities.filter(e=>e.value<0).slice().sort((a,b)=>a.value-b.value);
+  const totalPen=S(r.penalties,p=>p.sum);
+  const penRatio=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
+  const margin=revenue>0?(revenue-costs)/revenue:null;
+  const objDiff=revenue-costs-r.solve.objectiveValue;
+  const objDiffRel=r.solve.objectiveValue?Math.abs(objDiff)/Math.abs(r.solve.objectiveValue):0;
+
+  /* — состав модели — */
+  const intVars=r.solve.variables&&r.solve.continuousVars?Math.max(0,r.solve.variables-r.solve.continuousVars):null;
+  const ORDER=['sale','production','procurement','movement','stock'];
+  const ordered=r.entities.slice().sort((a,b)=>{const ia=ORDER.indexOf(a.entity),ib=ORDER.indexOf(b.entity);return (ia<0?99:ia)-(ib<0?99:ib)});
+  const totalEntVars=S(r.entities,e=>e.total);
+  const bRows=r.bounds.map(b=>({...b,name:`${ENT_LBL[b.entity]||b.entity} · ${consLbl(b.constraint)}`}));
+  const nStrict=bRows.filter(b=>b.status==='STRICT').length,nSoft=bRows.filter(b=>b.status==='SOFT').length,nOff=bRows.filter(b=>b.status==='OFF').length;
+  const hot=bRows.filter(b=>b.upperPct!=null).slice().sort((a,b)=>b.upperPct-a.upperPct);
+  const idle=bRows.filter(b=>b.lowerPct!=null).slice().sort((a,b)=>b.lowerPct-a.lowerPct);
+  const critical=hot.filter(b=>b.upperPct>=50);
+  const timeShare=r.meta.timeLimit?r.solve.solveTimeSec/r.meta.timeLimit:null;
+
+  /* — вердикт: единственный ответ, который бизнес ищет первым — */
+  const vLevel=errs.length?'err':(warns.length?'warn':'ok');
+  const vTitle=errs.length?`Публиковать план нельзя: ${nf(errs.length)} ${plural(errs.length,['блокирующая проблема','блокирующие проблемы','блокирующих проблем'])}`
+    :(warns.length?`План можно публиковать с оговорками: ${nf(warns.length)} ${plural(warns.length,['замечание','замечания','замечаний'])}`:'План можно публиковать');
+  const vMsg=errs.length
+    ? `Что мешает: ${errs.map(c=>`<b>${esc(c.tag)}</b> — ${c.msg}`).join(' ')} Разбор и что делать — в блоке «Риски» в конце раздела.`
+    : (warns.length
+      ? `Расчёт завершён корректно (${esc(r.solve.status)}${salePct!=null?`, спрос покрыт на <b>${pctFmt(salePct)}</b>`:''}). Требуют внимания: ${warns.map(c=>esc(c.tag)).join(', ')} — подробности в блоке «Риски».`
+      : `Расчёт завершён со статусом <b>${esc(r.solve.status)}</b>${gapKnown?`, отклонение от оптимума ${pctFmt(r.solve.gapPct)}`:''}${salePct!=null?`, спрос покрыт на <b>${pctFmt(salePct)}</b>`:''}. Все ${nf(checks.length)} автопроверок пройдены.`);
+
+  /* — сводная таблица KPI — */
+  const fmtPP=v=>nf(v,1)+' п.п.';
+  const G1={t:'Результат прогона',x:{t:'Результат прогона',what:'Технический итог работы оптимизатора: нашёл ли он решение, насколько оно точное и сколько это заняло времени.',why:'Это условия доверия к цифрам ниже. Если статус не OPTIMAL или точность хуже порога — экономика и покрытие описывают незавершённый расчёт, а не план.'},rows:[
+    {k:'Статус решения',v:esc(r.solve.status)||'—',cls:statusOk?'pos':'neg',s:statusOk?'оптимум найден и подтверждён':'решение не подтверждено',
+      x:{t:'Статус решения',what:'Ответ солвера: OPTIMAL — найден и математически доказан лучший план; INFEASIBLE — ограничения противоречат друг другу, плана нет; прочие статусы — расчёт прерван до подтверждения оптимума.',why:'Единственный показатель, без которого остальные не имеют смысла.',res:statusOk?'Оптимум подтверждён — цифрам плана можно доверять.':'Оптимум не подтверждён — план требует разбора до публикации.'}},
+    {k:'Точность (gap)',v:gapKnown?pctFmt(r.solve.gapPct):'н/д',cls:gapKnown?(gapOk?'pos':'neg'):'',
+      s:gapKnown?(r.meta.gapLimit!=null?`порог по настройке ${pctFmt(r.meta.gapLimit)}`:'порог не задан'):(statusOk?'LP-модель: точный оптимум':'решения нет — зазор не определён'),
+      d:gapKnown?deltaShort(r.solve.gapPct,prev?prev.solve.gapPct:null,v=>nf(v,3)+' п.п.',-1):'',
+      x:{t:'Точность решения (gap)',what:'Насколько найденный план может отличаться от теоретически лучшего. 0% — доказанный оптимум.',why:'Показывает, сколько выгоды могло остаться «на столе» из-за раннего останова расчёта.',res:gapKnown?(gapOk?`Отклонение ${pctFmt(r.solve.gapPct)} в пределах порога — план практически оптимален.`:`Отклонение ${pctFmt(r.solve.gapPct)} выше порога ${pctFmt(gapThr)} — часть выгоды не получена.`):(statusOk?'Gap в логе нет: модель линейная, симплекс-метод даёт точный оптимум.':'Gap не рассчитан, потому что допустимого решения нет.')}},
+    {k:'Время решения',v:timeFmt(r.solve.solveTimeSec),s:`полный цикл ${timeFmt(r.solve.calcTimeSec)}${r.meta.timeLimit?` · лимит ${timeFmt(r.meta.timeLimit)} (${pc(timeShare)})`:''}`,
+      cls:timeShare!=null&&timeShare>=0.9?'neg':'',
+      d:deltaShort(r.solve.solveTimeSec,prev?prev.solve.solveTimeSec:null,v=>nf(v,2)+' с',-1),
+      x:{t:'Время решения',what:'Сколько солвер искал решение (без подготовки модели). Полный цикл включает построение модели и выгрузку.',why:'Рост времени при том же масштабе модели — ранний признак проблем во входных данных; расчёт «в упор» к лимиту означает, что солвер остановили принудительно.',res:timeShare!=null?(timeShare>=0.9?`Использовано ${pc(timeShare)} лимита — расчёт остановлен по таймеру, план мог быть лучше.`:`Использовано ${pc(timeShare)} лимита — запас времени есть.`):'Лимит времени не задан, солвер работал до сходимости.'}},
+    {k:'Итераций солвера',v:nf(r.solve.iterations),s:r.meta.threads?`${r.meta.threads} ${plural(r.meta.threads,['поток','потока','потоков'])}${r.meta.solver?' · '+esc(r.meta.solver):''}`:(r.meta.solver?esc(r.meta.solver):''),
+      d:deltaShort(r.solve.iterations,prev?prev.solve.iterations:null,v=>nf(v),0),
+      x:{t:'Итераций солвера',what:'Число шагов алгоритма до останова. Технический показатель сложности поиска.',why:'Само по себе число ни о чём не говорит; важна динамика — резкий рост при том же масштабе модели указывает на ухудшение структуры данных.'}},
+    {k:'Горизонт планирования',v:r.meta.periods!=null?`${nf(r.meta.periods)} ${plural(r.meta.periods,['период','периода','периодов'])}`:'—',s:r.meta.startTime?`запуск ${esc(String(r.meta.startTime).slice(0,16))}`:'',
+      x:{t:'Горизонт планирования',what:'Сколько периодов (недель/месяцев) охватывает план.',why:'Все объёмы и экономика ниже относятся к этому горизонту; сравнивать прогоны корректно только при одинаковом горизонте.'}}
+  ]};
+  const G2={t:'Состав модели',x:{t:'Состав модели',what:'Из чего построена оптимизационная задача: сколько переменных (решений) и ограничений (правил) в ней, как они распределены по бизнес-блокам.',why:'Резкое изменение состава между прогонами означает смену данных или конфигурации — тогда разницу в результате нельзя списывать на качество плана.'},rows:[
+    {k:'Переменных всего',v:nf(r.solve.variables),s:`${nf(r.solve.constraints)} ограничений`,
+      d:deltaShort(r.solve.variables,prev?prev.solve.variables:null,v=>nf(v),0),
+      x:{t:'Переменные и ограничения',what:'Переменная — одно решение модели (сколько произвести/купить/перевезти/продать в конкретной точке и периоде). Ограничение — правило, которое эти решения должны соблюдать.',why:'Масштаб задачи определяет время расчёта и объясняет, почему часть решений остаётся нулевой.',res:`${nf(r.solve.variables)} переменных и ${nf(r.solve.constraints)} ограничений — ${r.solve.variables>1e5?'крупная сетевая задача':'задача умеренного размера'}.`}},
+    {k:'— непрерывных',v:nf(r.solve.continuousVars),s:r.solve.variables?pc(r.solve.continuousVars/r.solve.variables)+' переменных':'',
+      x:{t:'Непрерывные переменные',what:'Объёмы, которые могут принимать любое значение (тонны, штуки без кратности).',why:'Если все переменные непрерывные — модель линейная (LP): решается быстро и точно, gap не возникает.'}},
+    {k:'— целочисленных',v:intVars!=null?nf(intVars):(r.solve.continuousVars?'0':'—'),s:intVars?'кратности партий, вкл/выкл':(r.solve.continuousVars?'модель линейная (LP)':'в логе нет разбивки'),
+      x:{t:'Целочисленные переменные',what:'Решения «да/нет» и кратные партии (размер лота, запуск линии). Считаются как разница между всеми и непрерывными переменными.',why:'Именно они делают задачу сложной (MIP): появляются gap, ветвление и риск остановки по времени.',res:intVars?`${nf(intVars)} целочисленных — модель смешанная (MIP), следите за gap и лимитом времени.`:'Целочисленных переменных нет — модель линейная, точный оптимум гарантирован.'}},
+    {k:'Удалено солвером',v:nf(r.solve.deletedVars+r.solve.deletedConstraints),s:`${nf(r.solve.deletedVars)} переменных · ${nf(r.solve.deletedConstraints)} ограничений`,
+      cls:(r.solve.deletedVars+r.solve.deletedConstraints)/Math.max(r.solve.variables+r.solve.constraints,1)>0.05?'mid':'',
+      x:{t:'Удалено на предобработке',what:'Переменные и ограничения, которые солвер отбросил как избыточные ещё до решения.',why:'Высокая доля (>5%) — модель описывает объекты, не влияющие на решение: расчёт дороже, результат тот же.'}},
+    {sub:true,t:'Переменные по блокам плана'},
+    ...ordered.map(e=>{const p=pEnt(e.entity);return {k:ENT_LBL[e.entity]||e.entity,v:nf(e.total),
+      s:`задействовано ${nf(e.nonzero)} (${pctFmt(e.pct)})${totalEntVars?` · ${pc(e.total/totalEntVars)} модели`:''}`,
+      cls:e.entity==='sale'?(e.pct<70?'neg':(e.pct<90?'mid':'pos')):'',
+      d:deltaShort(e.pct,p?p.pct:null,fmtPP,e.entity==='sale'?1:0),
+      x:{t:ENT_LBL[e.entity]||e.entity,what:`Сколько решений модель принимает в блоке «${ENT_LBL[e.entity]||e.entity}» и сколько из них ненулевые.`,why:e.entity==='sale'?'Для продаж доля ненулевых — это покрытие спроса: каждая нулевая строка — заказ без плана.':'Низкая доля для логистики и запасов обычно нормальна (сеть выбирает лучшие плечи), для производства и закупок — повод проверить доступность мощностей.',res:entComment(e)}}}),
+    {sub:true,t:'Ограничения по режиму'},
+    {k:'Под контролем',v:nf(bRows.length),s:`${nf(nStrict)} жёстких · ${nf(nSoft)} мягких${nOff?` · ${nf(nOff)} отключено`:''}`,
+      x:{t:'Ограничения по режиму',what:'STRICT (жёсткое) — нарушать нельзя; SOFT (мягкое) — можно нарушить ценой штрафа в целевой функции; OFF — отключено в конфигурации.',why:'Чем больше жёстких ограничений, тем выше риск несовместности (INFEASIBLE); мягкие дают гибкость, но требуют контроля штрафов.',res:`${nf(nStrict)} жёстких и ${nf(nSoft)} мягких ограничений; ${critical.length?`${nf(critical.length)} упираются в потолок системно`:'системного давления нет'}.`}},
+    {k:'Типы в модели',v:nf(r.meta.constraintTypes.length),s:r.meta.constraintTypes.map(consLbl).join(', ')||'—',
+      x:{t:'Типы ограничений',what:'Какие бизнес-правила включены в расчёт: мощности, спрос, замороженный горизонт, лимиты запасов и т.д.',why:'Отсутствие ожидаемого типа (например, мощности производства) означает, что план его не учитывает.'}}
+  ]};
+  const G3={t:'Экономика прогона',x:{t:'Экономика прогона',what:'Целевая функция модели и её составляющие: выручка от продаж минус затраты на производство, закупки, логистику и хранение, минус штрафы за нарушение мягких целей.',why:'Это денежное выражение плана. Сравнение с предыдущим прогоном показывает, стал ли план выгоднее и за счёт чего.'},rows:[
+    {k:'Целевая функция',v:bn(r.solve.objectiveValue),s:'экономический эффект плана',
+      d:deltaShort(r.solve.objectiveValue,prev?prev.solve.objectiveValue:null,v=>bn(v),1),
+      x:{t:'Целевая функция',what:'Число, которое максимизирует оптимизатор: выручка минус все затраты и штрафы.',why:'Главный денежный итог плана. Рост при том же спросе и мощностях — план стал выгоднее.',res:prev?`${bn(r.solve.objectiveValue)} против ${bn(prev.solve.objectiveValue)} в предыдущем прогоне.`:`${bn(r.solve.objectiveValue)} на горизонте ${r.meta.periods!=null?r.meta.periods+' периодов':'плана'}.`}},
+    {k:'Выручка (продажи)',v:bn(revenue),s:sale?`${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса с планом`:'',cls:'pos',
+      d:deltaShort(revenue,pRevenue,v=>bn(v),1),
+      x:{t:'Выручка',what:'Сумма вклада блока продаж в целевую функцию — стоимость всего спроса, который план обслуживает.',why:'Непокрытый спрос — это выручка, которой в плане нет.',res:salePct!=null?`Покрыто ${pctFmt(salePct)} строк спроса${salePct<100?`; ${pctFmt(100-salePct)} — потенциальная выручка вне плана`:''}.`:''}},
+    {k:'Затраты всего',v:bn(costs),s:revenue?pc(costs/revenue)+' от выручки':'',
+      d:deltaShort(costs,pCosts,v=>bn(v),-1),
+      x:{t:'Затраты',what:'Сумма всех затратных блоков: производство, закупки сырья, логистика, хранение.',why:'Показывает, во что обходится обслуживание спроса; структура затрат ниже подсказывает, где искать экономию.',res:costRows.length?`Крупнейшая статья — ${ENT_LBL[costRows[0].entity]||costRows[0].entity}: ${pc(-costRows[0].value/Math.max(costs,1))} затрат.`:''}},
+    ...costRows.map(e=>{const p=pEnt(e.entity);return {k:'— '+(ENT_LBL[e.entity]||e.entity).toLowerCase(),v:bn(-e.value),s:costs?pc(-e.value/costs)+' затрат':'',
+      d:deltaShort(-e.value,p?-p.value:null,v=>bn(v),-1),
+      x:{t:'Затраты: '+(ENT_LBL[e.entity]||e.entity),what:`Вклад блока «${ENT_LBL[e.entity]||e.entity}» в целевую функцию (со знаком минус).`,why:'Сдвиг доли между статьями от прогона к прогону — сигнал о смене логики плана (например, закупки вместо собственного производства).'}}}),
+    {k:'Маржа плана',v:margin!=null?pc(margin):'—',s:'(выручка − затраты) / выручка',cls:margin!=null?(margin<0?'neg':''):'',
+      d:margin!=null&&pRevenue?deltaShort(margin*100,(pRevenue-pCosts)/pRevenue*100,fmtPP,1):'',
+      x:{t:'Маржа плана',what:'Какая доля выручки остаётся после всех затрат плана.',why:'Позволяет сравнивать прогоны с разным объёмом спроса: рост выручки при падении маржи — план стал дороже.'}},
+    {k:'Штрафы SOFT',v:r.penalties.length?nf(totalPen,2):'0',s:r.penalties.length?`${pc(penRatio)} от эффекта · ${nf(r.penalties.length)} ${plural(r.penalties.length,['группа','группы','групп'])}`:'мягкие цели выполнены точно',
+      cls:penRatio>=0.01?'neg':'pos',
+      x:{t:'Штрафы за мягкие нарушения',what:'Сумма штрафов, вычтенных из целевой функции за отступления от мягких целей (например, минимальной партии).',why:'До 1% эффекта — осознанный компромисс модели; выше — лимиты нереалистичны или штраф слишком мал.',res:r.penalties.length?`${pc(penRatio)} от эффекта плана — ${penRatio>=0.01?'материально, требует разбора':'незначимо'}.`:'Нарушений нет.'}},
+    objDiffRel>0.005?{k:'Сверка с целевой',v:bn(objDiff),s:'выручка − затраты − целевая функция',cls:'mid',
+      x:{t:'Сверка с целевой функцией',what:'Разница между суммой вкладов блоков и значением целевой функции.',why:'Если она заметна — в целевой функции есть слагаемые, не отражённые в блоках (штрафы, множители, приоритеты), и экономику по блокам нужно трактовать осторожно.'}}:null,
+    r.meta.globalCostMultiplier?{k:'Множитель стоимости',v:nf(r.meta.globalCostMultiplier,2),s:'глобальный коэффициент затрат',
+      x:{t:'Множитель стоимости',what:'Коэффициент, на который умножаются все затраты в целевой функции.',why:'Отличие от 1,0 меняет баланс «выручка против затрат» и должно быть одинаковым у сравниваемых прогонов.'}}:null
+  ]};
+
+  /* — данные для графиков — */
   const entVal=r.entities.map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.value,c:CH[ENT_COL[e.entity]]||PAL[0]}));
-  const entPct=r.entities.slice().sort((a,b)=>b.pct-a.pct).map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.pct,
-    c:e.pct>=50?CH.ok:(e.pct>=15?CH.warn:CH.err),
-    tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)} (${pctFmt(e.pct)})<br>Вклад в целевую функцию: ${bn(e.value)}`}));
-  /* Вместо малоинформативного «подготовка vs решение» — топ ограничений,
-     которые реально сдерживают план: это то, чем бизнес может управлять. */
-  const topHot=r.bounds.filter(b=>b.upperPct!=null&&b.upperPct>0)
-    .slice().sort((a,b)=>b.upperPct-a.upperPct).slice(0,6)
-    .map(b=>({k:`${ENT_LBL[b.entity]||b.entity} · ${consLbl(b.constraint)}`,v:b.upperPct,
-      c:b.upperPct>=50?CH.err:(b.upperPct>=15?CH.warn:CH.ok),
-      tip:`<b>${ENT_LBL[b.entity]||b.entity} · ${consLbl(b.constraint)}</b><br>Упирается в потолок: ${pctFmt(b.upperPct)} объектов<br>Тип: ${STATUS_LBL[b.status]||b.status}<br>${bndComment(b)}`}));
-  const html=verdict(vLevel,vTitle,vMsg)+kpis(K)+`
+  const byPct=ordered.map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.pct,
+    c:e.entity==='sale'?(e.pct<70?CH.err:(e.pct<90?CH.warn:CH.ok)):(CH[ENT_COL[e.entity]]||PAL[0]),
+    tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)} (${pctFmt(e.pct)})<br>Вклад в целевую функцию: ${bn(e.value)}<br>${entComment(e)}`}));
+  const byVal=ordered.slice().sort((a,b)=>Math.abs(b.value)-Math.abs(a.value)).map(e=>({
+    k:ENT_LBL[e.entity]||e.entity,v:Math.abs(e.value),c:e.value>=0?CH.ok:CH.d4,
+    tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>${e.value>=0?'Доход':'Затраты'}: ${bn(Math.abs(e.value))}<br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)}`}));
+  const spanItems=bRows.slice().sort((a,b)=>(b.upperPct||0)-(a.upperPct||0)).slice(0,10).map(b=>({
+    k:b.name,lower:b.lowerPct||0,upper:b.upperPct||0,
+    tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Упор в потолок: ${pctFmt(b.upperPct)}<br>Простой у пола: ${pctFmt(b.lowerPct)}<br>${bndComment(b)}`}));
+  const penRows=r.penalties.map(p=>({...p,name:`${ENT_LBL[p.entity]||p.entity} · ${consLbl(p.constraint)}`,kindLbl:p.kind==='min'?'Недобор (softmin)':'Перебор (softmax)'}));
+  const topPen=penRows.slice().sort((a,b)=>b.sum-a.sum)[0];
+  const worst=r.entities.slice().sort((a,b)=>a.pct-b.pct)[0];
+  const dead=r.entities.filter(e=>e.total>0&&e.nonzero===0);
+
+  /* — пояснения к графикам — */
+  const X_O1={t:'Из чего складывается эффект плана',what:'Вклад каждого блока модели в целевую функцию по модулю: продажи дают доход, остальные — затраты.',why:'Показывает структуру экономики плана: какая статья определяет результат и где сосредоточены деньги.',res:revenue?`Выручка ${bn(revenue)} против затрат ${bn(costs)}${costRows.length?`; крупнейшая статья затрат — ${(ENT_LBL[costRows[0].entity]||costRows[0].entity).toLowerCase()} (${pc(-costRows[0].value/Math.max(costs,1))} затрат)`:''}.`:'Данных о вкладе блоков в логе нет.'};
+  const X_O2={t:'Насколько задействован каждый блок',what:'Доля переменных с ненулевым значением в решении, по блокам модели.',why:'Для продаж это покрытие спроса — главный бизнес-KPI. Для остальных блоков — насколько широко план использует доступные мощности, поставщиков и маршруты.',res:sale?`Спрос покрыт на ${pctFmt(sale.pct)}${worst&&worst.entity!=='sale'?`; наименее задействован блок «${ENT_LBL[worst.entity]||worst.entity}» (${pctFmt(worst.pct)})`:''}.`:'Блока продаж в логе нет.'};
+  const X_E2={t:'Реестр использования блоков',what:'Полная таблица по блокам: всего переменных, задействовано, доля, вклад в эффект и трактовка.',why:'Для сверки с бизнес-экспертом и экспорта в CSV; технические столбцы включаются кнопкой «Столбцы».'};
+  const X_B0={t:'Напряжение ограничений',what:'Одна шкала 0–100% на ограничение: слева — доля объектов, простаивающих у нижней границы, справа — доля, упирающихся в потолок.',why:'В одном взгляде видно, что сдерживает план (правая часть) и где ресурс не используется (левая).',res:hot[0]?`Сильнее всего давит «${hot[0].name}» — потолок в ${pctFmt(hot[0].upperPct)} случаев${idle[0]?`; больше всего простаивает «${idle[0].name}» (${pctFmt(idle[0].lowerPct)} у пола)`:''}.`:'Данных о границах в логе нет.'};
+  const X_B1={t:'Что сдерживает план',what:'Доля объектов, упирающихся в верхнюю границу ограничения (топ-8).',why:'Это узкие места: расширение мощности именно здесь даст наибольший прирост плана на вложенный рубль.',res:critical.length?`${nf(critical.length)} ${plural(critical.length,['ограничение сдерживает','ограничения сдерживают','ограничений сдерживают'])} план системно (потолок >50%).`:'Системных узких мест нет — мощностей хватает.'};
+  const X_B2={t:'Что простаивает',what:'Доля объектов на нижней границе ограничения (топ-8).',why:'Ресурс доступен, но решение им не пользуется: либо он не нужен при текущем спросе, либо лимиты в справочнике занижены и модель его «не видит».',res:idle[0]?`Максимальный простой — «${idle[0].name}»: ${pctFmt(idle[0].lowerPct)} объектов у нижней границы.`:'Данных нет.'};
+  const X_B3={t:'Реестр ограничений',what:'Полная таблица ограничений с долями у потолка и у пола, режимом и трактовкой.',why:'Для детального разбора и экспорта; сортируйте по «Упор в потолок» для поиска узких мест.'};
+  const X_P1={t:'Во что обходится каждое мягкое нарушение',what:'Сумма штрафа по каждой мягкой цели: чем длиннее полоса, тем дороже модели обходится отступление от неё.',why:'Показывает, какими целями план жертвует ради общей экономики и стоит ли пересматривать лимит или штраф.',res:topPen?`Самая нарушаемая цель — «${topPen.name}» (${topPen.kindLbl.toLowerCase()}), затронуто ${pctFmt(topPen.nonzeroPct)} объектов; всего штрафы — ${pc(penRatio)} эффекта.`:'Нарушений нет.'};
+  const X_P2={t:'Реестр мягких нарушений',what:'Таблица штрафов по группам ограничений: тип нарушения, сумма, доля затронутых объектов.',why:'Для передачи планировщикам: какие лимиты нарушаются и насколько массово.'};
+  const X_CFG={t:'Как настроен прогон',what:'Параметры конфигурации, которые влияют на результат: солвер, лимит времени, целевая точность, замороженные сущности, включённые блоки и типы ограничений.',why:'Сравнивая прогоны, сначала убедитесь, что настройки одинаковы — иначе разница в результате может быть следствием конфигурации, а не данных.'};
+
+  const subnav=`<nav class="subnav" id="runSubnav" aria-label="Блоки раздела"><span class="lbl">Перейти</span>
+    <a href="#sec-kpi" data-sec="kpi">KPI прогона</a><a href="#sec-ent" data-sec="ent">Блоки модели</a><a href="#sec-bnd" data-sec="bnd">Ограничения</a><a href="#sec-pen" data-sec="pen">Штрафы</a><a href="#sec-sum" data-sec="sum">Выводы и риски</a></nav>`;
+
+  const html=verdict(vLevel,vTitle,vMsg)+subnav
+  +`<div class="card w" id="sec-kpi" style="margin-bottom:12px">${cardHead('Сводная таблица KPI прогона',`${esc(rName(r))} · ${esc(rCtx(r))}${prev?` · дельты к предыдущему прогону ${esc(rShort(prev))}`:' · предыдущего прогона в истории нет — дельты не показаны'}`,
+      {t:'Сводная таблица KPI',what:'Три группы показателей активного прогона: технический результат, состав модели и экономика.',why:'Один экран вместо четырёх вкладок: сначала можно ли доверять расчёту, затем из чего он состоит, затем что он даёт в деньгах. Наведите на строку — появится пояснение.'})}
+    ${kpiTable([G1,G2,G3])}</div>
   <div class="grid">
-    <div class="card"><h3>Из чего складывается эффект плана</h3><div class="sub">Вклад каждого блока модели в целевую функцию, по модулю</div><canvas id="o1"></canvas></div>
-    <div class="card"><h3>Насколько задействован каждый блок</h3><div class="sub">Доля переменных с ненулевым значением в решении</div><canvas id="o2"></canvas></div>
-    <div class="card"><h3>Что сдерживает план сильнее всего</h3><div class="sub">${topHot.length?'Доля объектов, упирающихся в потолок ограничения — кандидаты на расширение мощности':'В логе нет данных о достижении границ'}</div>${topHot.length?'<canvas id="o3"></canvas>':'<div class="dtp-e" style="padding:28px 10px">Строк «Upper bound reached» в логе этого прогона нет.</div>'}</div>
-    <div class="card"><h3>Как настроен прогон</h3><div class="sub">Параметры, влияющие на результат</div><div id="o4"></div></div>
-  </div>`;
+    <div class="card">${cardHead('Из чего складывается эффект плана','Вклад каждого блока модели в целевую функцию, по модулю',X_O1)}<canvas id="o1"></canvas></div>
+    <div class="card">${cardHead('Как настроен прогон','Параметры, влияющие на результат',X_CFG)}<div id="o4"></div></div>
+  </div>
+  ${secHead('ent','Блоки модели','Сколько спроса покрыто и как задействованы производство, закупки, логистика и запасы',{t:'Блоки модели',what:'Пять бизнес-блоков плана: продажи, производство, закупки, логистика, запасы.',why:'Здесь видно, обслуживает ли план спрос и какими ресурсами он для этого пользуется.'})}
+  ${r.entities.length?`<div class="grid">
+    <div class="card">${cardHead('Насколько задействован каждый блок','Доля переменных с ненулевым значением — для продаж это и есть покрытие спроса',X_O2)}<canvas id="o2"></canvas></div>
+    <div class="card">${cardHead('Вклад блоков в экономику плана','Продажи дают доход, остальные блоки — затраты',{t:'Вклад блоков в экономику плана',what:'Абсолютная величина вклада каждого блока: зелёный — доход, оранжевый — затраты.',why:'Сопоставление дохода и статей затрат в одном масштабе — где план зарабатывает и где тратит.',res:X_O1.res})}<canvas id="e3"></canvas></div>
+    <div class="card w">${cardHead('Реестр использования блоков','Технические столбцы скрыты — включаются кнопкой «Столбцы»',X_E2)}<div id="e2"></div></div>
+  </div>`:'<div class="empty">В логе прогона нет строк «Non-zero values …» — данных по блокам нет.</div>'}
+  ${secHead('bnd','Ограничения и узкие места','Что сдерживает план и какие мощности простаивают',{t:'Ограничения и узкие места',what:'Как часто решение упирается в границы ограничений: потолок — дефицит ресурса, пол — простой.',why:'Именно здесь ответ на вопрос «почему план не больше» и «куда вкладывать, чтобы он вырос».'})}
+  ${bRows.length?`<div class="grid">
+    <div class="card w">${cardHead('Напряжение ограничений','Одна шкала на ограничение: слева — доля объектов у нижней границы, справа — доля, упирающаяся в потолок',X_B0)}<canvas id="b0"></canvas></div>
+    <div class="card">${cardHead('Что сдерживает план','Доля объектов у верхней границы — кандидаты на расширение мощности',X_B1)}<canvas id="b1"></canvas></div>
+    <div class="card">${cardHead('Что простаивает','Доля объектов на нижней границе — ресурс доступен, но решение им не пользуется',X_B2)}<canvas id="b2"></canvas></div>
+    <div class="card w">${cardHead('Реестр ограничений','Технические столбцы скрыты — включаются кнопкой «Столбцы»',X_B3)}<div id="b3"></div></div>
+  </div>`:'<div class="empty">В логе прогона нет строк «Lower/Upper bound reached» — данных о границах нет.</div>'}
+  ${secHead('pen','Штрафы (SOFT)','Отступления от мягких плановых целей и во что они обходятся',{t:'Штрафы за мягкие нарушения',what:'Мягкие ограничения можно нарушать ценой штрафа; здесь — какие из них нарушены и насколько это дорого.',why:'Отвечает на вопрос, жертвует ли план согласованными целями и оправдано ли это экономикой.'})}
+  ${penRows.length?`<div class="grid">
+    <div class="card w">${cardHead('Во что обходится каждое мягкое нарушение','Чем длиннее полоса, тем дороже модели обходится отступление от этой цели',X_P1)}<canvas id="p1"></canvas></div>
+    <div class="card w">${cardHead('Реестр мягких нарушений','Технические столбцы скрыты — включаются кнопкой «Столбцы»',X_P2)}<div id="p2"></div></div>
+  </div>`:`<div class="verdict ok" style="margin-bottom:0"><div class="vi" aria-hidden="true">✓</div><div><div class="vt">Мягких нарушений не обнаружено</div><div class="vm">Все SOFT-ограничения плана выполнены точно, штрафы в целевой функции равны нулю: план не жертвует согласованными целями ради общей экономики.</div></div></div>`}
+  ${secHead('sum','Выводы, риски и рекомендации','Что показал прогон, что может пойти не так и что делать')}`;
+
   setTimeout(()=>{
     chDonut('#o1',H('#o1',230,0.55),entVal,'Эффект',bn,null);
-    chH('#o2',HC(entPct.length),entPct,v=>nf(v,1)+'%',null);
-    if(topHot.length)chH('#o3',HC(topHot.length),topHot,v=>nf(v,1)+'%',()=>go('bnd'));
-    const fnDiff=r.meta.functionalEntities.length&&
-      r.meta.functionalEntities.join(',')!==r.meta.includedEntities.join(',');
+    const fnDiff=r.meta.functionalEntities.length&&r.meta.functionalEntities.join(',')!==r.meta.includedEntities.join(',');
     const scenario=friendlyAlias(r.meta.alias);
-    $('#o4').innerHTML=`<table class="mtbl"><tbody>
+    const o4=$('#o4');if(o4)o4.innerHTML=`<table class="mtbl"><tbody>
       ${scenario?`<tr><td class="mt-k">Сценарий</td><td class="mt-v" title="${esc(r.meta.alias)}">${esc(scenario)}</td></tr>`:''}
       <tr><td class="mt-k">Идентификация</td><td class="mt-v">${esc(rCtx(r))}</td></tr>
       <tr><td class="mt-k">Начало расчёта</td><td class="mt-v">${esc(r.meta.startTime)||'—'}</td></tr>
@@ -1878,275 +2249,138 @@ function tabOV(){
       <tr><td class="mt-k">Типы ограничений в модели</td><td class="mt-v">${r.meta.constraintTypes.map(consLbl).join(', ')||'—'}</td></tr>
       <tr><td class="mt-k">Хэш конфигурации</td><td class="mt-v" style="font-size:11px;color:var(--scp-text-3)">${esc(r.meta.configHash)||'—'}</td></tr>
     </tbody></table>`;
+    if(r.entities.length){
+      chH('#o2',HC(byPct.length),byPct,v=>nf(v,1)+'%',null);
+      chH('#e3',HC(byVal.length),byVal,v=>bn(v),null);
+      dtable('#e2',[
+        {k:'entity',t:'Блок модели',left:1,flt:1,v:e=>ENT_LBL[e.entity]||e.entity,w:220},
+        {k:'pct',t:'Задействовано, %',num:1,f:v=>pctFmt(v),cls:v=>v<15?'neg':v<50?'mid':'pos',w:140,tip:'Доля переменных блока с ненулевым значением в решении'},
+        {k:'nonzero',t:'Использовано',num:1,f:v=>nf(v),w:120},
+        {k:'total',t:'Всего',num:1,f:v=>nf(v),w:110},
+        {k:'value',t:'Вклад в эффект',num:1,f:v=>bn(v),w:140},
+        {k:'comment',t:'Что это значит',left:1,v:e=>entComment(e),w:340},
+        {k:'share',t:'Доля переменных модели, %',num:1,opt:1,v:e=>e.total?100*e.total/Math.max(totalEntVars,1):0,f:v=>pctFmt(v),w:170,tip:'Какую часть вычислительной сложности модели формирует блок'}
+      ],r.entities.map(e=>({...e,share:e.total})),{key:'ent_reg',sort:'pct',dir:'desc',h:300,csv:1,name:'entities'});
+    }
+    if(bRows.length){
+      chSpan('#b0',HC(spanItems.length,30,52,150),spanItems,null);
+      chH('#b1',HC(Math.min(hot.length,8)),hot.slice(0,8).map(b=>({k:b.name,v:b.upperPct,
+        c:b.upperPct>=50?CH.err:(b.upperPct>=15?CH.warn:CH.ok),
+        tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Упор в потолок: ${pctFmt(b.upperPct)}<br>${bndComment(b)}`})),v=>nf(v,1)+'%',null);
+      chH('#b2',HC(Math.min(idle.length,8)),idle.slice(0,8).map(b=>({k:b.name,v:b.lowerPct,
+        c:b.lowerPct>=85?CH.warn:CH.d6,
+        tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Простой у пола: ${pctFmt(b.lowerPct)}<br>${bndComment(b)}`})),v=>nf(v,1)+'%',null);
+      dtable('#b3',[
+        {k:'name',t:'Ограничение',left:1,flt:1,w:280},
+        {k:'upperPct',t:'Упор в потолок, %',num:1,f:v=>pctFmt(v),cls:v=>v>=50?'neg':v>=15?'mid':'',w:150,tip:'Доля объектов, у которых значение уперлось в верхнюю границу'},
+        {k:'lowerPct',t:'Простой у пола, %',num:1,f:v=>pctFmt(v),cls:v=>v>=85?'mid':'',w:150,tip:'Доля объектов, стоящих на нижней границе — обычно на нуле'},
+        {k:'comment',t:'Что это значит',left:1,v:b=>bndComment(b),w:360},
+        {k:'status',t:'Режим',flt:1,opt:1,f:v=>STATUS_LBL[v]||v,w:110,tip:'STRICT — нарушать нельзя, SOFT — можно за штраф'},
+        {k:'entity',t:'Блок модели',left:1,flt:1,opt:1,v:b=>ENT_LBL[b.entity]||b.entity,w:190},
+        {k:'constraint',t:'Код ограничения',left:1,flt:1,opt:1,w:220}
+      ],bRows,{key:'bnd_reg',sort:'upperPct',dir:'desc',h:320,csv:1,name:'bounds'});
+    }
+    if(penRows.length){
+      const pItems=penRows.slice().sort((a,b)=>b.sum-a.sum).map(p=>({k:p.name+' · '+(p.kind==='min'?'недобор':'перебор'),v:p.sum,c:p.kind==='min'?CH.warn:CH.err,
+        tip:`<b>${p.name}</b><br>${p.kindLbl}<br>Сумма штрафа: ${nf(p.sum,2)}<br>Доля затронутых объектов: ${pctFmt(p.nonzeroPct)}`}));
+      chH('#p1',HC(pItems.length),pItems,v=>nf(v,1),null);
+      dtable('#p2',[
+        {k:'name',t:'Ограничение',left:1,flt:1,w:280},
+        {k:'kindLbl',t:'Что нарушено',left:1,flt:1,w:190,tip:'Недобор — план ниже мягкого минимума, перебор — выше мягкого максимума'},
+        {k:'sum',t:'Сумма штрафа',num:1,f:v=>nf(v,2),w:150},
+        {k:'nonzeroPct',t:'Затронуто объектов, %',num:1,f:v=>pctFmt(v),cls:v=>v>10?'mid':'',w:170},
+        {k:'status',t:'Режим',flt:1,opt:1,f:v=>STATUS_LBL[v]||v,w:110},
+        {k:'entity',t:'Блок модели',left:1,flt:1,opt:1,v:p=>ENT_LBL[p.entity]||p.entity,w:190},
+        {k:'constraint',t:'Код ограничения',left:1,flt:1,opt:1,w:220}
+      ],penRows,{key:'pen_reg',sort:'sum',dir:'desc',h:280,csv:1,name:'penalties'});
+    }
+    /* Подшкала: подсветка активного блока при прокрутке */
+    const nav=$('#runSubnav');
+    if(nav&&'IntersectionObserver' in window){
+      const links=[...nav.querySelectorAll('a')];
+      const secs=links.map(a=>document.getElementById('sec-'+a.dataset.sec)).filter(Boolean);
+      const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(a=>a.classList.toggle('on','sec-'+a.dataset.sec===e.target.id))}})},{rootMargin:'-20% 0px -70% 0px'});
+      secs.forEach(sc=>io.observe(sc));
+    }
   },0);
-  const worst=r.entities.slice().sort((a,b)=>a.pct-b.pct)[0];
-  const unmetPct=sale?(100-sale.pct):null;
-  return html+summary('Резюме: что показал прогон оптимизатора',[
-    {t:'Выводы',i:[
-      `Оптимизатор завершил расчёт со статусом <span class="h">${esc(r.solve.status)}</span> за <span class="h">${timeFmt(r.solve.solveTimeSec)}</span> и <span class="h">${nf(r.solve.iterations)}</span> итераций — это ${gapOk?'быстро и уверенно':'с отклонением, требующим проверки'}.`,
-      gapKnown
-        ?`Отклонение от теоретического оптимума (gap) составляет <span class="h">${pctFmt(r.solve.gapPct)}</span>${r.meta.gapLimit!=null?`, при настроенном пороге ${pctFmt(r.meta.gapLimit)}`:''} — этому результату ${gapOk?'можно доверять как практически оптимальному':'следует относиться с осторожностью'}.`
-        :(statusOk
-          ?`Показатель gap в логе отсутствует, потому что модель линейная (LP): симплекс-метод возвращает точный оптимум, зазору неоткуда взяться. Статус <span class="h">${esc(r.solve.status)}</span> это подтверждает.`
-          :`Показатель gap отсутствует, потому что допустимого решения нет вовсе: статус <span class="h">${esc(r.solve.status)||'—'}</span>. Сравнивать не с чем — сначала нужно понять, почему модель оказалась несовместной.`),
-      sale?`Из ${nf(sale.total)} строк плана спроса план продаж получили <span class="h">${nf(sale.nonzero)}</span> (${pctFmt(sale.pct)}). ${unmetPct>10?`Оставшиеся ${pctFmt(unmetPct)} — это заказы с нулевым выделением, которые стоит разобрать в разрезе причин (мощность, сырьё, маршрут).`:'Доля полностью необслуженных заказов невелика.'}`:'',
-      `Модель охватывает <span class="h">${nf(r.solve.variables)}</span> переменных и <span class="h">${nf(r.solve.constraints)}</span> ограничений на горизонте ${r.meta.periods!=null?r.meta.periods+' периодов':'не указанной длины'} — это масштаб, типичный для сетевого SNP-планирования.`]},
-    {t:'Аномалии и риски',i:[
-      worst?`Наименьшая доля использования — у блока «<span class="h">${ENT_LBL[worst.entity]||worst.entity}</span>»: ${pctFmt(worst.pct)}. Для логистики и запасов низкая доля обычно нормальна (комбинаторный простор маршрутов/резервов огромен), но стоит убедиться, что это не следствие отсутствующих данных о мощностях.`:'',
-      (r.solve.deletedVars>0||r.solve.deletedConstraints>0)?`Солвер удалил <span class="h">${nf(r.solve.deletedVars)}</span> переменных и <span class="h">${nf(r.solve.deletedConstraints)}</span> ограничений как избыточные — обычно это техническая оптимизация модели, но при системном повторении стоит проверить логику построения модели.`:'Удалённых переменных или ограничений нет — модель использована полностью, без технической пред-фильтрации.',
-      r.penalties.length?`Есть мягкие нарушения плановых лимитов (SOFT) — подробности на вкладке «Штрафы».`:'Мягких нарушений плановых лимитов (SOFT) не зафиксировано — все гибкие цели выполнены точно.']},
-    {t:'Рекомендации',i:[
-      `Считать результат надёжным для принятия решений при статусе OPTIMAL и gap ниже настроенного порога; при обратном — прежде чем публиковать план, проверить корректность входных данных и лимит времени решения.`,
-      `Регулярно фиксировать эти же показатели по каждому прогону (вкладка «История прогонов»), чтобы видеть, деградирует ли качество оптимизации со временем — рост gap или времени решения при том же масштабе модели — ранний сигнал проблем в данных.`,
-      `Долю необслуженного спроса и узкие места по мощностям разбирать совместно с содержательным S&OP-дашбордом (заказы/операции), чтобы перевести технические проценты в конкретные заказы и клиентов.`]}]);
-}
 
-/* ═══════════════ 9. ИСПОЛЬЗОВАНИЕ СУЩНОСТЕЙ ═══════════════ */
-function entComment(e){
-  if(e.entity==='sale')return e.pct<70?'Значительная доля спроса не получила план продаж — материальный риск для выручки.':(e.pct<90?'Основная часть спроса покрыта, но есть заметный необслуженный остаток.':'Спрос покрыт почти полностью.');
-  if(e.entity==='stock')return e.pct<5?'Модель почти не использует буферные запасы — план работает «в поток», чувствителен к сбоям поставок.':'Запасы используются как рабочий буфер плана.';
-  if(e.entity==='movement')return e.pct<5?'Задействована малая доля возможных маршрутов — либо сеть выбирает узкий набор оптимальных плеч, либо часть направлений структурно недоступна.':'Существенная часть сети маршрутов используется активно.';
-  if(e.entity==='production')return e.pct<15?'Производство запускается по узкому набору связок «завод-рецепт-период» — проверить, не ограничена ли доступность альтернативных мощностей.':'Производственные мощности используются достаточно широко.';
-  if(e.entity==='procurement')return e.pct<30?'Закупки идут по ограниченному кругу поставщиков/материалов — риск концентрации.':'Закупочная база используется широко, признаков концентрации не видно.';
-  return '';
-}
-function tabENT(){
-  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
-  const rows=r.entities.map(e=>({...e,share:e.total}));
-  if(!rows.length)return '<div class="empty"><h2>Нет данных по сущностям</h2><p>В логе загруженного прогона не найдено строк «Non-zero values ...».</p></div>';
-  const totalVars=S(rows,e=>e.total);
-  const prev=prevRun(r);
-  const pEnt=k=>prev?prev.entities.find(e=>e.entity===k):null;
-  /* KPI показывают степень задействования блока (что означает бизнес-смысл),
-     а не долю переменных в модели: «Доля модели: Продажи 0,09%» ничего не
-     говорила пользователю о качестве плана. */
-  const ORDER=['sale','production','procurement','movement','stock'];
-  const ordered=rows.slice().sort((a,b)=>{
-    const ia=ORDER.indexOf(a.entity),ib=ORDER.indexOf(b.entity);
-    return (ia<0?99:ia)-(ib<0?99:ib);
-  });
-  const K=ordered.map(e=>{
-    const p=pEnt(e.entity);
-    const isSale=e.entity==='sale';
-    return {
-      t:ENT_LBL[e.entity]||e.entity,
-      v:pctFmt(e.pct),
-      s:`${nf(e.nonzero)} из ${nf(e.total)} задействовано · вклад ${bn(e.value)}`,
-      cls:isSale?(e.pct<70?'neg':(e.pct<90?'mid':'pos')):'',
-      d:deltaHtml(e.pct,p?p.pct:null,v=>nf(v,1)+' п.п.',isSale?1:0),
-      hint:entComment(e)
-    };
-  });
-  const sale0=rows.find(e=>e.entity==='sale');
-  const vLevel=!sale0?'warn':(sale0.pct<70?'err':(sale0.pct<90?'warn':'ok'));
-  const dead=rows.filter(e=>e.total>0&&e.nonzero===0);
-  const vMsg=!sale0
-    ? 'В логе нет блока продаж — оценить покрытие спроса по этому прогону нельзя.'
-    : (sale0.pct<70
-      ? `Спрос покрыт лишь на <b>${pctFmt(sale0.pct)}</b>: ${nf(sale0.total-sale0.nonzero)} строк спроса остались без плана продаж. Это прямые потери выручки — разбирайте причины по узким местам.`
-      : (sale0.pct<90
-        ? `Спрос покрыт на <b>${pctFmt(sale0.pct)}</b>, без плана осталось ${nf(sale0.total-sale0.nonzero)} строк. Остаток стоит разобрать: мощность, сырьё или отсутствие маршрута.`
-        : `Спрос покрыт на <b>${pctFmt(sale0.pct)}</b> — план обслуживает практически весь заявленный объём.`))
-    +(dead.length?` Полностью не задействованы блоки: ${dead.map(e=>ENT_LBL[e.entity]||e.entity).join(', ')}.`:'');
-  const html=verdict(vLevel,sale0?`Покрытие спроса — ${pctFmt(sale0.pct)}`:'Данных по спросу нет',vMsg)+kpis(K)+`
-  <div class="grid">
-    <div class="card"><h3>Насколько задействован каждый блок</h3><div class="sub">Доля переменных с ненулевым значением — для продаж это и есть покрытие спроса</div><canvas id="e1"></canvas></div>
-    <div class="card"><h3>Вклад блоков в экономику плана</h3><div class="sub">Продажи дают доход, остальные блоки — затраты</div><canvas id="e3"></canvas></div>
-    <div class="card w"><h3>Реестр использования блоков</h3><div class="sub">Технические столбцы скрыты — включаются кнопкой «Столбцы»</div><div id="e2"></div></div>
-  </div>`;
-  setTimeout(()=>{
-    const byPct=ordered.map(e=>({k:ENT_LBL[e.entity]||e.entity,v:e.pct,
-      c:e.entity==='sale'?(e.pct<70?CH.err:(e.pct<90?CH.warn:CH.ok)):(CH[ENT_COL[e.entity]]||PAL[0]),
-      tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)} (${pctFmt(e.pct)})<br>Вклад в целевую функцию: ${bn(e.value)}<br>${entComment(e)}`}));
-    chH('#e1',HC(byPct.length),byPct,v=>nf(v,1)+'%',null);
-    const byVal=ordered.slice().sort((a,b)=>Math.abs(b.value)-Math.abs(a.value)).map(e=>({
-      k:ENT_LBL[e.entity]||e.entity,v:Math.abs(e.value),
-      c:e.value>=0?CH.ok:CH.d4,
-      tip:`<b>${ENT_LBL[e.entity]||e.entity}</b><br>${e.value>=0?'Доход':'Затраты'}: ${bn(Math.abs(e.value))}<br>Задействовано: ${nf(e.nonzero)} из ${nf(e.total)}`}));
-    chH('#e3',HC(byVal.length),byVal,v=>bn(v),null);
-    dtable('#e2',[
-      {k:'entity',t:'Блок модели',left:1,flt:1,v:e=>ENT_LBL[e.entity]||e.entity,w:220},
-      {k:'pct',t:'Задействовано, %',num:1,f:v=>pctFmt(v),cls:v=>v<15?'neg':v<50?'mid':'pos',w:140,tip:'Доля переменных блока с ненулевым значением в решении'},
-      {k:'nonzero',t:'Использовано',num:1,f:v=>nf(v),w:120},
-      {k:'total',t:'Всего',num:1,f:v=>nf(v),w:110},
-      {k:'value',t:'Вклад в эффект',num:1,f:v=>bn(v),w:140},
-      {k:'comment',t:'Что это значит',left:1,v:e=>entComment(e),w:340},
-      {k:'share',t:'Доля переменных модели, %',num:1,opt:1,v:e=>e.total?100*e.total/Math.max(totalVars,1):0,f:v=>pctFmt(v),w:170,
-        tip:'Какую часть вычислительной сложности модели формирует блок'}
-    ],rows,{key:'ent_reg',sort:'pct',dir:'desc',h:300,csv:1,name:'entities'});
-  },0);
-  const sale=rows.find(e=>e.entity==='sale');
-  return html+summary('Резюме: использование блоков модели',[
-    {t:'Выводы',i:[
-      `Наибольшую долю переменных модели формирует блок «<span class="h">${ENT_LBL[rows.slice().sort((a,b)=>b.total-a.total)[0].entity]}</span>» — это ядро вычислительной сложности задачи.`,
-      sale?`Блок продаж — единственный, где низкая доля использования (${pctFmt(sale.pct)}) прямо означает потери: каждая неиспользованная строка — это заказ без плана.`:'']},
-    {t:'Аномалии',i:rows.filter(e=>e.entity!=='sale'&&e.pct<5).map(e=>
-      `«<span class="h">${ENT_LBL[e.entity]}</span>»: только ${pctFmt(e.pct)} потенциала задействовано — ${entComment(e)}`)},
-    {t:'Рекомендации',i:[
-      `Для сущностей с экстремально низким процентом (логистика, запасы) сверить с бизнес-экспертом: это ожидаемая избирательность оптимальной сети или признак того, что модель не видит часть доступных ресурсов.`,
-      `Регулярно отслеживать процент покрытия спроса как главный KPI качества плана для бизнеса — он напрямую переводится в выручку.`]}]);
-}
-
-/* ═══════════════ 10. ОГРАНИЧЕНИЯ И УЗКИЕ МЕСТА ═══════════════ */
-function bndComment(b){
-  const parts=[];
-  if(b.upperPct!=null&&b.upperPct>=50)parts.push('часто ограничивает решение сверху — вероятный дефицит мощности/ресурса');
-  else if(b.upperPct!=null&&b.upperPct>=15)parts.push('периодически становится узким местом');
-  if(b.lowerPct!=null&&b.lowerPct>=85)parts.push('почти всегда на нижней границе — потенциал сильно недоиспользован');
-  else if(b.lowerPct!=null&&b.lowerPct>=50)parts.push('более половины объектов простаивают у минимума');
-  if(b.status==='OFF')parts.push('ограничение отключено в конфигурации — не влияет на решение');
-  if(!parts.length)parts.push('сбалансировано, системного давления не создаёт');
-  return parts.join('; ');
-}
-function tabBND(){
-  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
-  if(!r.bounds.length)return '<div class="empty"><h2>Нет данных по границам</h2><p>В загруженном файле не найдено строк «Lower/Upper bound reached».</p></div>';
-  const rows=r.bounds.map(b=>({...b,name:`${ENT_LBL[b.entity]||b.entity} · ${consLbl(b.constraint)}`}));
-  const hot=rows.filter(b=>b.upperPct!=null).slice().sort((a,b)=>b.upperPct-a.upperPct);
-  const idle=rows.filter(b=>b.lowerPct!=null).slice().sort((a,b)=>b.lowerPct-a.lowerPct);
-  const critical=hot.filter(b=>b.upperPct>=50);
-  const K=[
-    {t:'Критичных узких мест',v:nf(critical.length),
-      s:critical.length?`потолок достигается более чем в половине случаев`:'ни одно ограничение не давит на решение системно',
-      cls:critical.length?'neg':'pos',
-      hint:'Ограничения, у которых более 50 % объектов упираются в верхнюю границу. Именно они сдерживают план.'},
-    {t:'Главный ограничитель плана',v:hot[0]?pctFmt(hot[0].upperPct):'—',
-      s:hot[0]?clip(hot[0].name,46):'нет данных о верхних границах',
-      cls:hot[0]&&hot[0].upperPct>=50?'neg':'mid',
-      hint:'Ограничение, которое чаще всего упирается в потолок — первый кандидат на расширение мощности.'},
-    {t:'Простаивающий потенциал',v:idle[0]?pctFmt(idle[0].lowerPct):'—',
-      s:idle[0]?clip(idle[0].name,46):'нет данных о нижних границах',
-      cls:idle[0]&&idle[0].lowerPct>=85?'mid':'',
-      hint:'Ограничение с наибольшей долей объектов на нижней границе: ресурс есть, но решение им не пользуется.'},
-    {t:'Ограничений под контролем',v:nf(rows.length),
-      s:`${nf(rows.filter(b=>b.status==='STRICT').length)} жёстких · ${nf(rows.filter(b=>b.status==='SOFT').length)} мягких`,
-      hint:'Жёсткие нарушать нельзя. Мягкие можно нарушить ценой штрафа в целевой функции.'}
+  /* — выводы → риски → рекомендации, привязанные к цифрам прогона — */
+  const conclusions=[
+    `Оптимизатор завершил расчёт со статусом <span class="h">${esc(r.solve.status)||'—'}</span> за <span class="h">${timeFmt(r.solve.solveTimeSec)}</span>${timeShare!=null?` (${pc(timeShare)} лимита)`:''}${gapKnown?`, отклонение от оптимума <span class="h">${pctFmt(r.solve.gapPct)}</span>`:(statusOk?', точный оптимум линейной модели':'')} — ${statusOk&&gapOk?'результату можно доверять':'результат требует проверки до публикации'}.`,
+    sale?`Спрос покрыт на <span class="h">${pctFmt(sale.pct)}</span>: план продаж получили ${nf(sale.nonzero)} из ${nf(sale.total)} строк${sale.pct<100?`; <span class="h">${nf(sale.total-sale.nonzero)}</span> ${plural(sale.total-sale.nonzero,['строка осталась','строки остались','строк остались'])} без плана — это выручка вне плана`:''}${pSale?` (${deltaShort(sale.pct,pSale.pct,fmtPP,1)||'без изменений'} к предыдущему прогону)`:''}.`:'',
+    revenue?`Экономика: выручка <span class="h">${bn(revenue)}</span>, затраты <span class="h">${bn(costs)}</span> (${pc(costs/revenue)} выручки), целевая функция <span class="h">${bn(r.solve.objectiveValue)}</span>${costRows.length?`. Крупнейшая статья затрат — ${(ENT_LBL[costRows[0].entity]||costRows[0].entity).toLowerCase()}: ${pc(-costRows[0].value/Math.max(costs,1))} всех затрат`:''}${prev&&prev.solve.objectiveValue?`; к предыдущему прогону эффект ${r.solve.objectiveValue>=prev.solve.objectiveValue?'вырос':'снизился'} на ${bn(Math.abs(r.solve.objectiveValue-prev.solve.objectiveValue))}`:''}.`:'',
+    hot[0]?`Главный ограничитель плана — «<span class="h">${hot[0].name}</span>»: потолок достигается в ${pctFmt(hot[0].upperPct)} случаев${critical.length>1?`; всего системных узких мест — ${nf(critical.length)}`:''}. ${critical.length?'Расширение мощности именно здесь даст наибольший прирост плана.':'Системного давления на план нет.'}`:'',
+    idle[0]&&idle[0].lowerPct>=50?`Наибольший простой — «<span class="h">${idle[0].name}</span>»: ${pctFmt(idle[0].lowerPct)} объектов на нижней границе — ресурс есть, но план им не пользуется.`:'',
+    penRows.length?`Мягкие цели нарушены в ${nf(penRows.length)} ${plural(penRows.length,['группе','группах','группах'])}, штрафы — <span class="h">${pc(penRatio)}</span> эффекта плана${topPen?`; самая нарушаемая — «${topPen.name}» (${topPen.kindLbl.toLowerCase()})`:''} — ${penRatio>=0.01?'материально, стоит разобрать':'осознанный компромисс модели'}.`:'Мягкие цели выполнены без нарушений — план не жертвует согласованными лимитами.',
+    `Модель: <span class="h">${nf(r.solve.variables)}</span> переменных${intVars?` (из них ${nf(intVars)} целочисленных)`:' (все непрерывные — линейная модель)'} и <span class="h">${nf(r.solve.constraints)}</span> ограничений${prev&&prev.solve.variables&&Math.abs(r.solve.variables-prev.solve.variables)/prev.solve.variables>0.1?` — масштаб изменился на ${pc(Math.abs(r.solve.variables-prev.solve.variables)/prev.solve.variables)} к предыдущему прогону: сравнивайте результаты с поправкой на состав данных`:''}.`
   ];
-  const vLevel=critical.length?'err':(hot[0]&&hot[0].upperPct>=15?'warn':'ok');
-  const vTitle=critical.length?`План упирается в ${nf(critical.length)} ${plural(critical.length,['ограничение','ограничения','ограничений'])}`
-    :(hot[0]&&hot[0].upperPct>=15?'Есть ограничения под давлением':'Системных узких мест нет');
-  const vMsg=critical.length
-    ? `Сильнее всего сдерживает «<b>${esc(critical[0].name)}</b>» — потолок достигается в ${pctFmt(critical[0].upperPct)} случаев. Расширение мощности именно здесь даст наибольший прирост плана на вложенный рубль.`
-    : (hot[0]&&hot[0].upperPct>=15
-      ? `Наибольшее давление — у «<b>${esc(hot[0].name)}</b>» (${pctFmt(hot[0].upperPct)}). Пока это не блокирует план, но стоит держать в поле зрения.`
-      : 'Ни одно ограничение не упирается в потолок системно — мощностей хватает под текущий объём плана.');
-  const spanItems=rows.slice().sort((a,b)=>(b.upperPct||0)-(a.upperPct||0)).slice(0,10).map(b=>({
-    k:b.name,lower:b.lowerPct||0,upper:b.upperPct||0,
-    tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Упор в потолок: ${pctFmt(b.upperPct)}<br>Простой у пола: ${pctFmt(b.lowerPct)}<br>${bndComment(b)}`}));
-  const html=verdict(vLevel,vTitle,vMsg)+kpis(K)+`
-  <div class="grid">
-    <div class="card w"><h3>Напряжение ограничений</h3><div class="sub">Одна шкала на ограничение: слева — доля объектов, простаивающих у нижней границы, справа — доля, упирающаяся в потолок</div><canvas id="b0"></canvas></div>
-    <div class="card"><h3>Что сдерживает план</h3><div class="sub">Доля объектов, упирающихся в верхнюю границу — кандидаты на расширение мощности</div><canvas id="b1"></canvas></div>
-    <div class="card"><h3>Что простаивает</h3><div class="sub">Доля объектов на нижней границе — ресурс доступен, но решение им не пользуется</div><canvas id="b2"></canvas></div>
-    <div class="card w"><h3>Реестр ограничений</h3><div class="sub">Технические столбцы скрыты — включаются кнопкой «Столбцы»</div><div id="b3"></div></div>
-  </div>`;
-  setTimeout(()=>{
-    chSpan('#b0',HC(spanItems.length,30,52,150),spanItems,null);
-    chH('#b1',HC(Math.min(hot.length,8)),hot.slice(0,8).map(b=>({k:b.name,v:b.upperPct,
-      c:b.upperPct>=50?CH.err:(b.upperPct>=15?CH.warn:CH.ok),
-      tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Упор в потолок: ${pctFmt(b.upperPct)}<br>${bndComment(b)}`})),v=>nf(v,1)+'%',null);
-    chH('#b2',HC(Math.min(idle.length,8)),idle.slice(0,8).map(b=>({k:b.name,v:b.lowerPct,
-      c:b.lowerPct>=85?CH.warn:CH.d6,
-      tip:`<b>${b.name}</b><br>Тип: ${STATUS_LBL[b.status]||b.status}<br>Простой у пола: ${pctFmt(b.lowerPct)}<br>${bndComment(b)}`})),v=>nf(v,1)+'%',null);
-    dtable('#b3',[
-      {k:'name',t:'Ограничение',left:1,flt:1,w:280},
-      {k:'upperPct',t:'Упор в потолок, %',num:1,f:v=>pctFmt(v),cls:v=>v>=50?'neg':v>=15?'mid':'',w:150,
-        tip:'Доля объектов, у которых значение уперлось в верхнюю границу'},
-      {k:'lowerPct',t:'Простой у пола, %',num:1,f:v=>pctFmt(v),cls:v=>v>=85?'mid':'',w:150,
-        tip:'Доля объектов, стоящих на нижней границе — обычно на нуле'},
-      {k:'comment',t:'Что это значит',left:1,v:b=>bndComment(b),w:360},
-      {k:'status',t:'Режим',flt:1,opt:1,f:v=>STATUS_LBL[v]||v,w:110,tip:'STRICT — нарушать нельзя, SOFT — можно за штраф'},
-      {k:'entity',t:'Блок модели',left:1,flt:1,opt:1,v:b=>ENT_LBL[b.entity]||b.entity,w:190},
-      {k:'constraint',t:'Код ограничения',left:1,flt:1,opt:1,w:220}
-    ],rows,{key:'bnd_reg',sort:'upperPct',dir:'desc',h:320,csv:1,name:'bounds'});
-  },0);
-  return html+summary('Резюме: ограничения и узкие места',[
-    {t:'Выводы',i:[
-      hot[0]?`Наибольшее давление на решение создаёт ограничение «<span class="h">${hot[0].name}</span>» — верхняя граница достигается в ${pctFmt(hot[0].upperPct)} случаев. Это первый кандидат на инвестиции в расширение мощности или на пересмотр приоритетов.`:'',
-      idle[0]?`Наименее используемое ограничение — «<span class="h">${idle[0].name}</span>»: ${pctFmt(idle[0].lowerPct)} объектов стоят на нижней границе. Если это лимит мощности — резерв не задействован; если это минимальный план — солвер систематически предпочитает не производить/не возить сверх нуля.`:'']},
-    {t:'Аномалии',i:rows.filter(b=>b.status==='STRICT'&&b.lowerPct!=null&&b.lowerPct>=90).map(b=>
-      `«<span class="h">${b.name}</span>» (STRICT): ${pctFmt(b.lowerPct)} объектов на нижней границе — почти весь потенциал этого ограничения не используется решением.`)},
-    {t:'Рекомендации',i:[
-      `По ограничениям с высокой верхней границей — обсудить с производством/логистикой возможность расширения мощности именно в этих точках сети: это даст наибольший прирост плана на единицу вложений.`,
-      `По ограничениям с высокой нижней границей у STRICT-типа — проверить, не заужены ли входные лимиты мощности искусственно (например, ошибочно малые значения в справочнике capacity), из-за чего решение вынужденно «упирается в ноль».`]}]);
+  const SEV={e:['Блокирует',CH.err],w:['Внимание',CH.warn],i:['Норма',CH.ok]};
+  const dqItem=c=>`<div class="dq ${c.sev}"><span class="tag" style="color:${SEV[c.sev][1]};border-color:${SEV[c.sev][1]}">${SEV[c.sev][0]}</span>
+       <div class="m"><b>${c.tag}.</b> ${c.msg}
+       ${c.why?`<br><span style="color:var(--scp-text-3)">Почему это важно: ${c.why}</span>`:''}
+       ${c.rec&&c.rec!=='—'?`<br><span style="color:var(--scp-text-3)">Что делать: ${c.rec}</span>`:''}</div></div>`;
+  const risksHtml=`<div class="risk-list">${errs.concat(warns).map(dqItem).join('')||'<div class="dq i"><span class="tag" style="color:'+CH.ok+';border-color:'+CH.ok+'">Норма</span><div class="m">Блокирующих проблем и замечаний нет — прогон можно считать надёжным.</div></div>'}
+    ${oks.length?`<details class="risk-more"><summary>Пройдено без замечаний: ${nf(oks.length)} ${plural(oks.length,['проверка','проверки','проверок'])}</summary>${oks.map(dqItem).join('')}</details>`:''}</div>`;
+  const recs=[];
+  errs.concat(warns).forEach(c=>{if(c.rec&&c.rec!=='—')recs.push(`<b>${c.tag}.</b> ${c.rec}`)});
+  if(!critical.length&&hot[0]&&hot[0].upperPct>=15)recs.push(`<b>Держать в поле зрения «${hot[0].name}».</b> Потолок достигается в ${pctFmt(hot[0].upperPct)} случаев — пока не блокирует план, но при росте спроса станет узким местом первым.`);
+  if(worst&&worst.entity!=='sale'&&worst.pct<5&&!dead.length)recs.push(`<b>Сверить блок «${ENT_LBL[worst.entity]||worst.entity}» с бизнес-экспертом.</b> Задействовано ${pctFmt(worst.pct)} — это ожидаемая избирательность оптимальной сети или модель не видит часть доступных ресурсов.`);
+  if(prev)recs.push(`<b>Сравнить с предыдущим прогоном ${esc(rShort(prev))}.</b> Раздел «Сравнение версий» покажет, изменились ли настройки и за счёт чего сдвинулись покрытие спроса и экономика.`);
+  else recs.push(`<b>Накапливать историю.</b> Загрузите следующие прогоны — появятся дельты и раздел «Сравнение версий»: только так системная деградация отличается от разовой аномалии.`);
+  if(!errs.length)recs.push(`<b>Публиковать план${warns.length?' после разбора замечаний':''}.</b> Условия доверия выполнены: статус ${esc(r.solve.status)}${gapKnown?`, gap ${pctFmt(r.solve.gapPct)} в пределах порога`:''}${sale?`, спрос покрыт на ${pctFmt(sale.pct)}`:''}.`);
+
+  return html+`<div class="sum"><h4>Резюме: индекс надёжности прогона — ${score} из 100</h4>
+    <div class="sec">Выводы</div><ul>${conclusions.filter(Boolean).map(t=>`<li>${t}</li>`).join('')}</ul>
+    <div class="sec">Риски${errs.length||warns.length?` · ${nf(errs.length)} ${plural(errs.length,['блокирующий','блокирующих','блокирующих'])} · ${nf(warns.length)} ${plural(warns.length,['замечание','замечания','замечаний'])}`:''}</div>${risksHtml}
+    <div class="sec">Рекомендации</div><ol>${recs.map(t=>`<li>${t}</li>`).join('')}</ol></div>`;
 }
 
-/* ═══════════════ 11. ШТРАФЫ (SOFT) ═══════════════ */
-function tabPEN(){
-  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
-  if(!r.penalties.length)return '<div class="empty"><h2>Мягких нарушений не обнаружено</h2><p>Все SOFT-ограничения плана выполнены точно, штрафные санкции в целевой функции равны нулю.</p></div>'
-    +summary('Резюме: штрафы',[{t:'Вывод',i:['Отсутствие штрафов — хороший сигнал: план не жертвует мягкими целями (например, минимальным объёмом партии производства) ради общей экономики решения.']}]);
-  const rows=r.penalties.map(p=>({...p,name:`${ENT_LBL[p.entity]||p.entity} · ${consLbl(p.constraint)}`,kindLbl:p.kind==='min'?'Недобор (softmin)':'Перебор (softmax)'}));
-  const totalPen=S(rows,p=>p.sum);
-  const ratioToObj=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
-  const material=ratioToObj>=0.01;
-  const top=rows.slice().sort((a,b)=>b.sum-a.sum)[0];
-  const K=[
-    {t:'Материальность нарушений',v:pc(ratioToObj),
-      s:material?'выше 1 % от эффекта плана — требует разбора':'ниже 1 % от эффекта плана — осознанный компромисс модели',
-      cls:material?'neg':'pos',
-      hint:'Суммарный штраф в сравнении с экономическим эффектом плана. Это перевод «условных единиц» в понятный масштаб.'},
-    {t:'Самая нарушаемая цель',v:top?clip(top.name,26):'—',
-      s:top?`${top.kindLbl} · затронуто ${pctFmt(top.nonzeroPct)} объектов`:'—',
-      hint:'Мягкое ограничение с наибольшей суммой штрафа.'},
-    {t:'Суммарный штраф',v:nf(totalPen,2),
-      s:`условных единиц целевой функции · ${nf(rows.length)} ${plural(rows.length,['группа','группы','групп'])} ограничений`,
-      hint:'Абсолютная величина штрафа в единицах целевой функции. Сама по себе не интерпретируется — смотрите материальность.'}
-  ];
-  const vMsg=material
-    ? `Штрафы съедают <b>${pc(ratioToObj)}</b> эффекта плана. Либо мягкие лимиты нереалистичны, либо штрафной коэффициент слишком мал, чтобы удерживать план в рамках — стоит пересмотреть настройку.`
-    : `Штрафы составляют <b>${pc(ratioToObj)}</b> эффекта плана. Модель сознательно нарушает мягкие цели ради более выгодного общего решения — вмешательства не требуется.`;
-  const html=verdict(material?'warn':'ok',material?'Мягкие нарушения материальны':'Мягкие нарушения незначимы',vMsg)+kpis(K)+`
-  <div class="grid">
-    <div class="card w"><h3>Во что обходится каждое мягкое нарушение</h3><div class="sub">Чем длиннее полоса, тем дороже модели обходится отступление от этой цели</div><canvas id="p1"></canvas></div>
-    <div class="card w"><h3>Реестр мягких нарушений</h3><div class="sub">Технические столбцы скрыты — включаются кнопкой «Столбцы»</div><div id="p2"></div></div>
-  </div>`;
-  setTimeout(()=>{
-    const pItems=rows.slice().sort((a,b)=>b.sum-a.sum).map(p=>({k:p.name+' · '+(p.kind==='min'?'недобор':'перебор'),v:p.sum,c:p.kind==='min'?CH.warn:CH.err,
-      tip:`<b>${p.name}</b><br>${p.kindLbl}<br>Сумма штрафа: ${nf(p.sum,2)}<br>Доля затронутых объектов: ${pctFmt(p.nonzeroPct)}`}));
-    chH('#p1',HC(pItems.length),pItems,v=>nf(v,1),null);
-    dtable('#p2',[
-      {k:'name',t:'Ограничение',left:1,flt:1,w:280},
-      {k:'kindLbl',t:'Что нарушено',left:1,flt:1,w:190,tip:'Недобор — план ниже мягкого минимума, перебор — выше мягкого максимума'},
-      {k:'sum',t:'Сумма штрафа',num:1,f:v=>nf(v,2),w:150},
-      {k:'nonzeroPct',t:'Затронуто объектов, %',num:1,f:v=>pctFmt(v),cls:v=>v>10?'mid':'',w:170},
-      {k:'status',t:'Режим',flt:1,opt:1,f:v=>STATUS_LBL[v]||v,w:110},
-      {k:'entity',t:'Блок модели',left:1,flt:1,opt:1,v:p=>ENT_LBL[p.entity]||p.entity,w:190},
-      {k:'constraint',t:'Код ограничения',left:1,flt:1,opt:1,w:220}
-    ],rows,{key:'pen_reg',sort:'sum',dir:'desc',h:280,csv:1,name:'penalties'});
-  },0);
-  return html+summary('Резюме: штрафы и мягкие нарушения',[
-    {t:'Выводы',i:[
-      `Суммарный штраф по мягким ограничениям — <span class="h">${nf(totalPen,2)}</span>, это ${pc(ratioToObj)} от общего экономического эффекта плана — ${ratioToObj<0.0001?'величина пренебрежимо мала':'заметна и стоит разбора причин'}.`,
-      rows.length?`Наиболее нарушаемая мягкая цель — «<span class="h">${rows[0].name}</span>» (${rows[0].kindLbl}), затронуто ${pctFmt(rows[0].nonzeroPct)} объектов.`:'']},
-    {t:'Рекомендации',i:[
-      `Если материальность штрафов низкая — оставить настройку SOFT без изменений, это осознанный компромисс модели в пользу более выгодного общего решения.`,
-      `Если материальность растёт от прогона к прогону — пересмотреть штрафной коэффициент или сам минимальный/максимальный лимит: либо цель нереалистична, либо штраф слишком мал, чтобы удерживать план в рамках.`]}]);
-}
 /* ═══════════════ 12. ИСТОРИЯ ПРОГОНОВ (с мультивыбором прогонов) ═══════════════ */
-function histSummary(s,gapArr,objArr,slvArr){
+/** Тренд метрики по выбранным прогонам: сравниваем среднее последней трети
+    с первой третью. Возвращает {dir:1|0|-1, from, to}. */
+function trendOf(arr,eps){
+  const v=arr.filter(x=>x!=null&&isFinite(x));if(v.length<2)return null;
+  const n=Math.max(1,Math.floor(v.length/3));
+  const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+  const from=avg(v.slice(0,n)),to=avg(v.slice(-n));
+  const base=Math.max(Math.abs(from),1e-9),rel=(to-from)/base;
+  return {from,to,dir:Math.abs(rel)<(eps==null?0.02:eps)?0:(rel>0?1:-1),rel};
+}
+/** Когда началось отклонение: первый индекс с конца, где метрика ухудшилась
+    относительно предыдущего более чем на eps (относительно). */
+function breakPoint(arr,good,eps){
+  for(let i=arr.length-1;i>0;i--){const c=arr[i],p=arr[i-1];if(c==null||p==null)continue;
+    const rel=(c-p)/Math.max(Math.abs(p),1e-9);if(rel*good<-(eps==null?0.02:eps))return i}
+  return -1;
+}
+function histSummary(s,gapArr,objArr,slvArr,saleArr,gapKnownArr){
   const multi=s.length>=2,last=s[s.length-1];
-  // gapArr приходит уже «обнулённым» для графика — берём исходные значения
   const gRaw=s.map(r=>r.solve.gapPct),gEnds=gRaw[0]!=null&&gRaw[gRaw.length-1]!=null;
-  return summary('Резюме: выбранные прогоны',[
-    {t:'Выводы',i:[
-      multi?(gEnds
-              ?`По ${nf(s.length)} выбранным прогонам gap изменился с ${pctFmt(gRaw[0])} до <span class="h">${pctFmt(gRaw[gRaw.length-1])}</span>.`
-              :`По ${nf(s.length)} выбранным прогонам gap сравнить нельзя — он рассчитан не во всех (в логе LP-моделей строки «Result gap %» нет).`)
-           :`Выбран один прогон (#${esc(last.runid)}). Отметьте в фильтре выше минимум 2 прогона, чтобы увидеть динамику и сравнение A/B.`,
-      multi?`Экономический эффект плана в последнем выбранном прогоне: <span class="h">${bn(last.solve.objectiveValue)}</span>, изменение к предыдущему выбранному — ${bn(last.solve.objectiveValue-s[s.length-2].solve.objectiveValue)}.`
-           :`Экономический эффект плана: <span class="h">${bn(last.solve.objectiveValue)}</span>.`,
-      multi?`Время решения ${slvArr[slvArr.length-1]>slvArr[0]?'выросло':'снизилось'} с ${timeFmt(slvArr[0])} до <span class="h">${timeFmt(slvArr[slvArr.length-1])}</span>.`
-           :`Время решения: <span class="h">${timeFmt(last.solve.solveTimeSec)}</span>.`]},
-    {t:'Аномалии',i:multi?[
-      (gRaw[gRaw.length-1]==null||gRaw[gRaw.length-2]==null)
-        ?'Скачки gap не анализировались: показатель рассчитан не во всех выбранных прогонах.'
-        :(gRaw[gRaw.length-1]>gRaw[gRaw.length-2]*1.5&&gRaw[gRaw.length-2]>0?'Заметный скачок gap в последнем выбранном прогоне — возможна деградация исходных данных или изменение конфигурации солвера.':'Существенных скачков gap между соседними выбранными прогонами не выявлено.'),
-      slvArr[slvArr.length-1]>slvArr[slvArr.length-2]*3?'Резкий рост времени решения — проверить рост размера модели (переменные/ограничения) и лимит времени.':'Время решения стабильно.'
-    ]:['Для одиночного прогона разбор аномалий — на вкладке «Качество и аномалии».']},
+  const tSale=trendOf(saleArr,0.01),tObj=trendOf(objArr),tSlv=trendOf(slvArr,0.25),tGap=gEnds?trendOf(gRaw.map(v=>v==null?null:v),0.1):null;
+  const dirTxt=(t,up,down,flat)=>t?(t.dir>0?up:(t.dir<0?down:flat)):'';
+  const bpSale=breakPoint(saleArr,1,0.01),bpObj=breakPoint(objArr,1,0.01),bpSlv=breakPoint(slvArr,-1,0.5);
+  const varsArr=s.map(r=>r.solve.variables),tVars=trendOf(varsArr,0.1);
+  return summary('Резюме: выбранные версии',[
+    {t:'Выводы',i:multi?[
+      `По ${nf(s.length)} выбранным прогонам покрытие спроса ${dirTxt(tSale,'растёт','снижается','стабильно')}: ${pctFmt(saleArr[0])} → <span class="h">${pctFmt(saleArr[saleArr.length-1])}</span>${bpSale>0?` (ухудшение началось с прогона ${esc(rShort(s[bpSale]))})`:''}.`,
+      `Экономический эффект ${dirTxt(tObj,'растёт','снижается','стабилен')}: ${bn(objArr[0])} → <span class="h">${bn(objArr[objArr.length-1])}</span>${bpObj>0?` (снижение с прогона ${esc(rShort(s[bpObj]))})`:''}.`,
+      `Время решения ${dirTxt(tSlv,'растёт','снижается','стабильно')}: ${timeFmt(slvArr[0])} → <span class="h">${timeFmt(slvArr[slvArr.length-1])}</span>${tVars&&tVars.dir!==0?`, при этом масштаб модели ${tVars.dir>0?'вырос':'уменьшился'} на ${pc(Math.abs(tVars.rel))} — рост времени ${tVars.dir>0?'объясним':'не объясняется размером задачи'}`:(tSlv&&tSlv.dir>0?' при неизменном масштабе модели — ранний сигнал проблем в данных':'')}.`,
+      gEnds?`Точность (gap) ${dirTxt(tGap,'ухудшается','улучшается','стабильна')}: ${pctFmt(gRaw[0])} → <span class="h">${pctFmt(gRaw[gRaw.length-1])}</span>.`
+           :'Gap сравнить нельзя — он рассчитан не во всех выбранных прогонах (у линейных моделей строки «Result gap %» нет).'
+    ]:[`Выбран один прогон (${esc(rShort(last))}). Отметьте в фильтре выше минимум 2 прогона, чтобы увидеть динамику и сравнение A/B.`,
+       `Экономический эффект плана: <span class="h">${bn(last.solve.objectiveValue)}</span>, время решения <span class="h">${timeFmt(last.solve.solveTimeSec)}</span>.`]},
+    {t:'Риски',i:multi?(()=>{const R=[
+      (gRaw[gRaw.length-1]!=null&&gRaw[gRaw.length-2]!=null&&gRaw[gRaw.length-1]>gRaw[gRaw.length-2]*1.5&&gRaw[gRaw.length-2]>0)?'Заметный скачок gap в последнем прогоне — возможна деградация исходных данных или изменение конфигурации солвера.':'',
+      bpSlv>0?`Резкий рост времени решения с прогона ${esc(rShort(s[bpSlv]))} — проверить рост размера модели и лимит времени.`:'',
+      s.some(r=>!/OPTIMAL/i.test(r.solve.status))?`Среди выбранных есть прогоны без подтверждённого оптимума: ${s.filter(r=>!/OPTIMAL/i.test(r.solve.status)).map(r=>rShort(r)+' ('+esc(r.solve.status||'—')+')').join(', ')} — их показатели описывают незавершённый расчёт.`:'',
+      new Set(s.map(r=>r.meta.configHash).filter(Boolean)).size>1?`Прогоны считались с разными конфигурациями (${nf(new Set(s.map(r=>r.meta.configHash).filter(Boolean)).size)} хэшей) — часть разницы в результатах объясняется настройками, а не данными. Смотрите блок «Что изменилось в настройках».`:'',
+      tSale&&tSale.dir<0&&tObj&&tObj.dir>=0?'Эффект растёт при падении покрытия спроса — план становится выгоднее за счёт отказа от части заказов. Убедитесь, что это осознанное решение.':''
+    ].filter(Boolean);return R.length?R:['Системных рисков по выбранным прогонам не выявлено: статусы подтверждены, скачков времени и gap нет.']})()
+    :['Для одиночного прогона разбор рисков — в разделе «Анализ прогона».']},
     {t:'Рекомендации',i:[
-      'Использовать сравнение A/B перед каждым переходом на новую конфигурацию оптимизатора, чтобы отделить эффект настроек от эффекта входных данных.',
-      'Фиксировать историю показателей на регулярной основе (еженедельно/ежемесячно) — это единственный способ отличить системную деградацию от разовой аномалии.']}]);
+      'Перед переходом на новую конфигурацию оптимизатора сравнить A/B два прогона на одних данных: так эффект настроек отделяется от эффекта входных данных.',
+      multi&&tSale&&tSale.dir<0?'Покрытие спроса снижается — разобрать непокрытые строки в разделе «Анализ прогона» → «Ограничения» по последнему прогону: нехватка мощности, сырья или маршрута.':'',
+      'Фиксировать историю регулярно (каждый плановый цикл): только серия прогонов отличает системную деградацию от разовой аномалии.'].filter(Boolean)}]);
 }
 
 function tabHIST(){
@@ -2246,8 +2480,7 @@ function tabHIST(){
           tip:`<b>${esc(stDisp(st))}</b><br>Прогонов: ${nf(n)} из ${nf(stTotal)} · ${pc(n/stTotal)}<br>Клик — ${HIST_STATUS.has(st)?'убрать этот статус из фильтра':'отфильтровать вкладку по этому статусу'}`}));
       const statusCard=`
         <div class="grid">
-          <div class="card w"><h3>Прогоны по статусам решения</h3>
-            <div class="sub">Сколько среди выбранных прогонов завершилось каждым статусом · названия статусов подтягиваются из загруженного набора данных · клик по полосе включает фильтр по статусу</div>
+          <div class="card w">${cardHead('Прогоны по статусам решения','Сколько среди выбранных прогонов завершилось каждым статусом · клик по полосе включает фильтр по статусу',{t:'Прогоны по статусам решения',what:'Распределение выбранных версий по статусу солвера (OPTIMAL, INFEASIBLE и др.).',why:'Прогоны без подтверждённого оптимума нельзя сравнивать с оптимальными по экономике — сначала отфильтруйте их кликом по полосе.',res:`${nf(stBy.get('OPTIMAL')||0)} из ${nf(stTotal)} прогонов — OPTIMAL.`})}
             <canvas id="h7"></canvas></div>
         </div>`;
       /* Отрисовка графика в #h7 (canvas появляется в нескольких ветках). */
@@ -2272,6 +2505,12 @@ function tabHIST(){
         if(rs)rs.onclick=()=>{HIST_STATUS.clear();if(!IS_DEMO)persistSession();drawAll()};
         renderStatusChart();
         return;
+      }
+      /* Пара A/B по умолчанию: предыдущий → активный прогон (если оба в
+         выборке), иначе два последних. Ручной выбор пользователя сохраняется. */
+      if(HIST_AB_AUTO&&s.length>=2){
+        const ci=s.findIndex(r=>runKey(r)===CUR_KEY);
+        if(ci>0){HIST_A=ci-1;HIST_B=ci}else{HIST_A=s.length-2;HIST_B=s.length-1}
       }
       HIST_A=Math.min(Math.max(0,HIST_A),s.length-1);
       HIST_B=Math.min(Math.max(0,HIST_B),s.length-1);
@@ -2298,12 +2537,17 @@ function tabHIST(){
       /* Вердикт по динамике: направление главного бизнес-KPI (покрытие спроса)
          и эффекта плана важнее технических показателей солвера. */
       const dSale=multi?L(saleArr)-P(saleArr):0,dObj=multi?L(objArr)-P(objArr):0;
-      const hLevel=!multi?'warn':((dSale<-1||dObj<0)?'warn':'ok');
+      const tS=multi?trendOf(saleArr,0.01):null,tO=multi?trendOf(objArr):null,tT=multi?trendOf(slvArr,0.25):null;
+      const worse=(dSale<-1||dObj<0),trendBad=(tS&&tS.dir<0)||(tO&&tO.dir<0);
+      const bpS=multi?breakPoint(saleArr,1,0.01):-1,bpO=multi?breakPoint(objArr,1,0.01):-1;
+      const hLevel=!multi?'warn':((worse||trendBad)?'warn':'ok');
+      const trendWord=t=>t?(t.dir>0?'растёт':(t.dir<0?'снижается':'стабильно')):'—';
       const hMsg=!multi
         ? 'Выберите минимум два прогона — появятся графики динамики и сравнение A/B.'
         : `От прогона ${esc(rShort(s[s.length-2]))} к ${esc(rShort(L(s)))}: покрытие спроса ${dSale>=0?'выросло':'снизилось'} на <b>${nf(Math.abs(dSale),1)} п.п.</b> (${pctFmt(P(saleArr))} → ${pctFmt(L(saleArr))}), эффект плана ${dObj>=0?'вырос':'снизился'} на <b>${bn(Math.abs(dObj))}</b>.`
-          +((dSale<-1||dObj<0)?' Ухудшение стоит объяснить прежде, чем принимать новый план.':' Динамика в норме.');
-      const hTitle=!multi?'Сравнение недоступно':((dSale<-1||dObj<0)?'Качество плана ухудшилось':'Качество плана не ухудшилось');
+          +(s.length>=3?` Тренд по ${nf(s.length)} прогонам: покрытие ${trendWord(tS)}, эффект ${trendWord(tO)}, время решения ${trendWord(tT)}${(bpS>0||bpO>0)?`; отклонение началось с прогона <b>${esc(rShort(s[Math.max(bpS,bpO)]))}</b>`:''}.`:'')
+          +((worse||trendBad)?' Ухудшение стоит объяснить прежде, чем принимать новый план.':' Динамика в норме.');
+      const hTitle=!multi?'Сравнение недоступно':(trendBad&&s.length>=3?'Качество плана деградирует':(worse?'Качество плана ухудшилось':(s.length>=3&&tS&&tS.dir>0?'Качество плана растёт':'Качество плана стабильно')));
 
       const kpiBlock=verdict(hLevel,hTitle,hMsg)+kpis(multi?[
         {t:'Покрытие спроса',v:pctFmt(L(saleArr)),s:`было ${pctFmt(P(saleArr))} в прогоне ${esc(rShort(s[s.length-2]))}`,
@@ -2323,33 +2567,34 @@ function tabHIST(){
             hint:'Отклонение от теоретического оптимума. Ниже — лучше.'}
           :{t:'Точность (gap)',v:'н/д',s:'gap рассчитан не во всех сравниваемых прогонах',
             hint:'В линейных (LP) моделях gap не определён, сравнивать нечего.'},
-        {t:'Прогонов в сравнении',v:nf(s.length),s:`из ${nf(runs.length)} доступных в истории`}
+        {t:'Прогонов в сравнении',v:nf(s.length),s:`из ${nf(runs.length)} доступных в истории`+(new Set(s.map(r=>r.meta.configHash).filter(Boolean)).size>1?` · ${nf(new Set(s.map(r=>r.meta.configHash).filter(Boolean)).size)} разных конфигурации`:''),
+          hint:'Сколько версий плана участвует в графиках и таблице. Если конфигурации различаются — часть разницы объясняется настройками.'}
       ]:[
         {t:'Прогонов выбрано',v:nf(s.length),s:`из ${nf(runs.length)} доступных в истории`}
       ]);
       const charts=multi?`
         <div class="grid" style="margin-top:12px">
-          <div class="card"><h3>Покрытие спроса по прогонам</h3><div class="sub">Доля строк спроса с планом продаж, % · выше — лучше</div><canvas id="h4"></canvas></div>
-          <div class="card"><h3>Экономический эффект плана</h3><div class="sub">Значение целевой функции, млрд · выше — лучше</div><canvas id="h3"></canvas></div>
-          <div class="card"><h3>Отклонение от оптимума (gap)</h3><div class="sub">${anyGap?(allGap?'Ниже — лучше':'Ниже — лучше · у части прогонов gap не рассчитывался'):'Gap не рассчитывался ни в одном выбранном прогоне'}</div>${anyGap?'<canvas id="h1"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных о gap: в логе этих прогонов нет строки «Result gap %» — типично для линейных (LP) моделей.</div>'}</div>
-          <div class="card"><h3>Время решения по прогонам</h3><div class="sub">Секунды на полное решение · ниже — лучше</div><canvas id="h2"></canvas></div>
-          <div class="card"><h3>Использование блоков по прогонам</h3><div class="sub">Доля задействованных переменных каждого блока, % · нажмите на легенду, чтобы скрыть блок</div>${h6Ser.length?'<canvas id="h6"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных по блокам модели в выбранных прогонах.</div>'}</div>
+          <div class="card">${cardHead('Покрытие спроса по прогонам','Доля строк спроса с планом продаж, % · выше — лучше',{t:'Покрытие спроса по прогонам',what:'Главный бизнес-KPI по каждой версии плана: доля строк спроса, получивших план продаж.',why:'Падение покрытия при росте эффекта означает, что план выигрывает за счёт отказа от заказов.',res:`${pctFmt(saleArr[0])} в первом выбранном → ${pctFmt(L(saleArr))} в последнем${tS?` · тренд: ${trendWord(tS)}`:''}.`})}<canvas id="h4"></canvas></div>
+          <div class="card">${cardHead('Экономический эффект плана','Значение целевой функции, млрд · выше — лучше',{t:'Экономический эффект по прогонам',what:'Целевая функция каждой версии: выручка минус затраты и штрафы.',why:'Денежный итог плана в динамике. Сравнивать корректно при одинаковом горизонте и конфигурации.',res:`${bn(objArr[0])} → ${bn(L(objArr))}${tO?` · тренд: ${trendWord(tO)}`:''}.`})}<canvas id="h3"></canvas></div>
+          <div class="card">${cardHead('Отклонение от оптимума (gap)',anyGap?(allGap?'Ниже — лучше':'Ниже — лучше · у части прогонов gap не рассчитывался'):'Gap не рассчитывался ни в одном выбранном прогоне',{t:'Gap по прогонам',what:'Насколько каждое решение могло отличаться от теоретически лучшего.',why:'Рост gap при том же лимите времени — задача усложнилась или данные стали хуже структурированы.',res:anyGap?`Последний прогон: ${gapKnownArr[gapKnownArr.length-1]?pctFmt(L(gapRaw)):'gap не рассчитывался'}.`:'Все выбранные прогоны — линейные модели, gap не определён.'})}${anyGap?'<canvas id="h1"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных о gap: в логе этих прогонов нет строки «Result gap %» — типично для линейных (LP) моделей.</div>'}</div>
+          <div class="card">${cardHead('Время решения по прогонам','Секунды на полное решение · ниже — лучше',{t:'Время решения по прогонам',what:'Сколько солвер искал решение в каждой версии.',why:'Рост времени при неизменном масштабе модели — ранний признак проблем в данных; расчёт «в упор» к лимиту — риск недооптимизированного плана.',res:`${timeFmt(slvArr[0])} → ${timeFmt(L(slvArr))}${tT?` · тренд: ${trendWord(tT)}`:''}.`})}<canvas id="h2"></canvas></div>
+          <div class="card w">${cardHead('Использование блоков по прогонам','Доля задействованных переменных каждого блока, % · клик по легенде скрывает блок',{t:'Использование блоков по прогонам',what:'Как менялась доля задействованных переменных каждого бизнес-блока от версии к версии.',why:'Сдвиг между блоками (например, рост закупок при падении производства) показывает, как изменилась логика плана, а не только его итог.'})}${h6Ser.length?'<canvas id="h6"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных по блокам модели в выбранных прогонах.</div>'}</div>
         </div>`:'';
       const abCard=multi?`
         <div class="card w">
-          <h3>Сравнение двух прогонов</h3><div class="sub">Выберите базовый и сравниваемый прогон из отмеченных выше</div>
+          ${cardHead('Сравнение двух версий (A → B)','По умолчанию — предыдущий и активный прогон; выберите любую пару из отмеченных выше',{t:'Сравнение двух версий',what:'Построчная разница между базовым прогоном A и сравниваемым B: результат, экономика, блоки модели, ограничения, штрафы.',why:'Отвечает на вопрос «что именно изменилось и стало ли лучше»: зелёная стрелка — улучшение, красная — ухудшение.'})}
           <div class="frow">
             <div class="fg"><label>Прогон A (база)</label><select id="histA"></select></div>
             <div class="fg"><label>Прогон B (сравниваемый)</label><select id="histB"></select></div>
+            <button type="button" class="dt-btn" id="histAbAuto" title="Вернуть пару по умолчанию: предыдущий → активный прогон">Предыдущий → активный</button>
           </div>
           <div id="histDelta"></div>
         </div>`:'';
 
-      body.innerHTML=kpiBlock+statusCard+charts+`
+      body.innerHTML=kpiBlock+abCard.replace('class="card w"','class="card w" style="margin-bottom:12px"')+statusCard+charts+`
         <div class="grid" style="margin-top:12px">
-          <div class="card w"><h3>Таблица истории прогонов</h3><div class="sub">Только выбранные прогоны${HIST_STATUS.size?` · статус: ${esc([...HIST_STATUS].map(stDisp).join(', '))}`:''} · поиск, сортировка, экспорт</div><div id="h5"></div></div>
-          ${abCard}
-        </div>`+histSummary(s,gapArr,objArr,slvArr);
+          <div class="card w">${cardHead('Таблица версий',`Только выбранные прогоны${HIST_STATUS.size?` · статус: ${esc([...HIST_STATUS].map(stDisp).join(', '))}`:''} · дельта к предыдущей строке · поиск, сортировка, экспорт`,{t:'Таблица версий',what:'Все выбранные прогоны построчно с ключевыми показателями и изменением к предыдущему прогону в списке.',why:'Быстрый поиск версии, с которой начались изменения; технические столбцы включаются кнопкой «Столбцы».'})}<div id="h5"></div></div>
+        </div>`+histSummary(s,gapArr,objArr,slvArr,saleArr,gapKnownArr);
       renderStatusChart();
 
       if(multi){
@@ -2368,21 +2613,34 @@ function tabHIST(){
             return `<b>${labs[i]}</b><br>${rows||'все серии скрыты'}`},null);
       }
 
+      const dCell=(k,good,fmt)=>(v,row)=>{const p=row._prev;if(!p||v==null||p[k]==null)return '—';const d=v-p[k];if(Math.abs(d)<1e-9)return '<span class="dlt flat">=</span>';const cls=good===0?'flat':((d>0?1:-1)===good?'pos':'neg');return `<span class="dlt ${cls}">${d>0?'▲':'▼'} ${fmt(Math.abs(d))}</span>`};
+      const hRows=s.map((r,i)=>{const e=k=>(r.entities.find(x=>x.entity===k)||{}).pct||0;return {run:rOpt(r),label:r.label,startTime:r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
+        objective:r.solve.objectiveValue,salePct:e('sale'),movePct:e('movement'),prodPct:e('production'),procPct:e('procurement'),stockPct:e('stock'),
+        vars:r.solve.variables,cons:r.solve.constraints,pen:S(r.penalties,p=>p.sum),cfg:r.meta.configHash?String(r.meta.configHash).slice(0,8):'—',
+        hot:(r.bounds.filter(b=>b.upperPct!=null&&b.upperPct>=50).length)}});
+      hRows.forEach((x,i)=>{x._prev=i>0?hRows[i-1]:null});
+      const withPrev=(k,good,fmt)=>({k:k+'_d',t:'Δ',num:1,w:110,v:x=>x._prev?x[k]-x._prev[k]:null,f:(d,x)=>dCell(k,good,fmt)(x[k],x),tip:'Изменение к предыдущему прогону в списке'});
       dtable('#h5',[
         {k:'run',t:'Прогон',left:1,flt:1,w:150,tip:'Схема и номер прогона'},
         {k:'startTime',t:'Запуск',left:1,flt:1,w:150,f:v=>esc(String(v||'').slice(0,16)||'—')},
         {k:'status',t:'Статус',flt:1,w:120,cls:v=>/OPTIMAL/i.test(v||'')?'pos':'neg'},
-        {k:'salePct',t:'Покрытие спроса, %',num:1,f:v=>pctFmt(v),cls:v=>v<70?'neg':v<90?'mid':'pos',w:170},
-        {k:'objective',t:'Эффект плана',num:1,f:v=>bn(v),w:150},
-        {k:'solveTime',t:'Время решения, с',num:1,f:v=>nf(v,2),w:160},
+        {k:'salePct',t:'Покрытие спроса, %',num:1,f:v=>pctFmt(v),cls:v=>v<70?'neg':v<90?'mid':'pos',w:160},
+        withPrev('salePct',1,v=>nf(v,1)+' п.п.'),
+        {k:'objective',t:'Эффект плана',num:1,f:v=>bn(v),w:140},
+        withPrev('objective',1,v=>bn(v)),
+        {k:'solveTime',t:'Время решения, с',num:1,f:v=>nf(v,2),w:150},
         {k:'gap',t:'Gap, %',num:1,opt:1,f:v=>v==null?'н/д':pctFmt(v),w:110},
+        {k:'hot',t:'Узких мест',num:1,opt:1,f:v=>nf(v),w:110,tip:'Ограничений с потолком >50%'},
+        {k:'pen',t:'Штрафы SOFT',num:1,opt:1,f:v=>nf(v,1),w:130},
+        {k:'vars',t:'Переменных',num:1,opt:1,f:v=>nf(v),w:130},
+        {k:'cons',t:'Ограничений',num:1,opt:1,f:v=>nf(v),w:130},
+        {k:'cfg',t:'Конфиг (хэш)',left:1,opt:1,flt:1,w:120},
+        {k:'prodPct',t:'Производство, %',num:1,opt:1,f:v=>pctFmt(v),w:150},
+        {k:'procPct',t:'Закупки, %',num:1,opt:1,f:v=>pctFmt(v),w:130},
         {k:'movePct',t:'Логистика, %',num:1,opt:1,f:v=>pctFmt(v),w:140},
-        {k:'prodPct',t:'Производство, %',num:1,opt:1,f:v=>pctFmt(v),w:160},
+        {k:'stockPct',t:'Запасы, %',num:1,opt:1,f:v=>pctFmt(v),w:130},
         {k:'label',t:'Полное имя прогона',left:1,opt:1,w:420}
-      ],s.map(r=>({run:rOpt(r),label:r.label,startTime:r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
-        objective:r.solve.objectiveValue,salePct:(r.entities.find(e=>e.entity==='sale')||{}).pct||0,
-        movePct:(r.entities.find(e=>e.entity==='movement')||{}).pct||0,prodPct:(r.entities.find(e=>e.entity==='production')||{}).pct||0})),
-        {key:'hist_reg',sort:'startTime',dir:'asc',h:280,csv:1,name:'history'});
+      ],hRows,{key:'hist_reg',sort:'startTime',dir:'asc',h:280,csv:1,name:'history'});
 
       if(multi){
         const selA=$('#histA'),selB=$('#histB');
@@ -2390,27 +2648,79 @@ function tabHIST(){
         selB.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_B?'selected':''} title="${esc(r.label)}">${esc(rOpt(r))}</option>`).join('');
         const drawDelta=()=>{
           const A=s[HIST_A],B=s[HIST_B];
-          const saleA=(A.entities.find(e=>e.entity==='sale')||{}).pct||0,saleB=(B.entities.find(e=>e.entity==='sale')||{}).pct||0;
-          const rows2=[
-            ['Статус',A.solve.status,B.solve.status,null],
-            ['Gap, %',A.solve.gapPct,B.solve.gapPct,-1,A.solve.gapPct!=null&&B.solve.gapPct!=null],
-            ['Время решения, с',A.solve.solveTimeSec,B.solve.solveTimeSec,-1],
-            ['Эффект плана',A.solve.objectiveValue,B.solve.objectiveValue,1],
-            ['Покрытие спроса, %',saleA,saleB,1]
-          ];
-          $('#histDelta').innerHTML=`<div class="kpis">${rows2.map(x=>{
-            if(x[3]===null)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">${esc(x[1])} → ${esc(x[2])}</div><div class="s">A → B</div></div>`;
-            if(x.length>4&&x[4]===false)return `<div class="kpi"><div class="t">${x[0]}</div><div class="v">—</div><div class="s">не рассчитывался хотя бы в одном прогоне</div></div>`;
-            const d=(x[2]-x[1])*x[3];const isPct=x[0].includes('%');const isMoney=x[0]==='Эффект плана';
-            const fmt=v=>isMoney?bn(v):(isPct?nf(v,2)+' п.п.':nf(v,2));
-            const raw=x[2]-x[1];
-            return `<div class="kpi"><div class="t">${x[0]}</div>
-              <div class="v ${d>=0?'pos':'neg'}">${fmt(raw)}</div>
-              <div class="s">${isMoney?bn(x[1])+' → '+bn(x[2]):(isPct?pctFmt(x[1])+' → '+pctFmt(x[2]):nf(x[1],2)+' → '+nf(x[2],2))}</div></div>`;
-          }).join('')}</div>`;
+          const eA=k=>A.entities.find(e=>e.entity===k),eB=k=>B.entities.find(e=>e.entity===k);
+          const rev=r=>S(r.entities.filter(e=>e.value>0),e=>e.value),cost=r=>S(r.entities.filter(e=>e.value<0),e=>-e.value);
+          const penSum=r=>S(r.penalties,p=>p.sum);
+          const pctF=v=>v==null?'—':pctFmt(v),ppF=v=>nf(v,2)+' п.п.';
+          /* rows: [label, a, b, good(1 up good,-1 up bad,0 neutral,null text), fmt, dfmt] */
+          const R=[];
+          const sec=t=>R.push({sec:t});
+          const row=(k,a,b,good,fmt,dfmt)=>R.push({k,a,b,good,fmt:fmt||(v=>nf(v,2)),dfmt:dfmt||fmt||(v=>nf(v,2))});
+          sec('Результат');
+          row('Статус',A.solve.status||'—',B.solve.status||'—',null);
+          row('Gap, %',A.solve.gapPct,B.solve.gapPct,-1,pctF,ppF);
+          row('Время решения, с',A.solve.solveTimeSec,B.solve.solveTimeSec,-1,v=>nf(v,2),v=>nf(v,2)+' с');
+          row('Итераций',A.solve.iterations,B.solve.iterations,0,v=>nf(v));
+          sec('Экономика');
+          row('Целевая функция',A.solve.objectiveValue,B.solve.objectiveValue,1,bn);
+          row('Выручка',rev(A),rev(B),1,bn);
+          row('Затраты',cost(A),cost(B),-1,bn);
+          const costEnts=[...new Set(A.entities.concat(B.entities).filter(e=>e.value<0).map(e=>e.entity))];
+          costEnts.forEach(k=>{const a=eA(k),b=eB(k);row('— '+(ENT_LBL[k]||k).toLowerCase(),a?-a.value:null,b?-b.value:null,-1,bn)});
+          row('Штрафы SOFT',penSum(A),penSum(B),-1,v=>nf(v,2));
+          sec('Блоки модели: задействовано, %');
+          ['sale','production','procurement','movement','stock'].forEach(k=>{const a=eA(k),b=eB(k);if(!a&&!b)return;
+            row(ENT_LBL[k]||k,a?a.pct:null,b?b.pct:null,k==='sale'?1:0,pctF,ppF)});
+          sec('Состав модели');
+          row('Переменных',A.solve.variables,B.solve.variables,0,v=>nf(v));
+          row('Ограничений',A.solve.constraints,B.solve.constraints,0,v=>nf(v));
+          row('Горизонт, периодов',A.meta.periods,B.meta.periods,0,v=>v==null?'—':nf(v));
+          sec('Ограничения: упор в потолок, %');
+          const bKey=b=>b.entity+':'+b.constraint;
+          const bMapA=new Map(A.bounds.map(b=>[bKey(b),b])),bMapB=new Map(B.bounds.map(b=>[bKey(b),b]));
+          const bKeys=[...new Set([...bMapA.keys(),...bMapB.keys()])]
+            .sort((x,y)=>Math.max((bMapB.get(y)||{}).upperPct||0,(bMapA.get(y)||{}).upperPct||0)-Math.max((bMapB.get(x)||{}).upperPct||0,(bMapA.get(x)||{}).upperPct||0)).slice(0,8);
+          bKeys.forEach(k=>{const a=bMapA.get(k),b=bMapB.get(k);const any=a||b;row((ENT_LBL[any.entity]||any.entity)+' · '+consLbl(any.constraint),a?a.upperPct:null,b?b.upperPct:null,-1,pctF,ppF)});
+          if(!bKeys.length)row('Данных о границах нет','—','—',null);
+          const cell=x=>{
+            if(x.sec)return `<tr class="kt-sub"><td colspan="5">${x.sec}</td></tr>`;
+            if(x.good===null)return `<tr><td class="k l">${x.k}</td><td class="a">${esc(x.a)}</td><td class="b">${esc(x.b)}</td><td class="dd ${x.a===x.b?'same':''}">${x.a===x.b?'без изменений':'изменился'}</td><td class="ev"></td></tr>`;
+            const na=x.a==null||!isFinite(x.a),nb=x.b==null||!isFinite(x.b);
+            if(na||nb)return `<tr><td class="k l">${x.k}</td><td class="a">${na?'—':x.fmt(x.a)}</td><td class="b">${nb?'—':x.fmt(x.b)}</td><td class="dd same">н/д</td><td class="ev"></td></tr>`;
+            const d=x.b-x.a,rel=x.a?d/Math.abs(x.a):null;
+            const flat=Math.abs(d)<1e-9;
+            const cls=flat||x.good===0?'':((d>0?1:-1)===x.good?'pos':'neg');
+            const ev=flat?'<span class="same">=</span>':(x.good===0?'':(cls==='pos'?'<span class="pos">лучше</span>':'<span class="neg">хуже</span>'));
+            return `<tr><td class="k l">${x.k}</td><td class="a">${x.fmt(x.a)}</td><td class="b">${x.fmt(x.b)}</td><td class="dd ${cls}">${flat?'<span class="same">без изменений</span>':`${d>0?'+':'−'}${x.dfmt(Math.abs(d))}${rel!=null&&Math.abs(rel)>=0.0005?` <span class="same">(${d>0?'+':'−'}${pc(Math.abs(rel))})</span>`:''}`}</td><td class="ev">${ev}</td></tr>`;
+          };
+          /* Разница настроек между A и B */
+          const cfgRows=[
+            ['Солвер',A.meta.solver,B.meta.solver],['Потоков',A.meta.threads,B.meta.threads],
+            ['Лимит времени, с',A.meta.timeLimit,B.meta.timeLimit],['Целевой gap',A.meta.gapLimit!=null?pctFmt(A.meta.gapLimit):null,B.meta.gapLimit!=null?pctFmt(B.meta.gapLimit):null],
+            ['Горизонт',A.meta.periods,B.meta.periods],['Замороженные сущности',A.meta.freezable,B.meta.freezable],
+            ['Декомпозиция по периодам',A.meta.decompByPeriods?'да':'нет',B.meta.decompByPeriods?'да':'нет'],
+            ['Множитель стоимости',A.meta.globalCostMultiplier,B.meta.globalCostMultiplier],
+            ['Включённые сущности',A.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', '),B.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', ')],
+            ['Типы ограничений',A.meta.constraintTypes.map(consLbl).join(', '),B.meta.constraintTypes.map(consLbl).join(', ')],
+            ['Хэш конфигурации',A.meta.configHash,B.meta.configHash]
+          ].map(([k,a,b])=>({k,a:a==null||a===''?'—':String(a),b:b==null||b===''?'—':String(b)}));
+          const cfgDiff=cfgRows.filter(x=>x.a!==x.b);
+          const sameHash=A.meta.configHash&&A.meta.configHash===B.meta.configHash;
+          const saleA=eA('sale'),saleB=eB('sale');
+          const dObj=B.solve.objectiveValue-A.solve.objectiveValue,dSale=(saleB?saleB.pct:0)-(saleA?saleA.pct:0);
+          const verdictAB=`<div class="verdict ${dObj>=0&&dSale>=-1?'ok':'warn'}" style="margin:8px 0 12px"><div class="vi" aria-hidden="true">${dObj>=0&&dSale>=-1?'✓':'!'}</div><div><div class="vt">${esc(rOpt(A))} → ${esc(rOpt(B))}: эффект ${dObj>=0?'вырос':'снизился'} на ${bn(Math.abs(dObj))}, покрытие спроса ${dSale>=0?'выросло':'снизилось'} на ${nf(Math.abs(dSale),1)} п.п.</div>
+            <div class="vm">${sameHash?'Конфигурации одинаковы — разница объясняется входными данными.':(cfgDiff.length?`Настройки различаются (${cfgDiff.map(x=>x.k).join(', ')}) — часть разницы может быть следствием конфигурации, а не данных.`:'Хэши конфигураций не совпадают, но видимые настройки одинаковы — различие в параметрах, не выведенных в лог.')}${A.solve.status!==B.solve.status?` Статус изменился: ${esc(A.solve.status||'—')} → ${esc(B.solve.status||'—')}.`:''}</div></div></div>`;
+          $('#histDelta').innerHTML=verdictAB+`<div class="kt-grid" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)">
+            <div><div class="kt-h">Показатели A → B</div><table class="kt-t ab-t"><thead><tr><th class="l">Показатель</th><th>A · ${esc(rShort(A))}</th><th>B · ${esc(rShort(B))}</th><th>Δ (B − A)</th><th></th></tr></thead><tbody>${R.map(cell).join('')}</tbody></table></div>
+            <div><div class="kt-h"${xAttr({t:'Что изменилось в настройках',what:'Сравнение конфигураций (Config) прогонов A и B: лимиты, точность, замороженные сущности, включённые блоки и типы ограничений.',why:'Часто именно смена настроек, а не данных, объясняет разницу результата. Совпадающие строки скрыты.'})}>Что изменилось в настройках${XI}</div>
+              ${cfgDiff.length?`<table class="kt-t ab-t"><thead><tr><th class="l">Параметр</th><th>A</th><th>B</th></tr></thead><tbody>${cfgDiff.map(x=>`<tr><td class="k l">${x.k}</td><td class="a" title="${esc(x.a)}">${esc(clip(x.a,40))}</td><td class="b" title="${esc(x.b)}">${esc(clip(x.b,40))}</td></tr>`).join('')}</tbody></table>`
+                :'<div class="dtp-e" style="padding:18px 10px">Настройки прогонов совпадают по всем прочитанным параметрам.</div>'}
+              <details class="risk-more" style="margin-top:8px"><summary>Все параметры (${cfgRows.length})</summary><table class="kt-t ab-t"><tbody>${cfgRows.map(x=>`<tr><td class="k l">${x.k}</td><td class="a" title="${esc(x.a)}">${esc(clip(x.a,40))}</td><td class="b" title="${esc(x.b)}">${esc(clip(x.b,40))}</td></tr>`).join('')}</tbody></table></details>
+            </div></div>`;
         };
-        selA.onchange=()=>{HIST_A=+selA.value;drawDelta()};
-        selB.onchange=()=>{HIST_B=+selB.value;drawDelta()};
+        selA.onchange=()=>{HIST_A=+selA.value;HIST_AB_AUTO=false;if(!IS_DEMO)persistSession();drawDelta()};
+        selB.onchange=()=>{HIST_B=+selB.value;HIST_AB_AUTO=false;if(!IS_DEMO)persistSession();drawDelta()};
+        const abAuto=$('#histAbAuto');if(abAuto)abAuto.onclick=()=>{HIST_AB_AUTO=true;if(!IS_DEMO)persistSession();drawAll()};
         drawDelta();
       }
     };
@@ -2438,161 +2748,56 @@ function tabHIST(){
   return html;
 }
 
-/* ═══════════════ 13. ДАННЫЕ (RAW) ═══════════════ */
+/* ═══════════════ 13. ДАННЫЕ (RAW) ═══════════════
+   Сырые строки лога + карточка источника + фильтр по группе параметров,
+   чтобы бизнес-пользователь быстро находил нужную строку без знания
+   технических имён. */
+const RAW_GROUPS=[
+  ['result','Результат',/^(Solution|Result gap %|Calc time|Solve time|Iterations|Nodes|Best bound|Solver nodes|Objective value|Solution value \(scaled\)|Sum of variables values)$/i],
+  ['model','Состав модели',/^(Variables|Continuous vars|Constraints|Deleted variables|Deleted constraints|Included entities|Functional entities|Constraint types|Global cost .*)$/i],
+  ['setup','Настройки',/^(Start time|Periods|Solver|Config|Config hash|Alias)$/i],
+  ['ent','Блоки модели',/^(Non-zero values of|Value of )/i],
+  ['bnd','Границы ограничений',/^(Lower|Upper) bound reached/i],
+  ['pen','Штрафы SOFT',/^Softm(in|ax) penalties/i]
+];
+let RAW_GRP='';
+function rawGroup(param){const g=RAW_GROUPS.find(x=>x[2].test(String(param||'')));return g?g[1]:'Прочее'}
 function tabRAW(){
   const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
-  const rows=r.rawRows;
+  XPL={};XPL_N=0;
+  const rows=r.rawRows.map(x=>({...x,group:rawGroup(x.param)}));
+  const counts=new Map();rows.forEach(x=>counts.set(x.group,(counts.get(x.group)||0)+1));
+  const groups=RAW_GROUPS.map(g=>g[1]).concat(counts.has('Прочее')?['Прочее']:[]).filter(g=>counts.has(g));
+  if(RAW_GRP&&!counts.has(RAW_GRP))RAW_GRP='';
+  const m=LOAD_META||{};
+  const src=m.source==='postgres'?'PostgreSQL':(m.source==='file'?'XLSX-файлы':(m.source==='demo'?'Демо-набор':(m.source==='session'?'Сохранённая сессия':'—')));
+  const srcDetail=(m.files&&m.files.length)?m.files.join(', '):(m.source==='demo'?'встроенный пример прогона':'—');
+  const limitNote=m.truncated||/лимит/i.test(m.sheetNote||'')?'⚠ сработал лимит строк':'';
   const html=kpis([
-    {t:'Строк лога',v:nf(rows.length),s:'пар «параметр — значение» в этом прогоне'},
-    {t:'Прогон',v:rShort(r),s:esc(rCtx(r)),hint:r.label},
-    {t:'Запуск расчёта',v:esc(String(r.meta.startTime||'—').slice(0,16)),s:r.meta.solver?`солвер ${esc(r.meta.solver)}`:'солвер не указан в логе'}
+    {t:'Строк лога',v:nf(rows.length),s:`пар «параметр — значение» в этом прогоне · ${nf(groups.length)} ${plural(groups.length,['группа','группы','групп'])}`,
+      x:{t:'Строк лога',what:'Сколько пар «параметр — значение» записал оптимизатор для активного прогона.',why:'Резко меньшее число строк, чем у соседних прогонов, — признак неполной выгрузки или оборванного расчёта.'}},
+    {t:'Прогон',v:rShort(r),s:esc(rCtx(r)),x:{t:'Идентификация прогона',what:r.label,why:'Схема, номер прогона, датасет и конфиг — по ним строка находится в исходной таблице optimizer_status.'}},
+    {t:'Запуск расчёта',v:esc(String(r.meta.startTime||'—').slice(0,16)),s:r.meta.solver?`солвер ${esc(r.meta.solver)}`:'солвер не указан в логе',
+      x:{t:'Запуск расчёта',what:'Отметка времени начала расчёта из строки «Start time».',why:'По ней прогоны упорядочены в истории и в сравнении версий.'}},
+    {t:'Источник данных',v:src,s:esc(clip(srcDetail,60))+(m.loadedAt?` · загружено ${esc(new Date(m.loadedAt).toLocaleString('ru-RU'))}`:''),cls:limitNote?'mid':'',
+      x:{t:'Источник данных',what:`${src}: ${esc(srcDetail)}.${m.sheetNote?' '+esc(m.sheetNote)+'.':''}`,why:`Откуда загружены строки и когда. Лимит одной загрузки из Postgres — 300 000 строк; при его срабатывании дашборд предупреждает.${limitNote?' '+limitNote:''}`,res:`В истории ${nf(DS.runs.length)} ${plural(DS.runs.length,['прогон','прогона','прогонов'])}${!IS_DEMO?(m.persisted?', сессия сохранена в браузере':', сессия не сохранена в браузере'):''}.`}}
   ])+`
-  <div class="card w"><h3>Исходные строки optimizer_status</h3><div class="sub">Технический срез «как есть» — для разбора вопросов с ИТ и поставщиком решения</div><div id="raw1"></div></div>`;
+  <div class="card w">${cardHead('Исходные строки optimizer_status','Технический срез «как есть» — для разбора вопросов с ИТ и поставщиком решения',{t:'Исходные строки лога',what:'Все параметры прогона без обработки: имя параметра и его значение, как записал оптимизатор.',why:'Первоисточник всех цифр дашборда. Группы слева помогают найти нужную строку: результат, состав модели, настройки, блоки, границы, штрафы.'})}
+    <div class="raw-chips" id="rawChips"><span class="tbar-lbl">Группа</span>
+      <button type="button" class="chip sm${RAW_GRP===''?' on':''}" data-g="">Все (${nf(rows.length)})</button>
+      ${groups.map(g=>`<button type="button" class="chip sm${RAW_GRP===g?' on':''}" data-g="${esc(g)}">${esc(g)} (${nf(counts.get(g))})</button>`).join('')}
+    </div>
+    <div id="raw1"></div></div>`;
   setTimeout(()=>{
-    dtable('#raw1',[
+    const draw=()=>dtable('#raw1',[
+      {k:'group',t:'Группа',left:1,flt:1,w:170,tip:'Смысловая группа параметра'},
       {k:'param',t:'Параметр',left:1,flt:1,w:340},
       {k:'value',t:'Значение',left:1,w:520}
-    ],rows,{key:'raw_rows',sort:'param',dir:'asc',h:520,csv:1,name:'optimizer_status_raw'});
+    ],RAW_GRP?rows.filter(x=>x.group===RAW_GRP):rows,{key:'raw_rows',sort:'param',dir:'asc',h:520,csv:1,name:'optimizer_status_raw'});
+    draw();
+    $$('#rawChips button').forEach(b=>b.onclick=()=>{RAW_GRP=b.dataset.g;$$('#rawChips button').forEach(x=>x.classList.toggle('on',x.dataset.g===RAW_GRP));draw()});
   },0);
   return html;
-}
-
-/* ═══════════════ 14. КАЧЕСТВО И АНОМАЛИИ ═══════════════
-   Каждая проверка отвечает на три вопроса бизнес-пользователя:
-   что не так → почему это важно → что делать. */
-function tabDQ(){
-  const r=curRun();if(!r)return '<div class="empty">Нет данных</div>';
-  const ch=[];
-  /** sev: e — блокирует публикацию, w — требует внимания, i — норма. */
-  const add=(sev,tag,msg,why,rec)=>ch.push({sev,tag,msg,why:why||'',rec:rec||'—'});
-
-  const statusOk=/OPTIMAL/i.test(r.solve.status);
-  const infeasible=/INFEASIBLE|UNBOUNDED/i.test(r.solve.status);
-  add(statusOk?'i':'e','Результат расчёта',
-    statusOk?`Солвер вернул статус ${esc(r.solve.status)} — оптимальный план найден и математически подтверждён.`
-      :(infeasible?`Солвер вернул статус ${esc(r.solve.status)} — допустимого плана не существует: ограничения модели противоречат друг другу или входным данным.`
-        :`Солвер вернул статус ${esc(r.solve.status)} — расчёт завершился без подтверждённого оптимума.`),
-    statusOk?'':'Без корректного решения любые цифры на дашборде описывают незавершённый расчёт, а не план.',
-    statusOk?'—':(infeasible
-      ?'Найти конфликтующее ограничение: чаще всего это жёсткий минимум спроса при недостаточной мощности либо замороженный горизонт, несовместимый с планом. Ослабьте самое спорное ограничение до SOFT и перезапустите.'
-      :'Увеличить лимит времени и перезапустить расчёт; если статус повторяется — проверить корректность входных данных.'));
-
-  const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
-  const gapKnown=r.solve.gapPct!=null;
-  const gapOk=gapKnown?r.solve.gapPct<=gapThr:true;
-  add(!gapKnown?'i':(gapOk?'i':'w'),'Точность решения',
-    gapKnown
-      ?`Отклонение от теоретического оптимума — ${pctFmt(r.solve.gapPct)}${r.meta.gapLimit!=null?`, при заданном пороге ${pctFmt(r.meta.gapLimit)}`:''}.`
-      :(statusOk
-        ?'Показатель отклонения (gap) в логе отсутствует, потому что модель линейная (LP): симплекс-метод даёт точный оптимум, зазору неоткуда взяться.'
-        :'Показатель отклонения (gap) отсутствует, потому что допустимого решения нет — сравнивать не с чем.'),
-    gapKnown&&!gapOk?'Чем больше отклонение, тем дальше найденный план от лучшего возможного — часть выгоды остаётся неполученной.':'',
-    gapKnown?(gapOk?'—':'Увеличить лимит времени на решение либо согласовать более мягкий порог точности, если важнее скорость расчёта.')
-            :(statusOk?'—':'Сначала добиться допустимого решения — см. пункт «Результат расчёта».'));
-
-  const dups=r.dups||[];
-  add(dups.length?'w':'i','Повторяющиеся параметры лога',
-    dups.length
-      ?`У ${nf(dups.length)} ${plural(dups.length,['параметра','параметров','параметров'])} внутри одного прогона встретилось несколько разных значений: ${dups.slice(0,3).map(d=>`«${esc(d.param)}» (${d.values.map(esc).join(' → ')})`).join('; ')}${dups.length>3?' и др.':''}.`
-      :'Противоречащих друг другу повторов параметров не обнаружено.',
-    dups.length?'Дашборд берёт последнее значение — если в одном runid записано несколько этапов расчёта, показатели относятся только к последнему из них.':'',
-    dups.length?'Если этапы нужно анализировать раздельно, добавьте в выгрузку признак этапа. Иначе трактуйте цифры как итог последнего этапа.':'—');
-
-  const timeNearLimit=r.meta.timeLimit&&r.solve.solveTimeSec>=r.meta.timeLimit*0.9;
-  add(timeNearLimit?'w':'i','Лимит времени расчёта',
-    r.meta.timeLimit?`Расчёт занял ${timeFmt(r.solve.solveTimeSec)} из лимита ${timeFmt(r.meta.timeLimit)} (${pc(r.solve.solveTimeSec/r.meta.timeLimit)}).`
-      :'Лимит времени в конфигурации не задан — солвер работал до сходимости.',
-    timeNearLimit?'Расчёт остановлен по таймеру, а не по достижению нужной точности: план мог быть улучшен, если бы времени хватило.':'',
-    timeNearLimit?'Увеличить лимит времени и сравнить результат: если эффект плана заметно вырастет — лимит был узким местом.':'—');
-
-  const sale=r.entities.find(e=>e.entity==='sale');
-  const unmet=sale?sale.total-sale.nonzero:0;
-  add(sale&&sale.pct<70?'e':(sale&&sale.pct<90?'w':'i'),'Покрытие спроса',
-    sale?`План продаж построен для ${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса (${pctFmt(sale.pct)}).`:'Данных по блоку продаж в логе нет.',
-    sale&&sale.pct<90?`${nf(unmet)} ${plural(unmet,['строка спроса осталась','строки спроса остались','строк спроса остались'])} без плана — это прямые потери выручки и риск для уровня сервиса.`:'',
-    sale&&sale.pct<90?'Разобрать непокрытый спрос по причинам на вкладке «Ограничения и узкие места»: нехватка мощности, сырья или отсутствие маршрута до клиента.':'—');
-
-  const delRate=(r.solve.deletedVars+r.solve.deletedConstraints)/Math.max(r.solve.variables+r.solve.constraints,1);
-  add(delRate>0.05?'w':'i','Избыточность модели',
-    (r.solve.deletedVars>0||r.solve.deletedConstraints>0)
-      ?`Солвер отбросил как избыточные ${nf(r.solve.deletedVars)} переменных и ${nf(r.solve.deletedConstraints)} ограничений — ${pc(delRate)} размера модели.`
-      :'Избыточных переменных и ограничений не обнаружено — модель построена компактно.',
-    delRate>0.05?'Высокая доля отброшенного означает, что модель описывает объекты, которые не влияют на решение: расчёт дороже, а результат тот же.':'',
-    delRate>0.05?'Передать ИТ-команде: проверить логику формирования модели на дублирующие и заведомо невыполнимые ограничения.':'—');
-
-  const zeroEnt=r.entities.filter(e=>e.total>0&&e.nonzero===0);
-  add(zeroEnt.length?'e':'i','Незадействованные блоки плана',
-    zeroEnt.length?`Ни одного ненулевого значения не получили блоки: ${zeroEnt.map(e=>ENT_LBL[e.entity]||e.entity).join(', ')}.`
-      :'Все включённые в расчёт блоки участвуют в решении.',
-    zeroEnt.length?'Блок присутствует в модели, но полностью не используется — обычно это признак недогруженных справочников, а не оптимального решения.':'',
-    zeroEnt.length?'Проверить, выгружены ли для этих блоков входные данные: мощности, цены, маршруты, нормы.':'—');
-
-  const cfgOk=r.meta.cfgParsed;
-  add(cfgOk?'i':'w','Настройки расчёта',
-    cfgOk?`Конфигурация прочитана: солвер ${esc(r.meta.solver)||'—'}, ${r.meta.threads||'—'} ${plural(r.meta.threads||0,['поток','потока','потоков'])}, целевая точность ${r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'не задана'}.`
-      :'Поле «Config» не удалось прочитать как JSON — часть настроек расчёта неизвестна.',
-    cfgOk?'':'Без настроек нельзя судить, был ли достигнут заданный порог точности и не был ли расчёт обрезан по времени.',
-    cfgOk?'—':'Проверить формат выгрузки поля Config в источнике данных.');
-
-  const strictLowMax=r.bounds.filter(b=>b.status==='STRICT'&&b.lowerPct!=null&&b.lowerPct>=90);
-  add(strictLowMax.length?'w':'i','Простаивающие мощности',
-    strictLowMax.length?`${nf(strictLowMax.length)} ${plural(strictLowMax.length,['жёсткое ограничение почти всегда стоит','жёстких ограничения почти всегда стоят','жёстких ограничений почти всегда стоят'])} на нижней границе: ${strictLowMax.slice(0,3).map(b=>(ENT_LBL[b.entity]||b.entity)+' · '+consLbl(b.constraint)).join(', ')}.`
-      :'Систематически простаивающих жёстких ограничений не выявлено.',
-    strictLowMax.length?'Ресурс формально доступен, но решение им не пользуется: либо он реально не нужен, либо лимиты в справочнике занижены и модель его «не видит».':'',
-    strictLowMax.length?'Сверить лимиты с фактическими мощностями: занижение в справочнике — частая причина недополученного плана.':'—');
-
-  const totalPen=S(r.penalties,p=>p.sum);
-  const penRatio=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
-  add(penRatio>0.01?'w':'i','Нарушения мягких целей',
-    r.penalties.length?`Суммарный штраф за нарушение мягких ограничений — ${pc(penRatio)} экономического эффекта плана.`:'Мягкие цели плана выполнены без нарушений.',
-    penRatio>0.01?'Модель систематически отступает от согласованных мягких лимитов, и это уже заметно в деньгах.':'',
-    penRatio>0.01?'Пересмотреть с планировщиками: либо лимит нереалистичен, либо штраф за его нарушение слишком мал.':'—');
-
-  const errs=ch.filter(c=>c.sev==='e').length,warns=ch.filter(c=>c.sev==='w').length,oks=ch.filter(c=>c.sev==='i').length;
-  const score=Math.max(0,Math.round(100-errs*18-warns*7));
-  const SEV={e:['Блокирует',CH.err],w:['Внимание',CH.warn],i:['Норма',CH.ok]};
-
-  const vLevel=errs?'err':(warns?'warn':'ok');
-  const vTitle=errs?`Публиковать план нельзя: ${nf(errs)} ${plural(errs,['блокирующая проблема','блокирующие проблемы','блокирующих проблем'])}`
-    :(warns?`План пригоден, но есть ${nf(warns)} ${plural(warns,['замечание','замечания','замечаний'])}`:'План прошёл все проверки');
-  const firstE=ch.find(c=>c.sev==='e');
-  const vMsg=errs
-    ? `Главное: <b>${esc(firstE.tag)}</b> — ${firstE.msg} ${firstE.rec!=='—'?'Что делать: '+firstE.rec:''}`
-    : (warns
-      ? `Критичных проблем нет. Требуют внимания: ${ch.filter(c=>c.sev==='w').map(c=>esc(c.tag)).join(', ')}. Подробности и рекомендации — в списке ниже.`
-      : `Все ${nf(ch.length)} автопроверок пройдены: расчёт корректен, данные согласованы, план можно передавать в работу.`);
-
-  const html=verdict(vLevel,vTitle,vMsg)+kpis([
-    {t:'Индекс надёжности прогона',v:score+' из 100',
-      s:`${nf(errs)} ${plural(errs,['блокирующая','блокирующие','блокирующих'])} · ${nf(warns)} ${plural(warns,['замечание','замечания','замечаний'])} · ${nf(oks)} в норме`,
-      cls:score>=75?'pos':score>=50?'mid':'neg',
-      hint:'Сводная оценка: 100 минус 18 за каждую блокирующую проблему и 7 за каждое замечание.'},
-    {t:'Проверок выполнено',v:nf(ch.length),s:`${nf(oks)} пройдено без замечаний`},
-    {t:'Прогон',v:rShort(r),s:esc(rCtx(r)),hint:r.label}
-  ])+`
-  <div class="grid">
-    <div class="card"><h3>Профиль проверок</h3><div class="sub">Сколько проверок в каждой категории</div><canvas id="q1"></canvas></div>
-    <div class="card w"><h3>Что проверено и что с этим делать</h3><div class="sub">Сначала блокирующие проблемы, затем замечания</div><div id="q2"></div></div>
-  </div>`;
-  setTimeout(()=>{
-    chDonut('#q1',H('#q1',230,0.55),[
-      {k:'Блокирует',v:errs||0.001,c:CH.err},{k:'Внимание',v:warns||0.001,c:CH.warn},{k:'Норма',v:oks||0.001,c:CH.ok}
-    ],'Проверки',v=>nf(Math.round(v))+' шт',null);
-    const q2=$('#q2');
-    if(q2)q2.innerHTML=ch.slice().sort((a,b)=>({e:0,w:1,i:2})[a.sev]-({e:0,w:1,i:2})[b.sev]).map(c=>
-      `<div class="dq ${c.sev}"><span class="tag" style="color:${SEV[c.sev][1]};border-color:${SEV[c.sev][1]}">${SEV[c.sev][0]}</span>
-       <div class="m"><b>${c.tag}.</b> ${c.msg}
-       ${c.why?`<br><span style="color:var(--scp-text-3)">Почему это важно: ${c.why}</span>`:''}
-       ${c.rec&&c.rec!=='—'?`<br><span style="color:var(--scp-text-3)">Что делать: ${c.rec}</span>`:''}</div></div>`).join('');
-  },0);
-
-  const topRec=ch.filter(c=>c.sev==='e').concat(ch.filter(c=>c.sev==='w')).slice(0,4);
-  return html+summary('Резюме: качество и надёжность прогона',[
-    {t:'Общая оценка',i:[
-      `Индекс надёжности прогона — <span class="h">${score} из 100</span>.`,
-      statusOk&&gapOk?'Базовые условия доверия к результату (подтверждённый оптимум и точность в пределах порога) выполнены.':'Базовые условия доверия к результату нарушены — план использовать с осторожностью.']},
-    {t:'Приоритетные действия',i:topRec.length?topRec.map((c,i)=>`<b>${i+1}. ${c.tag}</b> — ${c.rec}`):['Критичных проблем и замечаний нет — прогон можно считать надёжным.']}
-  ]);
 }
 
 /* ═══════════════ 15. РЕНДЕР И ИНИЦИАЛИЗАЦИЯ ═══════════════ */
@@ -2601,6 +2806,7 @@ function go(tab){TAB=tab;if(!IS_DEMO)persistSession();render()}
 function render(){
   if(!DS||!DS.runs.length){
     $('#nav').innerHTML='';
+    const tn0=$('#topnavTabs');if(tn0)tn0.innerHTML='';
     $('#runbar').innerHTML='';
     $('#pgTitle').textContent='Данные не загружены';
     $('#pgSub').textContent='';
@@ -2608,9 +2814,12 @@ function render(){
     $('#stat').innerHTML='Нет активного прогона';
     return;
   }
-  $('#nav').innerHTML=TABS.map(([k,n])=>
+  TAB=normTab(TAB);
+  const navHtml=TABS.map(([k,n])=>
     `<button class="${TAB===k?'on':''}" data-t="${k}" aria-current="${TAB===k?'page':'false'}"><span class="dot"></span><b>${n}</b></button>`).join('');
-  $$('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.t));
+  $('#nav').innerHTML=navHtml;
+  const tn=$('#topnavTabs');if(tn)tn.innerHTML=navHtml;
+  $$('#nav button,#topnavTabs button').forEach(b=>b.onclick=()=>go(b.dataset.t));
 
   const cur=TABS.find(t=>t[0]===TAB)||TABS[0];
   $('#pgTitle').textContent=cur[1];
@@ -2655,8 +2864,9 @@ function render(){
     render();
   };
 
-  const V={ov:tabOV,ent:tabENT,bnd:tabBND,pen:tabPEN,hist:tabHIST,raw:tabRAW,dq:tabDQ};
-  try{$('#main').innerHTML=(V[TAB]||tabOV)()}
+  const V={run:tabRUN,hist:tabHIST,raw:tabRAW};
+  const xp=$('#xpop');if(xp)xp.hidden=true;
+  try{$('#main').innerHTML=(V[TAB]||tabRUN)()}
   catch(err){$('#main').innerHTML=`<div class="empty"><h2 class="neg">Ошибка отрисовки блока</h2><p>${esc(err.message)}</p></div>`;console.error(err)}
 
   const r=curRun();
@@ -2743,7 +2953,7 @@ const bReset=$('#bReset');if(bReset)bReset.onclick=async()=>{
   if(!confirm('Очистить все загруженные прогоны и вернуться к демо-набору?'))return;
   await clearPersistedSession();
   initFromRows(SEED_ROWS,{source:'demo',files:[],sheetNote:'',loadedAt:new Date().toISOString(),persisted:false});
-  TAB='ov';IS_DEMO=true;render();
+  TAB='run';IS_DEMO=true;render();
   toast('История очищена — показан демонстрационный прогон.','ok');
 };
 
@@ -2765,6 +2975,26 @@ const toggleRail=()=>{
 const railT=$('#railToggle');if(railT)railT.onclick=toggleRail;
 const hdrToggle=$('#bRailToggleHdr');
 if(hdrToggle)hdrToggle.onclick=toggleRail;
+/* §19 Расположение меню: слева (боковая панель) или сверху (полоса разделов).
+   Выбор запоминается в localStorage; после смены раскладки графики
+   перерисовываются под новую ширину. */
+let NAV_LAYOUT=lsGet('snp_opt_nav')==='top'?'top':'left';
+function applyNavLayout(){
+  const app=$('#app');if(!app)return;
+  const top=NAV_LAYOUT==='top';
+  app.classList.toggle('top',top);
+  const b=$('#bNavLayout');
+  if(b){b.setAttribute('aria-pressed',top?'true':'false');b.dataset.tip=top?'Меню слева':'Меню сверху';
+    const iT=$('#iconNavTop'),iL=$('#iconNavLeft');if(iT)iT.style.display=top?'none':'block';if(iL)iL.style.display=top?'block':'none'}
+}
+function toggleNavLayout(){
+  NAV_LAYOUT=NAV_LAYOUT==='top'?'left':'top';
+  lsSet('snp_opt_nav',NAV_LAYOUT);
+  applyNavLayout();
+  setTimeout(()=>{if(DS)render()},220);
+}
+applyNavLayout();
+const bNavLayout=$('#bNavLayout');if(bNavLayout)bNavLayout.onclick=toggleNavLayout;
 
 let RT,lastW=0;
 function redraw(force){
@@ -2786,63 +3016,96 @@ function buildReportHtml(r){
   if(!r)return '';
   const sale=r.entities.find(e=>e.entity==='sale');
   const statusOk=/OPTIMAL/i.test(r.solve.status);
-  const gapThr=r.meta.gapLimit!=null?Math.max(r.meta.gapLimit,0.05):0.5;
-  const gapBad=r.solve.gapPct!=null&&r.solve.gapPct>gapThr;
-  const saleBad=sale&&sale.pct<70;
-  const vOk=statusOk&&!gapBad&&!saleBad;
-  const vText=vOk
-    ?`Расчёт завершён со статусом ${r.solve.status}${sale?`, спрос покрыт на ${pctFmt(sale.pct)}`:''}. Критичных отклонений автопроверки не нашли.`
-    :`Что мешает: ${[!statusOk?`статус расчёта ${r.solve.status}`:'',gapBad?`точность ниже порога (${pctFmt(r.solve.gapPct)} против ${pctFmt(gapThr)})`:'',saleBad?`спрос покрыт лишь на ${pctFmt(sale.pct)}`:''].filter(Boolean).join('; ')}.`;
-  const rows=[
-    ['Покрытие спроса',sale?`${pctFmt(sale.pct)} — ${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса`:'—'],
-    ['Экономический эффект плана',bn(r.solve.objectiveValue)],
-    ['Результат расчёта',r.solve.status||'—'],
-    ['Точность решения (gap)',r.solve.gapPct!=null?pctFmt(r.solve.gapPct):(statusOk?'точный оптимум (LP-модель)':'нет решения — зазор не определён')],
-    ['Время расчёта',`${timeFmt(r.solve.solveTimeSec)} (полный цикл ${timeFmt(r.solve.calcTimeSec)})`],
-    ['Масштаб задачи',`${nf(r.solve.variables)} переменных · ${nf(r.solve.constraints)} ограничений`],
-    ['Горизонт планирования',r.meta.periods!=null?`${r.meta.periods} период(ов)`:'—'],
+  const checks=qualityChecks(r);
+  const errs=checks.filter(c=>c.sev==='e'),warns=checks.filter(c=>c.sev==='w');
+  const score=Math.max(0,Math.round(100-errs.length*18-warns.length*7));
+  const vLevel=errs.length?'err':(warns.length?'warn':'ok');
+  const vTitle=errs.length?`Публиковать план нельзя: ${nf(errs.length)} ${plural(errs.length,['блокирующая проблема','блокирующие проблемы','блокирующих проблем'])}`
+    :(warns.length?`План можно публиковать с оговорками: ${nf(warns.length)} ${plural(warns.length,['замечание','замечания','замечаний'])}`:'План можно публиковать');
+  const strip=h=>String(h).replace(/<[^>]*>/g,'');
+  const vText=errs.length?`Что мешает: ${errs.map(c=>c.tag+' — '+strip(c.msg)).join(' ')}`
+    :(warns.length?`Расчёт завершён корректно (${r.solve.status}). Требуют внимания: ${warns.map(c=>c.tag).join(', ')}.`
+      :`Расчёт завершён со статусом ${r.solve.status}${sale?`, спрос покрыт на ${pctFmt(sale.pct)}`:''}. Все ${nf(checks.length)} автопроверок пройдены.`);
+  const revenue=S(r.entities.filter(e=>e.value>0),e=>e.value),costs=S(r.entities.filter(e=>e.value<0),e=>-e.value);
+  const totalPen=S(r.penalties,p=>p.sum),penRatio=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
+  const intVars=r.solve.variables&&r.solve.continuousVars?Math.max(0,r.solve.variables-r.solve.continuousVars):null;
+  const timeShare=r.meta.timeLimit?r.solve.solveTimeSec/r.meta.timeLimit:null;
+  const G=[
+    ['Результат прогона',[
+      ['Статус решения',r.solve.status||'—'],
+      ['Точность (gap)',r.solve.gapPct!=null?pctFmt(r.solve.gapPct)+(r.meta.gapLimit!=null?` (порог ${pctFmt(r.meta.gapLimit)})`:''):(statusOk?'точный оптимум (LP-модель)':'нет решения — зазор не определён')],
+      ['Время решения',`${timeFmt(r.solve.solveTimeSec)} · полный цикл ${timeFmt(r.solve.calcTimeSec)}${timeShare!=null?` · ${pc(timeShare)} лимита`:''}`],
+      ['Итераций солвера',nf(r.solve.iterations)+(r.meta.solver?` · ${r.meta.solver}`:'')],
+      ['Горизонт планирования',r.meta.periods!=null?`${r.meta.periods} период(ов)`:'—']]],
+    ['Состав модели',[
+      ['Переменных всего',`${nf(r.solve.variables)} · ${nf(r.solve.constraints)} ограничений`],
+      ['— непрерывных',nf(r.solve.continuousVars)],
+      ['— целочисленных',intVars!=null?nf(intVars):'—'],
+      ['Удалено солвером',`${nf(r.solve.deletedVars)} переменных · ${nf(r.solve.deletedConstraints)} ограничений`],
+      ...r.entities.map(e=>[ENT_LBL[e.entity]||e.entity,`${nf(e.total)} · задействовано ${nf(e.nonzero)} (${pctFmt(e.pct)})`]),
+      ['Ограничений под контролем',`${nf(r.bounds.length)} · ${nf(r.bounds.filter(b=>b.status==='STRICT').length)} жёстких · ${nf(r.bounds.filter(b=>b.status==='SOFT').length)} мягких`],
+      ['Типы ограничений',r.meta.constraintTypes.map(consLbl).join(', ')||'—']]],
+    ['Экономика прогона',[
+      ['Целевая функция',bn(r.solve.objectiveValue)],
+      ['Выручка (продажи)',bn(revenue)+(sale?` · ${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса`:'')],
+      ['Затраты всего',bn(costs)+(revenue?` · ${pc(costs/revenue)} выручки`:'')],
+      ...r.entities.filter(e=>e.value<0).sort((a,b)=>a.value-b.value).map(e=>['— '+(ENT_LBL[e.entity]||e.entity).toLowerCase(),bn(-e.value)+(costs?` · ${pc(-e.value/costs)} затрат`:'')]),
+      ['Маржа плана',revenue>0?pc((revenue-costs)/revenue):'—'],
+      ['Штрафы SOFT',r.penalties.length?`${nf(totalPen,2)} · ${pc(penRatio)} от эффекта`:'нет']]]
+  ];
+  const meta=[
     ['Прогон',rOpt(r)],
     ...(friendlyAlias(r.meta.alias)?[['Сценарий',friendlyAlias(r.meta.alias)]]:[]),
-    ['Идентификация',rCtx(r)],
-    ['Начало расчёта',r.meta.startTime||'—'],
-    ['Блоков модели',nf(r.entities.length)],
-    ['Ограничений под контролем',nf(r.bounds.length)],
-    ['Мягких нарушений',nf(r.penalties.length)],
+    ['Идентификация',rCtx(r)],['Начало расчёта',r.meta.startTime||'—'],
+    ['Солвер',(r.meta.solver||'—')+(r.meta.threads?` · ${r.meta.threads} потоков`:'')],
+    ['Лимит времени',r.meta.timeLimit!=null?r.meta.timeLimit+' сек':'—'],['Целевой gap',r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'],
+    ['Замороженные сущности',r.meta.freezable||'—'],['Хэш конфигурации',r.meta.configHash||'—'],
     ['Источник',(LOAD_META.files||[]).join(', ')||LOAD_META.source||'—'],
-    ['Загружено',LOAD_META.loadedAt?new Date(LOAD_META.loadedAt).toLocaleString('ru-RU'):'—'],
+    ['Загружено',LOAD_META.loadedAt?new Date(LOAD_META.loadedAt).toLocaleString('ru-RU'):'—']
   ];
-  const entRows=r.entities.map(e=>`<tr><td>${esc(ENT_LBL[e.entity]||e.entity)}</td><td>${nf(e.total)}</td><td>${nf(e.nonzero)}</td><td>${pctFmt(e.pct)}</td><td>${bn(e.value)}</td></tr>`).join('');
-  const bndRows=r.bounds.map(b=>`<tr><td>${esc((ENT_LBL[b.entity]||b.entity)+' · '+consLbl(b.constraint))}</td><td>${esc(STATUS_LBL[b.status]||b.status)}</td><td>${pctFmt(b.lowerPct)}</td><td>${pctFmt(b.upperPct)}</td></tr>`).join('');
+  const entRows=r.entities.map(e=>`<tr><td>${esc(ENT_LBL[e.entity]||e.entity)}</td><td>${nf(e.total)}</td><td>${nf(e.nonzero)}</td><td>${pctFmt(e.pct)}</td><td>${bn(e.value)}</td><td>${esc(entComment(e))}</td></tr>`).join('');
+  const bndRows=r.bounds.slice().sort((a,b)=>(b.upperPct||0)-(a.upperPct||0)).map(b=>`<tr><td>${esc((ENT_LBL[b.entity]||b.entity)+' · '+consLbl(b.constraint))}</td><td>${esc(STATUS_LBL[b.status]||b.status)}</td><td>${pctFmt(b.lowerPct)}</td><td>${pctFmt(b.upperPct)}</td><td>${esc(bndComment(b))}</td></tr>`).join('');
   const penRows=r.penalties.map(p=>`<tr><td>${esc((ENT_LBL[p.entity]||p.entity)+' · '+consLbl(p.constraint))}</td><td>${p.kind==='min'?'недобор (softmin)':'перебор (softmax)'}</td><td>${nf(p.sum,2)}</td><td>${pctFmt(p.nonzeroPct)}</td></tr>`).join('');
+  const SEVN={e:'Блокирует',w:'Внимание',i:'Норма'};
+  const riskRows=checks.slice().sort((a,b)=>({e:0,w:1,i:2})[a.sev]-({e:0,w:1,i:2})[b.sev]).map(c=>`<tr class="${c.sev}"><td>${SEVN[c.sev]}</td><td><b>${esc(c.tag)}.</b> ${strip(c.msg)}${c.why?`<br><span class="g">Почему важно: ${strip(c.why)}</span>`:''}</td><td>${c.rec&&c.rec!=='—'?strip(c.rec):'—'}</td></tr>`).join('');
+  const recs=errs.concat(warns).filter(c=>c.rec&&c.rec!=='—').map(c=>`<li><b>${esc(c.tag)}.</b> ${strip(c.rec)}</li>`).join('')||'<li>Критичных проблем и замечаний нет — прогон можно считать надёжным.</li>';
+  const col={ok:'#22bb55',warn:'#ff9a3b',err:'#f22a41'}[vLevel];
   return `<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>Отчёт · ${esc(r.label)}</title>
 <style>
-body{font:14px/1.45 'Segoe UI',system-ui,sans-serif;color:#222;max-width:920px;margin:32px auto;padding:0 20px}
-h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 10px;border-bottom:1px solid #ddd;padding-bottom:6px}
+body{font:14px/1.45 'Segoe UI',system-ui,sans-serif;color:#222;max-width:960px;margin:32px auto;padding:0 20px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 10px;border-bottom:1px solid #ddd;padding-bottom:6px}h3{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#666;margin:0 0 6px}
 .sub{color:#666;font-size:12px;margin-bottom:18px}
 table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px}
-th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}th{background:#f5f5f7}
-.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin:14px 0}
-.kpi div{border:1px solid #e2e2e8;border-radius:8px;padding:10px 12px}.kpi b{display:block;font-size:18px;margin-top:4px}
-.verdict{border:1px solid #ddd;border-left:5px solid ${vOk?'#22bb55':'#f22a41'};border-radius:8px;padding:12px 16px;margin:16px 0;font-size:14px}
+th,td{border:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}th{background:#f5f5f7}
+.kt{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:14px 0}
+.kt td:last-child{text-align:right;font-weight:600;white-space:nowrap}
+.verdict{border:1px solid #ddd;border-left:5px solid ${col};border-radius:8px;padding:12px 16px;margin:16px 0;font-size:14px}
 .verdict b{font-size:15px;display:block;margin-bottom:4px}
+tr.e td:first-child{color:#f22a41;font-weight:600}tr.w td:first-child{color:#c47512;font-weight:600}tr.i td:first-child{color:#22bb55}
+.g{color:#666;font-size:12px}
 .foot{margin-top:28px;font-size:11px;color:#888}
 @media print{body{margin:0;max-width:none}}
 </style></head><body>
 <h1>SNP Optimizer Insight — отчёт по прогону оптимизатора</h1>
 <div class="sub">${esc(friendlyAlias(r.meta.alias)||rOpt(r))} · ${esc(rCtx(r))} · сформирован ${new Date().toLocaleString('ru-RU')} · In.Plan</div>
-<div class="verdict"><b>${vOk?'План можно публиковать':'План требует разбора'}</b>${esc(vText)}</div>
-<div class="kpi">${rows.slice(0,7).map(x=>`<div>${esc(x[0])}<b>${esc(String(x[1]))}</b></div>`).join('')}</div>
-<h2>Карточка прогона</h2>
-<table><tbody>${rows.map(x=>`<tr><th style="width:40%">${esc(x[0])}</th><td>${esc(String(x[1]))}</td></tr>`).join('')}</tbody></table>
-<h2>Использование блоков модели</h2>
-<table><thead><tr><th>Блок модели</th><th>Всего</th><th>Задействовано</th><th>Доля</th><th>Вклад в эффект</th></tr></thead>
-<tbody>${entRows||'<tr><td colspan="5">нет данных</td></tr>'}</tbody></table>
+<div class="verdict"><b>${esc(vTitle)}</b>${esc(vText)} Индекс надёжности прогона — ${score} из 100.</div>
+<h2>Сводная таблица KPI прогона</h2>
+<div class="kt">${G.map(([t,rows])=>`<div><h3>${esc(t)}</h3><table><tbody>${rows.map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(String(x[1]))}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div>
+<h2>Как настроен прогон</h2>
+<table><tbody>${meta.map(x=>`<tr><th style="width:36%">${esc(x[0])}</th><td>${esc(String(x[1]))}</td></tr>`).join('')}</tbody></table>
+<h2>Блоки модели</h2>
+<table><thead><tr><th>Блок модели</th><th>Всего</th><th>Задействовано</th><th>Доля</th><th>Вклад в эффект</th><th>Что это значит</th></tr></thead>
+<tbody>${entRows||'<tr><td colspan="6">нет данных</td></tr>'}</tbody></table>
 <h2>Ограничения: что сдерживает план и что простаивает</h2>
-<table><thead><tr><th>Ограничение</th><th>Режим</th><th>Простой у пола, %</th><th>Упор в потолок, %</th></tr></thead>
-<tbody>${bndRows||'<tr><td colspan="4">нет данных</td></tr>'}</tbody></table>
+<table><thead><tr><th>Ограничение</th><th>Режим</th><th>Простой у пола, %</th><th>Упор в потолок, %</th><th>Что это значит</th></tr></thead>
+<tbody>${bndRows||'<tr><td colspan="5">нет данных</td></tr>'}</tbody></table>
 <h2>Отступления от мягких целей</h2>
 <table><thead><tr><th>Ограничение</th><th>Что нарушено</th><th>Сумма штрафа</th><th>Затронуто объектов</th></tr></thead>
 <tbody>${penRows||'<tr><td colspan="4">мягких нарушений нет</td></tr>'}</tbody></table>
+<h2>Риски: результаты автопроверок</h2>
+<table><thead><tr><th style="width:12%">Уровень</th><th>Что проверено</th><th style="width:34%">Что делать</th></tr></thead><tbody>${riskRows}</tbody></table>
+<h2>Рекомендации</h2>
+<ol>${recs}</ol>
 <div class="foot">Сгенерировано приложением SNP Optimizer Insight. Данные — из лога optimizer_status.</div>
 </body></html>`;
 }

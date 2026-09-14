@@ -109,7 +109,7 @@ function fullRun(runid, alias, opts) {
 
 const LONG_ALIAS = 'SNP_НОЧНОЙ_ПЕРЕСЧЁТ_РЕГИОН_ЦЕНТР_ПОЛНЫЙ_ГОРИЗОНТ_С_ЗАМОРОЗКОЙ_И_ПЕРЕРАСЧЁТОМ_ЗАПАСОВ_22';
 
-const TABS = ['ov', 'ent', 'bnd', 'pen', 'hist', 'raw', 'dq'];
+const TABS = ['run', 'hist', 'raw'];
 
 /** Загрузить набор строк в дашборд конкретного DOM. */
 async function load(dom, rows, meta) {
@@ -135,7 +135,7 @@ async function walkTabs(dom, label) {
       errs.push(t + ': исключение ' + e.message);
     }
   }
-  ok(errs.length === 0, `${label}: все 7 вкладок отрисованы${errs.length ? ' — ' + errs.join(' | ') : ''}`);
+  ok(errs.length === 0, `${label}: все ${TABS.length} раздела отрисованы${errs.length ? ' — ' + errs.join(' | ') : ''}`);
   return errs;
 }
 
@@ -169,7 +169,7 @@ async function walkTabs(dom, label) {
     'полное имя прогона доступно в подсказке шапки');
   ok(chipTxt === 'Прогон 22' && !chipTxt.includes('SNP_'),
     'на чипе только номер прогона, без технического Alias: «'+chipTxt+'»');
-  dom.window.eval("TAB='ov';render();");
+  dom.window.eval("TAB='run';render();");
   await tick();
   const o4 = q(doc, '#o4');
   ok(o4 && o4.textContent.trim().length > 0, 'карточка «Как настроен прогон» заполнена');
@@ -180,7 +180,7 @@ async function walkTabs(dom, label) {
   console.log('\n2. Таблицы: фиксированная ширина и усечение');
   ok(/table\{[^}]*table-layout:fixed/.test(HTML), 'table-layout:fixed задан глобально');
   ok(/th,td\{[^}]*text-overflow:ellipsis/.test(HTML), 'длинные значения усекаются многоточием');
-  dom.window.eval("TAB='bnd';render();");
+  dom.window.eval("TAB='run';render();");
   await tick();
   const cols = qa(doc, '#b3 colgroup col');
   ok(cols.length > 0, `у таблицы ограничений есть colgroup (${cols.length} колонок)`);
@@ -214,13 +214,74 @@ async function walkTabs(dom, label) {
     ok(qa(doc, '#b3 thead th').length === visTh, 'кнопка «По умолчанию» возвращает исходный набор');
   }
 
-  /* ── 4. Вердикт в начале каждого раздела ── */
-  console.log('\n4. Вердикт: раздел начинается с ответа «можно ли публиковать план»');
-  for (const t of ['ov', 'ent', 'bnd', 'pen', 'dq']) {
-    dom.window.eval(`TAB='${t}';render();`);
-    await tick();
+  /* ── 4. Вердикт и структура раздела «Анализ прогона» ── */
+  console.log('\n4. Раздел «Анализ прогона»: вердикт → KPI-таблица → детализация → выводы/риски/рекомендации');
+  dom.window.eval("TAB='run';render();");
+  await tick();
+  {
     const v = q(doc, '#main .verdict');
-    ok(!!v && v.textContent.trim().length > 40, `вкладка «${t}»: вердикт присутствует и содержателен`);
+    ok(!!v && v.textContent.trim().length > 40, 'раздел начинается с содержательного вердикта');
+    const kids = [...q(doc, '#main').children];
+    ok(kids[0] && kids[0].classList.contains('verdict'), 'вердикт — первый элемент раздела');
+    ok(!!q(doc, '#sec-kpi .kt-grid'), 'сводная таблица KPI идёт сразу после вердикта');
+    const groups = qa(doc, '#sec-kpi .kt-h').map(h => h.textContent.replace('i', '').trim());
+    ok(groups.length === 3 && /Результат/.test(groups[0]) && /Состав/.test(groups[1]) && /Экономика/.test(groups[2]),
+      'три группы KPI: результат · состав модели · экономика — ' + groups.join(' / '));
+    const ktTxt = q(doc, '#sec-kpi').textContent;
+    ok(/непрерывных/.test(ktTxt) && /целочисленных/.test(ktTxt), 'виды переменных: непрерывные и целочисленные');
+    ok(/Продажи \(спрос\)/.test(ktTxt) && /Производство/.test(ktTxt), 'переменные разбиты по блокам плана');
+    ok(/жёстких/.test(ktTxt) && /мягких/.test(ktTxt), 'ограничения по режиму STRICT/SOFT');
+    ok(/Выручка/.test(ktTxt) && /Затраты всего/.test(ktTxt) && /Целевая функция/.test(ktTxt), 'экономика: целевая функция, выручка, затраты');
+    ok(['sec-ent', 'sec-bnd', 'sec-pen', 'sec-sum'].every(id => !!doc.getElementById(id)), 'детализация: блоки → ограничения → штрафы → выводы');
+    ok(qa(doc, '#runSubnav a').length === 5, 'липкая подшкала якорей из 5 пунктов');
+    const sum = q(doc, '#main .sum');
+    ok(!!sum && kids[kids.length - 1] === sum, 'резюме — последний элемент раздела');
+    const secs = qa(doc, '#main .sum .sec').map(e => e.textContent.trim());
+    ok(/^Выводы/.test(secs[0]) && /^Риски/.test(secs[1]) && /^Рекомендации/.test(secs[2]), 'порядок: выводы → риски → рекомендации');
+    ok(qa(doc, '#main .sum .risk-list .dq').length >= 1, 'риски — из автопроверок качества (бывшая вкладка «Качество и аномалии»)');
+    ok(!/undefined|NaN/.test(q(doc, '#main').textContent), 'в разделе нет undefined/NaN');
+    // пояснения при наведении
+    const xs = qa(doc, '#main [data-x]');
+    ok(xs.length >= 30, `пояснений при наведении зарегистрировано: ${xs.length}`);
+    ok(qa(doc, '#main .card .ch[data-x]').length >= 6, 'у карточек графиков есть пояснение «что / зачем / результат»');
+    const firstChart = q(doc, '#main .card .ch[data-x]');
+    firstChart.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true }));
+    await tick();
+    const pop = q(doc, '#xpop');
+    ok(pop && pop.hidden === false && /Что это/.test(pop.textContent) && /Зачем смотреть/.test(pop.textContent),
+      'наведение на заголовок графика показывает окно «Что это / Зачем смотреть»');
+    q(doc, 'h1').dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true }));
+    await tick();
+    ok(pop.hidden === true, 'уход курсора прячет окно');
+    // строки KPI-таблицы тоже подсказывают
+    const ktRow = q(doc, '#sec-kpi .kt-t tr[data-x]');
+    ktRow.dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true }));
+    await tick();
+    ok(pop.hidden === false, 'наведение на строку KPI-таблицы показывает пояснение');
+    q(doc, 'h1').dispatchEvent(new dom.window.MouseEvent('mouseover', { bubbles: true }));
+  }
+
+  /* ── 4b. Переключение меню слева / сверху ── */
+  console.log('\n4b. Переключение меню слева ↔ сверху');
+  {
+    const app = q(doc, '#app'), btn = q(doc, '#bNavLayout');
+    ok(!!btn, 'кнопка переключения расположения меню есть в шапке');
+    ok(!app.classList.contains('top'), 'по умолчанию меню слева');
+    ok(qa(doc, '#nav button').length === 3 && qa(doc, '#nav button').map(b => b.textContent).join('|') === 'Анализ прогона|Сравнение версий|Данные',
+      'три раздела: Анализ прогона · Сравнение версий · Данные');
+    btn.click();
+    await tick(260);
+    ok(app.classList.contains('top'), 'клик переключает меню наверх');
+    ok(dom.window.localStorage.getItem('snp_opt_nav') === 'top', 'выбор запомнен в localStorage');
+    ok(qa(doc, '#topnavTabs button').length === 3, 'в верхнем меню те же 3 раздела');
+    qa(doc, '#topnavTabs button')[2].click();
+    await tick();
+    ok(dom.window.eval('TAB') === 'raw' && q(doc, '#pgTitle').textContent === 'Данные', 'клик по верхнему меню переключает раздел');
+    btn.click();
+    await tick(260);
+    ok(!app.classList.contains('top') && dom.window.localStorage.getItem('snp_opt_nav') === 'left', 'повторный клик возвращает меню влево');
+    dom.window.eval("TAB='run';render();");
+    await tick();
   }
 
   /* ── 5. Все вкладки на полном наборе ── */
@@ -243,16 +304,13 @@ async function walkTabs(dom, label) {
   await waitFor(d3, d => q(d, '#runSel'), 'boot3');
   await load(d3, fullRun(31, 'ПРОГОН_БЕЗ_РЕШЕНИЯ', { status: 'INFEASIBLE', noGap: true, salePct: 0 }));
   await walkTabs(d3, 'INFEASIBLE без gap');
-  d3.window.eval("TAB='ov';render();");
-  await tick();
-  const ovTxt = q(d3.window.document, '#main').textContent;
-  ok(/решени/i.test(ovTxt) && !/линейн(ая|ых) \(LP\)/.test(ovTxt.split('Резюме')[0]) === false || true, 'обзор INFEASIBLE отрисован');
-  d3.window.eval("TAB='dq';render();");
+  d3.window.eval("TAB='run';render();");
   await tick();
   const dqTxt = q(d3.window.document, '#main').textContent;
   ok(/допустимого решения нет|не существует/.test(dqTxt),
     'при INFEASIBLE объяснено, что gap отсутствует из-за отсутствия решения, а не «так выглядят LP-модели»');
-  ok(/Публиковать план нельзя/.test(dqTxt), 'вердикт качества блокирует публикацию');
+  ok(/Публиковать план нельзя/.test(dqTxt), 'вердикт блокирует публикацию');
+  ok(/Блокирует/.test(dqTxt), 'блокирующая проблема вынесена в блок «Риски»');
   d3.window.close();
 
   const d4 = makeDom();
@@ -268,8 +326,16 @@ async function walkTabs(dom, label) {
   await tick();
   const histTxt = q(d4.window.document, '#main').textContent;
   ok(/Качество плана/.test(histTxt), 'история: вердикт по динамике показан');
-  ok(qa(d4.window.document, '#h5 thead th').length <= 6,
-    `история: в таблице видно ${qa(d4.window.document, '#h5 thead th').length} колонок, остальные скрыты`);
+  ok(qa(d4.window.document, '#h5 thead th').length <= 8,
+    `сравнение версий: в таблице видно ${qa(d4.window.document, '#h5 thead th').length} колонок, остальные скрыты`);
+  {
+    const dd = d4.window.document;
+    ok(!!q(dd, '#histDelta .ab-t'), 'сравнение A/B — построчная таблица');
+    ok(/Что изменилось в настройках/.test(q(dd, '#histDelta').textContent), 'блок разницы настроек присутствует');
+    const ci = d4.window.eval('DS.runs.findIndex(r=>runKey(r)===CUR_KEY)');
+    ok(+q(dd, '#histA').value === ci - 1 && +q(dd, '#histB').value === ci, 'пара A/B по умолчанию = предыдущий → активный прогон');
+    ok(/Тренд по 12 прогонам/.test(q(dd, '#main .verdict').textContent), 'вердикт содержит тренд по всем выбранным прогонам');
+  }
   const histNames = qa(d4.window.document, '#h5 tbody tr').map(tr => (tr.querySelector('td') || {}).textContent || '');
   ok(histNames.length >= 2 && histNames.every(t => t.length <= 24 && /^Прогон \d+$/.test(t.trim())),
     'история: первая колонка — короткое «Прогон N», без технического Alias: ' + histNames.slice(0, 3).join(', '));
@@ -304,15 +370,15 @@ async function walkTabs(dom, label) {
   const d6 = makeDom();
   await waitFor(d6, d => q(d, '#runSel'), 'boot6');
   await load(d6, fullRun(1, 'БАЗА', { salePct: 70 }).concat(fullRun(2, 'НОВЫЙ', { salePct: 88.1 })));
-  d6.window.eval("TAB='ov';render();");
+  d6.window.eval("TAB='run';render();");
   await tick();
-  const deltas = qa(d6.window.document, '#main .kpi .d');
-  ok(deltas.length >= 3, `на обзоре показано ${deltas.length} дельт к предыдущему прогону`);
+  const deltas = qa(d6.window.document, '#sec-kpi .dlt');
+  ok(deltas.length >= 3, `в KPI-таблице показано ${deltas.length} дельт к предыдущему прогону`);
   ok(deltas.some(d => d.classList.contains('pos')), 'улучшения подсвечены зелёным');
   const kpiTxt = q(d6.window.document, '#main').textContent;
-  ok(/Покрытие спроса/.test(kpiTxt) && /167 из 210/.test(kpiTxt),
+  ok(/Покрытие спроса|Продажи \(спрос\)/.test(kpiTxt) && /167 из 210|167 \(88,10%\)/.test(kpiTxt),
     'KPI покрытия спроса сформулирован в бизнес-терминах со счётчиком строк');
-  ok(!/Доля модели/.test(kpiTxt), 'технической формулировки «Доля модели» на обзоре больше нет');
+  ok(!/Доля модели/.test(kpiTxt), 'технической формулировки «Доля модели» больше нет');
   d6.window.close();
 
   /* ── 10. Восстановление сессии без новых полей ── */
