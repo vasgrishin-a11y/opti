@@ -51,6 +51,10 @@ function makeDom() {
 }
 const q = (d, s) => d.querySelector(s);
 const qa = (d, s) => [...d.querySelectorAll(s)];
+function setCheck2(dom, el, checked) {
+  el.checked = checked;
+  el.dispatchEvent(new dom.window.Event('change', { bubbles: true }));
+}
 const tick = (ms = 60) => new Promise(r => setTimeout(r, ms));
 async function waitFor(dom, fn, what, timeout = 5000) {
   const t0 = Date.now();
@@ -296,6 +300,67 @@ const ROWS = runRows(1, 300, 15, 'OPTIMAL', 80, 0.1)
   ok(!!q(doc, '#h7'), 'график статусов построен и для набора с пустым статусом');
   ok(w.eval(`document.getElementById('h7')._h.length`) === 2,
     'на графике две полосы: OPTIMAL и «(пусто)»');
+
+  /* ── 8. Сравнение прогонов: мультивыбор и дифф «Типы ограничений» ── */
+  console.log('\n8. Сравнение прогонов (мультивыбор) и дифф по типам ограничений');
+  function runRowsCT(runid, cfg, ds, status, salePct, gap, consTypes) {
+    const R = runRows(runid, cfg, ds, status, salePct, gap);
+    R.push({ runid, 'Параметр': 'Constraint types', 'Значение': consTypes.join('; '), datasetid: ds, configid: cfg });
+    return R;
+  }
+  const ROWS3 = runRowsCT(21, 400, 50, 'OPTIMAL', 80, 0.10, ['demand_cons', 'wh_capacity'])
+    .concat(runRowsCT(22, 400, 50, 'OPTIMAL', 85, 0.08, ['demand_cons', 'wh_capacity']))
+    .concat(runRowsCT(23, 400, 50, 'OPTIMAL', 90, 0.05, ['demand_cons', 'frozen_horizon']));
+  w.eval(`initFromRows(${JSON.stringify(ROWS3)}, {source:'file',files:['t3.xlsx'],loadedAt:new Date().toISOString()});
+    IS_DEMO=false;TAB='hist';SEL_HIST=new Set(DS.runs.map(runKey));HIST_STATUS.clear();CMP_SEL=new Set();render();`);
+  await tick();
+
+  const cmpCard = q(doc, '.cmp-card');
+  ok(!!cmpCard, 'карточка «Сравнение прогонов» отрисована');
+  const sumEl = q(doc, '.sum');
+  ok(!!sumEl && !!(sumEl.compareDocumentPosition(cmpCard) & w.Node.DOCUMENT_POSITION_FOLLOWING),
+    'карточка сравнения идёт после блока «Выводы» — перенесена в конец вкладки');
+
+  ok(qa(doc, '.cmp-table th').length > 0, 'по умолчанию (без выбора) сравниваются 2 прогона — первый и последний');
+  ok(qa(doc, '.cmp-table thead th').length === 3, 'заголовок: колонка меток + 2 прогона по умолчанию');
+  ok([...qa(doc, '.cmp-table .cmp-k')].some(td => td.textContent.includes('Типы ограничений')),
+    'строка «Типы ограничений в модели» есть в таблице сравнения');
+
+  q(doc, '#cmpSelBtn').click();
+  await tick(30);
+  await waitFor(dom, d => qa(d, '#dtpop .rt-leaf').length === 3, 'пикер сравнения показывает 3 прогона');
+  const midLeaf = qa(doc, '#dtpop .rt-leaf input').find(i => i.dataset.k && i.dataset.k.startsWith('22|'));
+  ok(!!midLeaf, 'средний прогон (22) есть в списке пикера');
+  setCheck2(dom, midLeaf, true);
+  await tick(30);
+  q(doc, '#dtpop .dtp-x').click();
+  await tick(30);
+
+  ok(qa(doc, '.cmp-table thead th').length === 4, 'после добавления среднего прогона колонок стало 3 (+1 к меткам)');
+  const ctRow = qa(doc, '.cmp-table tr').find(tr => tr.querySelector('.cmp-k') && tr.querySelector('.cmp-k').textContent.includes('Типы ограничений'));
+  const ctCells = [...ctRow.querySelectorAll('.cmp-list')];
+  ok(ctCells.length === 3, 'у строки «Типы ограничений» три ячейки — по числу выбранных прогонов');
+  ok(ctCells[0].textContent.includes('Выполнение плана спроса') && ctCells[0].textContent.includes('Вместимость склада'),
+    'первая колонка показывает полный список ограничений без сокращений');
+  ok(ctCells[1].querySelectorAll('.cmp-add, .cmp-del').length === 0,
+    'у прогона 22 те же ограничения, что у 21 — разницы не показано');
+  ok(!!ctCells[2].querySelector('.cmp-add') && ctCells[2].querySelector('.cmp-add').textContent.includes('Замороженный горизонт'),
+    'у прогона 23 появившийся тип ограничения помечен как добавленный (+)');
+  ok(!!ctCells[2].querySelector('.cmp-del') && ctCells[2].querySelector('.cmp-del').textContent.includes('Вместимость склада'),
+    'у прогона 23 пропавший тип ограничения помечен как убранный (−)');
+
+  const saleRow = qa(doc, '.cmp-table tr').find(tr => tr.querySelector('.cmp-k') && tr.querySelector('.cmp-k').textContent.includes('Покрытие спроса'));
+  const saleCells = [...saleRow.querySelectorAll('.cmp-c')];
+  ok(saleCells[1].classList.contains('pos') && saleCells[2].classList.contains('pos'),
+    'рост покрытия спроса между соседними версиями подсвечен зелёным');
+
+  w.eval("TAB='ov';render();");
+  await tick();
+  ok(qa(doc, '.ov-jump a, .ov-jump button').length === 5, 'в «Обзоре» меню «Перейти» из 5 пунктов');
+  ok(!q(doc, '#o4').innerHTML.includes('Хэш конфигурации'), 'хэш конфигурации убран из карточки «Как настроен прогон»');
+  q(doc, '[data-jump-tab="pen"]').click();
+  await tick(30);
+  ok(w.eval('TAB') === 'pen', 'клик по пункту «Штрафы» в меню «Перейти» переключил вкладку');
 
   dom.window.close();
   console.log('\n────────────────────────────────────────');

@@ -75,8 +75,20 @@ h1{font:600 26px/32px 'Open Sans',sans-serif;margin:0;color:var(--scp-text)}
 select{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:7px 10px;font:400 13px 'Open Sans',sans-serif}
 select:focus{outline:none;border-color:var(--scp-accent)}
 main{padding:20px 32px 72px;flex:1}
+.ov-jump{position:sticky;top:0;z-index:60;display:flex;gap:6px;flex-wrap:wrap;background:var(--scp-bg);
+  padding:10px 0;margin:-4px 0 14px;border-bottom:1px solid var(--scp-line-2)}
+.ov-jump a,.ov-jump button{font:600 13px 'Open Sans',sans-serif;color:var(--scp-text-2);background:var(--scp-surface);
+  border:1px solid var(--scp-line-2);border-radius:999px;padding:6px 14px;cursor:pointer;text-decoration:none;
+  transition:border-color .15s,color .15s}
+.ov-jump a:hover,.ov-jump button:hover{border-color:var(--scp-accent);color:var(--scp-accent)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:12px;margin-bottom:16px}
-.kpi{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-radius:var(--r-m);padding:14px 16px}
+.kpi{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-left:3px solid var(--scp-line-2);
+  border-radius:var(--r-m);padding:14px 16px}
+.kpi.k-pos{border-left-color:var(--scp-ok)}
+.kpi.k-neg{border-left-color:var(--scp-err);background:linear-gradient(90deg,var(--scp-err-bg) 0%,var(--scp-surface) 18%)}
+.kpi.k-mid{border-left-color:#c47512}
+.kpi.big{grid-column:span 2}
+.kpi.big .v{font-size:32px;line-height:38px}
 .kpi .t{font-size:13px;color:var(--scp-text-2)}
 .kpi .v{font:700 26px/32px 'Open Sans',sans-serif;color:var(--scp-text);margin-top:6px;letter-spacing:-.3px}
 .kpi .s{font-size:12px;color:var(--scp-text-3);margin-top:3px}
@@ -162,6 +174,20 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
 .tbar-lbl{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--scp-text-3);margin-right:4px}
 .frow{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
 .fg label{font-size:11px;color:var(--scp-text-3);font-weight:600;text-transform:uppercase;display:block;margin-bottom:4px}
+.cmp-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.cmp-wrap{overflow-x:auto;margin-top:10px}
+.cmp-table{border-collapse:collapse;width:100%;min-width:480px}
+.cmp-table th,.cmp-table td{border-bottom:1px solid var(--scp-line);padding:8px 12px;font-size:13px;text-align:left;white-space:nowrap}
+.cmp-table thead th{color:var(--scp-text-2);font-weight:600;background:var(--scp-surface)}
+.cmp-table .cmp-k{position:sticky;left:0;background:var(--scp-surface);color:var(--scp-text-2);font-weight:600;
+  min-width:190px;box-shadow:1px 0 0 var(--scp-line-2)}
+.cmp-table .cmp-c{font-variant-numeric:tabular-nums}
+.cmp-table .cmp-c.pos{color:var(--scp-ok);background:var(--scp-ok-bg)}
+.cmp-table .cmp-c.neg{color:var(--scp-err);background:var(--scp-err-bg)}
+.cmp-arrow{font-size:11px}
+.cmp-table .cmp-list{white-space:normal;word-break:break-word;max-width:320px;font-size:12px}
+.cmp-add{color:var(--scp-ok);font-weight:600}
+.cmp-del{color:var(--scp-err);text-decoration:line-through}
 .mtbl{table-layout:fixed}
 .mtbl td{height:auto;padding:7px 8px;text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere;vertical-align:top;line-height:18px;font-size:13px}
 .mtbl td.mt-k{width:38%;color:var(--scp-text-3);font-size:12px;padding-right:14px}
@@ -2247,7 +2273,6 @@ function tabRUN(){
       <tr><td class="mt-k">Включённые сущности</td><td class="mt-v">${r.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', ')||'—'}</td></tr>
       ${fnDiff?`<tr><td class="mt-k">Функциональные сущности</td><td class="mt-v">${r.meta.functionalEntities.map(e=>ENT_LBL[e]||e).join(', ')}</td></tr>`:''}
       <tr><td class="mt-k">Типы ограничений в модели</td><td class="mt-v">${r.meta.constraintTypes.map(consLbl).join(', ')||'—'}</td></tr>
-      <tr><td class="mt-k">Хэш конфигурации</td><td class="mt-v" style="font-size:11px;color:var(--scp-text-3)">${esc(r.meta.configHash)||'—'}</td></tr>
     </tbody></table>`;
     if(r.entities.length){
       chH('#o2',HC(byPct.length),byPct,v=>nf(v,1)+'%',null);
@@ -2588,7 +2613,7 @@ function tabHIST(){
             <div class="fg"><label>Прогон B (сравниваемый)</label><select id="histB"></select></div>
             <button type="button" class="dt-btn" id="histAbAuto" title="Вернуть пару по умолчанию: предыдущий → активный прогон">Предыдущий → активный</button>
           </div>
-          <div id="histDelta"></div>
+          <div id="cmpTable"></div>
         </div>`:'';
 
       body.innerHTML=kpiBlock+abCard.replace('class="card w"','class="card w" style="margin-bottom:12px"')+statusCard+charts+`
@@ -2802,6 +2827,14 @@ function tabRAW(){
 
 /* ═══════════════ 15. РЕНДЕР И ИНИЦИАЛИЗАЦИЯ ═══════════════ */
 function go(tab){TAB=tab;if(!IS_DEMO)persistSession();render()}
+/* Клик по кнопке-якорю «Перейти» в шапке вкладки «Обзор»: переключает вкладку.
+   #main может отсутствовать (например, при парсинге <script> без DOM в тестах). */
+if(document.getElementById('main')){
+  document.getElementById('main').addEventListener('click',e=>{
+    const b=e.target.closest('[data-jump-tab]');
+    if(b)go(b.getAttribute('data-jump-tab'));
+  });
+}
 
 function render(){
   if(!DS||!DS.runs.length){
