@@ -145,7 +145,7 @@ function seedRows() {
     ok(d2.window.eval('DS.runs[0].dups.length') === 1, 'конфликт Alias (dups) пережил перезагрузку');
     ok(d2.window.eval('DS.runs[0].schema') === 'public_1', 'схема прогона сохранена');
     ok(d2.window.eval('CUR_KEY') === d2.window.eval('runKey(DS.runs[0])'), 'активный прогон восстановлен');
-    ok(doc2.querySelector('#pgTitle').textContent.includes('Ограничения'), 'восстановлена вкладка «Ограничения»');
+    ok(doc2.querySelector('#pgTitle').textContent.includes('Анализ прогона'), 'старая вкладка «Ограничения» (bnd) восстановлена как раздел «Анализ прогона»');
     ok(/сохранённая сессия|PostgreSQL: public_1/.test(doc2.querySelector('#runbar').textContent), 'мета-источник виден в runbar');
     d2.window.close();
   }
