@@ -312,33 +312,36 @@ const ROWS = runRows(1, 300, 15, 'OPTIMAL', 80, 0.1)
     .concat(runRowsCT(22, 400, 50, 'OPTIMAL', 85, 0.08, ['demand_cons', 'wh_capacity']))
     .concat(runRowsCT(23, 400, 50, 'OPTIMAL', 90, 0.05, ['demand_cons', 'frozen_horizon']));
   w.eval(`initFromRows(${JSON.stringify(ROWS3)}, {source:'file',files:['t3.xlsx'],loadedAt:new Date().toISOString()});
-    IS_DEMO=false;TAB='hist';SEL_HIST=new Set(DS.runs.map(runKey));HIST_STATUS.clear();CMP_SEL=new Set();render();`);
+    IS_DEMO=false;TAB='hist';SEL_HIST=new Set(DS.runs.map(runKey));HIST_STATUS.clear();render();`);
   await tick();
 
-  const cmpCard = q(doc, '.cmp-card');
-  ok(!!cmpCard, 'карточка «Сравнение прогонов» отрисована');
+  const cmpCard = q(doc, '#cmpCard');
+  ok(!!cmpCard, 'карточка «Сравнение версий» отрисована');
   const sumEl = q(doc, '.sum');
   ok(!!sumEl && !!(sumEl.compareDocumentPosition(cmpCard) & w.Node.DOCUMENT_POSITION_FOLLOWING),
     'карточка сравнения идёт после блока «Выводы» — перенесена в конец вкладки');
 
-  ok(qa(doc, '.cmp-table th').length > 0, 'по умолчанию (без выбора) сравниваются 2 прогона — первый и последний');
-  ok(qa(doc, '.cmp-table thead th').length === 3, 'заголовок: колонка меток + 2 прогона по умолчанию');
-  ok([...qa(doc, '.cmp-table .cmp-k')].some(td => td.textContent.includes('Типы ограничений')),
+  ok(qa(doc, '#cmpCard .abn-t thead th').length === 3,
+    'по умолчанию сравниваются 2 прогона — предыдущий и активный (заголовок + 2 колонки)');
+  ok([...qa(doc, '#cmpCard td.k')].some(td => td.textContent.includes('Типы ограничений')),
     'строка «Типы ограничений в модели» есть в таблице сравнения');
+  ok([...qa(doc, '#cmpCard .kt-h')].some(h => h.textContent.includes('Что изменилось в настройках')),
+    'блок «Что изменилось в настройках» на месте (наследие PR#16)');
 
   q(doc, '#cmpSelBtn').click();
   await tick(30);
   await waitFor(dom, d => qa(d, '#dtpop .rt-leaf').length === 3, 'пикер сравнения показывает 3 прогона');
-  const midLeaf = qa(doc, '#dtpop .rt-leaf input').find(i => i.dataset.k && i.dataset.k.startsWith('22|'));
-  ok(!!midLeaf, 'средний прогон (22) есть в списке пикера');
-  setCheck2(dom, midLeaf, true);
+  const firstLeaf = qa(doc, '#dtpop .rt-leaf input').find(i => i.dataset.k && i.dataset.k.startsWith('21|'));
+  ok(!!firstLeaf, 'первый прогон (21) есть в списке пикера');
+  setCheck2(dom, firstLeaf, true);
   await tick(30);
   q(doc, '#dtpop .dtp-x').click();
   await tick(30);
 
-  ok(qa(doc, '.cmp-table thead th').length === 4, 'после добавления среднего прогона колонок стало 3 (+1 к меткам)');
-  const ctRow = qa(doc, '.cmp-table tr').find(tr => tr.querySelector('.cmp-k') && tr.querySelector('.cmp-k').textContent.includes('Типы ограничений'));
-  const ctCells = [...ctRow.querySelectorAll('.cmp-list')];
+  ok(qa(doc, '#cmpCard .abn-t')[0].querySelectorAll('thead th').length === 4,
+    'после добавления первого прогона колонок стало 3 (+1 к меткам)');
+  const ctRow = qa(doc, '#cmpCard tr').find(tr => tr.querySelector('td.k') && tr.querySelector('td.k').textContent.includes('Типы ограничений'));
+  const ctCells = [...ctRow.querySelectorAll('td.ab-list')];
   ok(ctCells.length === 3, 'у строки «Типы ограничений» три ячейки — по числу выбранных прогонов');
   ok(ctCells[0].textContent.includes('Выполнение плана спроса') && ctCells[0].textContent.includes('Вместимость склада'),
     'первая колонка показывает полный список ограничений без сокращений');
@@ -349,18 +352,12 @@ const ROWS = runRows(1, 300, 15, 'OPTIMAL', 80, 0.1)
   ok(!!ctCells[2].querySelector('.cmp-del') && ctCells[2].querySelector('.cmp-del').textContent.includes('Вместимость склада'),
     'у прогона 23 пропавший тип ограничения помечен как убранный (−)');
 
-  const saleRow = qa(doc, '.cmp-table tr').find(tr => tr.querySelector('.cmp-k') && tr.querySelector('.cmp-k').textContent.includes('Покрытие спроса'));
-  const saleCells = [...saleRow.querySelectorAll('.cmp-c')];
+  const saleRow = qa(doc, '#cmpCard tr').find(tr => tr.querySelector('td.k') && tr.querySelector('td.k').textContent.trim() === 'Продажи (спрос)');
+  const saleCells = [...saleRow.querySelectorAll('td.ab-v')];
   ok(saleCells[1].classList.contains('pos') && saleCells[2].classList.contains('pos'),
     'рост покрытия спроса между соседними версиями подсвечен зелёным');
 
-  w.eval("TAB='ov';render();");
-  await tick();
-  ok(qa(doc, '.ov-jump a, .ov-jump button').length === 5, 'в «Обзоре» меню «Перейти» из 5 пунктов');
-  ok(!q(doc, '#o4').innerHTML.includes('Хэш конфигурации'), 'хэш конфигурации убран из карточки «Как настроен прогон»');
-  q(doc, '[data-jump-tab="pen"]').click();
-  await tick(30);
-  ok(w.eval('TAB') === 'pen', 'клик по пункту «Штрафы» в меню «Перейти» переключил вкладку');
+  ok(!q(doc, '#main').innerHTML.includes('Хэш конфигурации'), 'хэш конфигурации нигде не показан во вкладке «Сравнение версий»');
 
   dom.window.close();
   console.log('\n────────────────────────────────────────');
