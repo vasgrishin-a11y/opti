@@ -78,6 +78,13 @@ main{padding:20px 32px 72px;flex:1}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:12px;margin-bottom:16px}
 .kpi{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-left:3px solid var(--scp-line-2);
   border-radius:var(--r-m);padding:14px 16px}
+.kpi.pos{border-left-color:var(--scp-ok)}
+.kpi.neg{border-left-color:var(--scp-err)}
+.kpi.mid{border-left-color:#c47512}
+.kpis-hero{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));margin-bottom:18px}
+.kpis-hero .kpi{padding:16px 20px}
+.kpis-hero .kpi .t{font-size:13px}
+.kpis-hero .kpi .v{font-size:30px;line-height:36px}
 .kpi .t{font-size:13px;color:var(--scp-text-2)}
 .kpi .v{font:700 26px/32px 'Open Sans',sans-serif;color:var(--scp-text);margin-top:6px;letter-spacing:-.3px}
 .kpi .s{font-size:12px;color:var(--scp-text-3);margin-top:3px}
@@ -313,6 +320,11 @@ canvas[role="img"]{outline:none}
 .kt-t tr[data-x]:hover td{background:var(--scp-b-50)}
 .kt-t tr.kt-sub td{color:var(--scp-text-3);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;padding:10px 2px 3px;border-bottom:0;text-align:left;background:transparent!important}
 .kt-t td.v.pos{color:var(--scp-ok)} .kt-t td.v.neg{color:var(--scp-err)} .kt-t td.v.mid{color:#c47512}
+.kt-bar{width:100%;height:4px;background:var(--scp-line-2);border-radius:2px;margin-top:5px;overflow:hidden}
+.kt-bar-f{height:100%;background:var(--scp-text-3)}
+.kt-bar-f.pos{background:var(--scp-ok)}
+.kt-bar-f.neg{background:var(--scp-err)}
+.kt-bar-f.mid{background:#c47512}
 [data-theme="dark"] .kt-t tr[data-x]:hover td{background:#2c2140}
 
 /* §19 Пояснения при наведении: «что это / зачем / результат» */
@@ -1920,7 +1932,7 @@ function xpHtml(o){
 /** Единая отрисовка плитки KPI. hint (строка) или x (объект пояснения). */
 function kpiHtml(k){
   const x=k.x||(k.hint?{t:k.t,what:k.hint}:null);
-  return `<div class="kpi"${xAttr(x)}><div class="t">${k.t}${x?'<span class="xi hint" aria-hidden="true">?</span>':''}</div>
+  return `<div class="kpi ${k.cls||''}"${xAttr(x)}><div class="t">${k.t}${x?'<span class="xi hint" aria-hidden="true">?</span>':''}</div>
     <div class="v ${k.cls||''}">${k.v}</div>
     <div class="s">${k.s||''}</div>${k.d||''}</div>`;
 }
@@ -1929,12 +1941,14 @@ const kpis=arr=>`<div class="kpis">${arr.map(kpiHtml).join('')}</div>`;
 function cardHead(title,sub,x){
   return `<div class="ch"${xAttr(x)}><h3>${title}</h3>${x?XI:''}</div>${sub!=null?`<div class="sub">${sub}</div>`:''}`;
 }
-/** Сводная таблица KPI: группы → строки {k,v,s,cls,d,x} или подзаголовки {sub:true,t}. */
+/** Сводная таблица KPI: группы → строки {k,v,s,cls,d,bar,x} или подзаголовки {sub:true,t}.
+    bar (0..100 или null) — необязательная мини-шкала под значением для процентных метрик. */
 function kpiTable(groups){
+  const barHtml=r=>r.bar==null?'':`<div class="kt-bar"><div class="kt-bar-f ${r.cls||''}" style="width:${Math.max(0,Math.min(100,r.bar))}%"></div></div>`;
   return `<div class="kt-grid">${groups.map(g=>`<div><div class="kt-h"${xAttr(g.x)}>${g.t}${g.x?XI:''}</div>
     <table class="kt-t"><tbody>${g.rows.filter(Boolean).map(r=>r.sub
       ?`<tr class="kt-sub"><td colspan="3">${r.t}</td></tr>`
-      :`<tr${xAttr(r.x)}><td class="k">${r.k}</td><td class="v ${r.cls||''}">${r.v}${r.s?`<div class="s">${r.s}</div>`:''}</td><td class="d">${r.d||''}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div>`;
+      :`<tr${xAttr(r.x)}><td class="k">${r.k}</td><td class="v ${r.cls||''}">${r.v}${r.s?`<div class="s">${r.s}</div>`:''}${barHtml(r)}</td><td class="d">${r.d||''}</td></tr>`).join('')}</tbody></table></div>`).join('')}</div>`;
 }
 /** Заголовок подраздела с якорем для подшкалы. */
 function secHead(id,title,sub,x){
@@ -2129,10 +2143,12 @@ function tabRUN(){
     {k:'Точность (gap)',v:gapKnown?pctFmt(r.solve.gapPct):'н/д',cls:gapKnown?(gapOk?'pos':'neg'):'',
       s:gapKnown?(r.meta.gapLimit!=null?`порог по настройке ${pctFmt(r.meta.gapLimit)}`:'порог не задан'):(statusOk?'LP-модель: точный оптимум':'решения нет — зазор не определён'),
       d:gapKnown?deltaShort(r.solve.gapPct,prev?prev.solve.gapPct:null,v=>nf(v,3)+' п.п.',-1):'',
+      bar:gapKnown?r.solve.gapPct:null,
       x:{t:'Точность решения (gap)',what:'Насколько найденный план может отличаться от теоретически лучшего. 0% — доказанный оптимум.',why:'Показывает, сколько выгоды могло остаться «на столе» из-за раннего останова расчёта.',res:gapKnown?(gapOk?`Отклонение ${pctFmt(r.solve.gapPct)} в пределах порога — план практически оптимален.`:`Отклонение ${pctFmt(r.solve.gapPct)} выше порога ${pctFmt(gapThr)} — часть выгоды не получена.`):(statusOk?'Gap в логе нет: модель линейная, симплекс-метод даёт точный оптимум.':'Gap не рассчитан, потому что допустимого решения нет.')}},
     {k:'Время решения',v:timeFmt(r.solve.solveTimeSec),s:`полный цикл ${timeFmt(r.solve.calcTimeSec)}${r.meta.timeLimit?` · лимит ${timeFmt(r.meta.timeLimit)} (${pc(timeShare)})`:''}`,
       cls:timeShare!=null&&timeShare>=0.9?'neg':'',
       d:deltaShort(r.solve.solveTimeSec,prev?prev.solve.solveTimeSec:null,v=>nf(v,2)+' с',-1),
+      bar:timeShare!=null?timeShare*100:null,
       x:{t:'Время решения',what:'Сколько солвер искал решение (без подготовки модели). Полный цикл включает построение модели и выгрузку.',why:'Рост времени при том же масштабе модели — ранний признак проблем во входных данных; расчёт «в упор» к лимиту означает, что солвер остановили принудительно.',res:timeShare!=null?(timeShare>=0.9?`Использовано ${pc(timeShare)} лимита — расчёт остановлен по таймеру, план мог быть лучше.`:`Использовано ${pc(timeShare)} лимита — запас времени есть.`):'Лимит времени не задан, солвер работал до сходимости.'}},
     {k:'Итераций солвера',v:nf(r.solve.iterations),s:r.meta.threads?`${r.meta.threads} ${plural(r.meta.threads,['поток','потока','потоков'])}${r.meta.solver?' · '+esc(r.meta.solver):''}`:(r.meta.solver?esc(r.meta.solver):''),
       d:deltaShort(r.solve.iterations,prev?prev.solve.iterations:null,v=>nf(v),0),
@@ -2155,6 +2171,7 @@ function tabRUN(){
     ...ordered.map(e=>{const p=pEnt(e.entity);return {k:ENT_LBL[e.entity]||e.entity,v:nf(e.total),
       s:`задействовано ${nf(e.nonzero)} (${pctFmt(e.pct)})${totalEntVars?` · ${pc(e.total/totalEntVars)} модели`:''}`,
       cls:e.entity==='sale'?(e.pct<70?'neg':(e.pct<90?'mid':'pos')):'',
+      bar:e.pct,
       d:deltaShort(e.pct,p?p.pct:null,fmtPP,e.entity==='sale'?1:0),
       x:{t:ENT_LBL[e.entity]||e.entity,what:`Сколько решений модель принимает в блоке «${ENT_LBL[e.entity]||e.entity}» и сколько из них ненулевые.`,why:e.entity==='sale'?'Для продаж доля ненулевых — это покрытие спроса: каждая нулевая строка — заказ без плана.':'Низкая доля для логистики и запасов обычно нормальна (сеть выбирает лучшие плечи), для производства и закупок — повод проверить доступность мощностей.',res:entComment(e)}}}),
     {sub:true,t:'Ограничения по режиму'},
@@ -2177,6 +2194,7 @@ function tabRUN(){
       d:deltaShort(-e.value,p?-p.value:null,v=>bn(v),-1),
       x:{t:'Затраты: '+(ENT_LBL[e.entity]||e.entity),what:`Вклад блока «${ENT_LBL[e.entity]||e.entity}» в целевую функцию (со знаком минус).`,why:'Сдвиг доли между статьями от прогона к прогону — сигнал о смене логики плана (например, закупки вместо собственного производства).'}}}),
     {k:'Маржа плана',v:margin!=null?pc(margin):'—',s:'(выручка − затраты) / выручка',cls:margin!=null?(margin<0?'neg':''):'',
+      bar:margin!=null?margin*100:null,
       d:margin!=null&&pRevenue?deltaShort(margin*100,(pRevenue-pCosts)/pRevenue*100,fmtPP,1):'',
       x:{t:'Маржа плана',what:'Какая доля выручки остаётся после всех затрат плана.',why:'Позволяет сравнивать прогоны с разным объёмом спроса: рост выручки при падении маржи — план стал дороже.'}},
     {k:'Штрафы SOFT',v:r.penalties.length?nf(totalPen,2):'0',s:r.penalties.length?`${pc(penRatio)} от эффекта · ${nf(r.penalties.length)} ${plural(r.penalties.length,['группа','группы','групп'])}`:'мягкие цели выполнены точно',
@@ -2216,13 +2234,31 @@ function tabRUN(){
   const X_P2={t:'Реестр мягких нарушений',what:'Таблица штрафов по группам ограничений: тип нарушения, сумма, доля затронутых объектов.',why:'Для передачи планировщикам: какие лимиты нарушаются и насколько массово.'};
   const X_CFG={t:'Как настроен прогон',what:'Параметры конфигурации, которые влияют на результат: солвер, лимит времени, целевая точность, замороженные сущности, включённые блоки и типы ограничений.',why:'Сравнивая прогоны, сначала убедитесь, что настройки одинаковы — иначе разница в результате может быть следствием конфигурации, а не данных.'};
 
+  const heroKpis=kpis([
+    {t:'Можно доверять расчёту',v:statusOk?'Да':'Нет',cls:statusOk?'pos':'neg',
+      s:statusOk?'оптимум подтверждён':'решение не подтверждено',
+      hint:'Статус решения OPTIMAL — план математически доказан; иначе цифрам ниже доверять нельзя.'},
+    {t:'Покрытие спроса',v:salePct!=null?pctFmt(salePct):'—',
+      cls:salePct==null?'':(salePct<70?'neg':(salePct<90?'mid':'pos')),
+      s:sale?`${nf(sale.nonzero)} из ${nf(sale.total)} строк спроса с планом`:'нет данных по блоку продаж',
+      d:deltaShort(salePct,pSale?pSale.pct:null,fmtPP,1),
+      hint:'Главный бизнес-KPI: доля строк спроса, получивших план продаж.'},
+    {t:'Эффект плана',v:bn(r.solve.objectiveValue),s:'значение целевой функции',
+      d:deltaShort(r.solve.objectiveValue,prev?prev.solve.objectiveValue:null,v=>bn(v),1),
+      hint:'Выручка минус все затраты и штрафы — денежный итог плана.'},
+    {t:'Штрафы SOFT',v:r.penalties.length?pc(penRatio):'0%',
+      cls:r.penalties.length?(penRatio>=0.01?'neg':'pos'):'pos',
+      s:r.penalties.length?'от эффекта плана':'мягкие цели выполнены точно',
+      hint:'Доля эффекта, потерянная на отступлениях от мягких целей. До 1% — обычно нормально.'}
+  ]).replace('class="kpis"','class="kpis kpis-hero"');
+
   const subnav=`<nav class="subnav" id="runSubnav" aria-label="Блоки раздела"><span class="lbl">Перейти</span>
     <a href="#sec-kpi" data-sec="kpi">KPI прогона</a><a href="#sec-ent" data-sec="ent">Блоки модели</a><a href="#sec-bnd" data-sec="bnd">Ограничения</a><a href="#sec-pen" data-sec="pen">Штрафы</a><a href="#sec-sum" data-sec="sum">Выводы и риски</a></nav>`;
 
   const html=verdict(vLevel,vTitle,vMsg)+subnav
   +`<div class="card w" id="sec-kpi" style="margin-bottom:12px">${cardHead('Сводная таблица KPI прогона',`${esc(rName(r))} · ${esc(rCtx(r))}${prev?` · дельты к предыдущему прогону ${esc(rShort(prev))}`:' · предыдущего прогона в истории нет — дельты не показаны'}`,
       {t:'Сводная таблица KPI',what:'Три группы показателей активного прогона: технический результат, состав модели и экономика.',why:'Один экран вместо четырёх вкладок: сначала можно ли доверять расчёту, затем из чего он состоит, затем что он даёт в деньгах. Наведите на строку — появится пояснение.'})}
-    ${kpiTable([G1,G2,G3])}</div>
+    ${heroKpis}${kpiTable([G1,G2,G3])}</div>
   <div class="grid">
     <div class="card">${cardHead('Из чего складывается эффект плана','Вклад каждого блока модели в целевую функцию, по модулю',X_O1)}<canvas id="o1"></canvas></div>
     <div class="card">${cardHead('Как настроен прогон','Параметры, влияющие на результат',X_CFG)}<div id="o4"></div></div>
