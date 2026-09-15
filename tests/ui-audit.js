@@ -330,10 +330,14 @@ async function walkTabs(dom, label) {
     `сравнение версий: в таблице видно ${qa(d4.window.document, '#h5 thead th').length} колонок, остальные скрыты`);
   {
     const dd = d4.window.document;
-    ok(!!q(dd, '#histDelta .ab-t'), 'сравнение A/B — построчная таблица');
-    ok(/Что изменилось в настройках/.test(q(dd, '#histDelta').textContent), 'блок разницы настроек присутствует');
+    ok(!!q(dd, '#cmpTable .abn-t'), 'сравнение версий — построчная таблица');
+    ok(/Что изменилось в настройках/.test(q(dd, '#cmpTable').textContent), 'блок разницы настроек присутствует');
     const ci = d4.window.eval('DS.runs.findIndex(r=>runKey(r)===CUR_KEY)');
-    ok(+q(dd, '#histA').value === ci - 1 && +q(dd, '#histB').value === ci, 'пара A/B по умолчанию = предыдущий → активный прогон');
+    ok(d4.window.eval('[...CMP_SEL]').length === 2, 'по умолчанию для сравнения отмечено 2 прогона');
+    ok(d4.window.eval(`CMP_SEL.has(runKey(DS.runs[${ci - 1}]))&&CMP_SEL.has(runKey(DS.runs[${ci}]))`),
+      'пара по умолчанию = предыдущий → активный прогон');
+    ok(!!q(dd, '#cmpSelBtn'), 'кнопка мультивыбора прогонов для сравнения есть');
+    ok(!/Хэш конфигурации/.test(q(dd, '#main').textContent), 'хэш конфигурации нигде не показан');
     ok(/Тренд по 12 прогонам/.test(q(dd, '#main .verdict').textContent), 'вердикт содержит тренд по всем выбранным прогонам');
   }
   const histNames = qa(d4.window.document, '#h5 tbody tr').map(tr => (tr.querySelector('td') || {}).textContent || '');

@@ -75,20 +75,9 @@ h1{font:600 26px/32px 'Open Sans',sans-serif;margin:0;color:var(--scp-text)}
 select{background:var(--scp-surface);color:var(--scp-text);border:1px solid var(--scp-ctrl);border-radius:var(--r-s);padding:7px 10px;font:400 13px 'Open Sans',sans-serif}
 select:focus{outline:none;border-color:var(--scp-accent)}
 main{padding:20px 32px 72px;flex:1}
-.ov-jump{position:sticky;top:0;z-index:60;display:flex;gap:6px;flex-wrap:wrap;background:var(--scp-bg);
-  padding:10px 0;margin:-4px 0 14px;border-bottom:1px solid var(--scp-line-2)}
-.ov-jump a,.ov-jump button{font:600 13px 'Open Sans',sans-serif;color:var(--scp-text-2);background:var(--scp-surface);
-  border:1px solid var(--scp-line-2);border-radius:999px;padding:6px 14px;cursor:pointer;text-decoration:none;
-  transition:border-color .15s,color .15s}
-.ov-jump a:hover,.ov-jump button:hover{border-color:var(--scp-accent);color:var(--scp-accent)}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(206px,1fr));gap:12px;margin-bottom:16px}
 .kpi{background:var(--scp-surface);border:1px solid var(--scp-line-2);border-left:3px solid var(--scp-line-2);
   border-radius:var(--r-m);padding:14px 16px}
-.kpi.k-pos{border-left-color:var(--scp-ok)}
-.kpi.k-neg{border-left-color:var(--scp-err);background:linear-gradient(90deg,var(--scp-err-bg) 0%,var(--scp-surface) 18%)}
-.kpi.k-mid{border-left-color:#c47512}
-.kpi.big{grid-column:span 2}
-.kpi.big .v{font-size:32px;line-height:38px}
 .kpi .t{font-size:13px;color:var(--scp-text-2)}
 .kpi .v{font:700 26px/32px 'Open Sans',sans-serif;color:var(--scp-text);margin-top:6px;letter-spacing:-.3px}
 .kpi .s{font-size:12px;color:var(--scp-text-3);margin-top:3px}
@@ -174,20 +163,20 @@ body.drag::after{content:'Перетащите файлы сюда, чтобы �
 .tbar-lbl{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--scp-text-3);margin-right:4px}
 .frow{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-bottom:10px}
 .fg label{font-size:11px;color:var(--scp-text-3);font-weight:600;text-transform:uppercase;display:block;margin-bottom:4px}
-.cmp-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.cmp-wrap{overflow-x:auto;margin-top:10px}
-.cmp-table{border-collapse:collapse;width:100%;min-width:480px}
-.cmp-table th,.cmp-table td{border-bottom:1px solid var(--scp-line);padding:8px 12px;font-size:13px;text-align:left;white-space:nowrap}
-.cmp-table thead th{color:var(--scp-text-2);font-weight:600;background:var(--scp-surface)}
-.cmp-table .cmp-k{position:sticky;left:0;background:var(--scp-surface);color:var(--scp-text-2);font-weight:600;
-  min-width:190px;box-shadow:1px 0 0 var(--scp-line-2)}
-.cmp-table .cmp-c{font-variant-numeric:tabular-nums}
-.cmp-table .cmp-c.pos{color:var(--scp-ok);background:var(--scp-ok-bg)}
-.cmp-table .cmp-c.neg{color:var(--scp-err);background:var(--scp-err-bg)}
-.cmp-arrow{font-size:11px}
-.cmp-table .cmp-list{white-space:normal;word-break:break-word;max-width:320px;font-size:12px}
 .cmp-add{color:var(--scp-ok);font-weight:600}
 .cmp-del{color:var(--scp-err);text-decoration:line-through}
+.abn-wrap{overflow-x:auto;margin-top:8px}
+.abn-t{border-collapse:collapse;width:100%;min-width:480px;table-layout:auto}
+.abn-t th,.abn-t td{border-bottom:1px solid var(--scp-line);padding:6px 10px;font-size:13px;text-align:right;white-space:nowrap;vertical-align:top}
+.abn-t th.l,.abn-t td.k{text-align:left}
+.abn-t td.k{position:sticky;left:0;background:var(--scp-surface);color:var(--scp-text-2);min-width:170px;box-shadow:1px 0 0 var(--scp-line-2)}
+.abn-t td.ab-v{font-variant-numeric:tabular-nums;color:var(--scp-text)}
+.abn-t td.ab-v.pos{color:var(--scp-ok)}
+.abn-t td.ab-v.neg{color:var(--scp-err)}
+.abn-t td.ab-v.same{color:var(--scp-text-3)}
+.abn-t td.ab-v.chg{color:var(--scp-text);font-weight:600}
+.abn-t td.ab-v .s{font-weight:400;font-size:11px;color:var(--scp-text-3)}
+.abn-t td.ab-list{white-space:normal;word-break:break-word;max-width:280px;text-align:left;font-size:12px}
 .mtbl{table-layout:fixed}
 .mtbl td{height:auto;padding:7px 8px;text-align:left;white-space:normal;word-break:break-word;overflow-wrap:anywhere;vertical-align:top;line-height:18px;font-size:13px}
 .mtbl td.mt-k{width:38%;color:var(--scp-text-3);font-size:12px;padding-right:14px}
@@ -1706,8 +1695,10 @@ const SEED_ROWS=[
 /* ═══════════════ 6. СОСТОЯНИЕ ═══════════════ */
 let DS=null; // {runs:[...]}
 let CUR_KEY=null,TAB='run';
-let HIST_A=0,HIST_B=0;
-// Пара A/B по умолчанию = предыдущий → активный прогон, пока пользователь не выбрал свою
+// Ключи прогонов, отмеченных для сравнения версий — не ограничено парой,
+// можно сравнивать любое число прогонов бок о бок.
+let CMP_SEL=new Set();
+// Пара по умолчанию = предыдущий → активный прогон, пока пользователь не выбрал свою
 let HIST_AB_AUTO=true;
 // Ключи прогонов, выбранных пользователем на вкладке «История прогонов»
 let SEL_HIST=new Set();
@@ -1722,7 +1713,7 @@ function resetHistSel(runs){
   SEL_HIST.clear();
   HIST_STATUS.clear();
   runs.slice(-2).forEach(r=>SEL_HIST.add(runKey(r)));
-  HIST_A=0;HIST_B=1;HIST_AB_AUTO=true;
+  CMP_SEL.clear();HIST_AB_AUTO=true;
 }
 function initFromRows(rows,meta){
   const runs=parseOptimizerRows(rows);
@@ -1794,7 +1785,7 @@ function persistSession(){
     v:1,savedAt:new Date().toISOString(),
     runs:serializeRuns(DS.runs),
     curKey:CUR_KEY,tab:TAB,
-    selHist:[...SEL_HIST],histA:HIST_A,histB:HIST_B,histAuto:HIST_AB_AUTO,histStatus:[...HIST_STATUS],
+    selHist:[...SEL_HIST],cmpSel:[...CMP_SEL],histAuto:HIST_AB_AUTO,histStatus:[...HIST_STATUS],
     loadMeta:LOAD_META
   };
   return idbSet('current',payload).then(ok=>{
@@ -1820,7 +1811,7 @@ async function restoreSession(){
   TAB=normTab(payload.tab||'run');
   SEL_HIST=new Set(payload.selHist||[]);
   if(!SEL_HIST.size)resetHistSel(DS.runs);
-  HIST_A=payload.histA||0;HIST_B=payload.histB||1;HIST_AB_AUTO=payload.histAuto!==false;
+  CMP_SEL=new Set(payload.cmpSel||[]);HIST_AB_AUTO=payload.histAuto!==false;
   HIST_STATUS=new Set(payload.histStatus||[]);
   LOAD_META=Object.assign({source:'session',files:[],sheetNote:'',loadedAt:payload.savedAt,persisted:true},payload.loadMeta||{});
   LOAD_META.persisted=true;IS_DEMO=false;
@@ -2605,21 +2596,18 @@ function tabHIST(){
           <div class="card">${cardHead('Время решения по прогонам','Секунды на полное решение · ниже — лучше',{t:'Время решения по прогонам',what:'Сколько солвер искал решение в каждой версии.',why:'Рост времени при неизменном масштабе модели — ранний признак проблем в данных; расчёт «в упор» к лимиту — риск недооптимизированного плана.',res:`${timeFmt(slvArr[0])} → ${timeFmt(L(slvArr))}${tT?` · тренд: ${trendWord(tT)}`:''}.`})}<canvas id="h2"></canvas></div>
           <div class="card w">${cardHead('Использование блоков по прогонам','Доля задействованных переменных каждого блока, % · клик по легенде скрывает блок',{t:'Использование блоков по прогонам',what:'Как менялась доля задействованных переменных каждого бизнес-блока от версии к версии.',why:'Сдвиг между блоками (например, рост закупок при падении производства) показывает, как изменилась логика плана, а не только его итог.'})}${h6Ser.length?'<canvas id="h6"></canvas>':'<div class="dtp-e" style="padding:24px 10px">Нет данных по блокам модели в выбранных прогонах.</div>'}</div>
         </div>`:'';
-      const abCard=multi?`
-        <div class="card w">
-          ${cardHead('Сравнение двух версий (A → B)','По умолчанию — предыдущий и активный прогон; выберите любую пару из отмеченных выше',{t:'Сравнение двух версий',what:'Построчная разница между базовым прогоном A и сравниваемым B: результат, экономика, блоки модели, ограничения, штрафы.',why:'Отвечает на вопрос «что именно изменилось и стало ли лучше»: зелёная стрелка — улучшение, красная — ухудшение.'})}
+      body.innerHTML=kpiBlock+statusCard+charts+`
+        <div class="grid" style="margin-top:12px">
+          <div class="card w">${cardHead('Таблица версий',`Только выбранные прогоны${HIST_STATUS.size?` · статус: ${esc([...HIST_STATUS].map(stDisp).join(', '))}`:''} · дельта к предыдущей строке · поиск, сортировка, экспорт`,{t:'Таблица версий',what:'Все выбранные прогоны построчно с ключевыми показателями и изменением к предыдущему прогону в списке.',why:'Быстрый поиск версии, с которой начались изменения; технические столбцы включаются кнопкой «Столбцы».'})}<div id="h5"></div></div>
+        </div>`+histSummary(s,gapArr,objArr,slvArr,saleArr,gapKnownArr)+(multi?`
+        <div class="card w" id="cmpCard" style="margin-top:12px">
+          ${cardHead('Сравнение версий','Любое число прогонов бок о бок — по умолчанию: предыдущий и активный',{t:'Сравнение версий',what:'Построчная разница между несколькими версиями плана: результат, экономика, блоки модели, ограничения, штрафы.',why:'Отвечает на вопрос «что именно изменилось и стало ли лучше» между соседними версиями: зелёное — улучшение, красное — ухудшение.'})}
           <div class="frow">
-            <div class="fg"><label>Прогон A (база)</label><select id="histA"></select></div>
-            <div class="fg"><label>Прогон B (сравниваемый)</label><select id="histB"></select></div>
+            <button type="button" class="chip" id="cmpSelBtn">Выбрать прогоны для сравнения</button>
             <button type="button" class="dt-btn" id="histAbAuto" title="Вернуть пару по умолчанию: предыдущий → активный прогон">Предыдущий → активный</button>
           </div>
           <div id="cmpTable"></div>
-        </div>`:'';
-
-      body.innerHTML=kpiBlock+abCard.replace('class="card w"','class="card w" style="margin-bottom:12px"')+statusCard+charts+`
-        <div class="grid" style="margin-top:12px">
-          <div class="card w">${cardHead('Таблица версий',`Только выбранные прогоны${HIST_STATUS.size?` · статус: ${esc([...HIST_STATUS].map(stDisp).join(', '))}`:''} · дельта к предыдущей строке · поиск, сортировка, экспорт`,{t:'Таблица версий',what:'Все выбранные прогоны построчно с ключевыми показателями и изменением к предыдущему прогону в списке.',why:'Быстрый поиск версии, с которой начались изменения; технические столбцы включаются кнопкой «Столбцы».'})}<div id="h5"></div></div>
-        </div>`+histSummary(s,gapArr,objArr,slvArr,saleArr,gapKnownArr);
+        </div>`:'');
       renderStatusChart();
 
       if(multi){
@@ -2641,7 +2629,7 @@ function tabHIST(){
       const dCell=(k,good,fmt)=>(v,row)=>{const p=row._prev;if(!p||v==null||p[k]==null)return '—';const d=v-p[k];if(Math.abs(d)<1e-9)return '<span class="dlt flat">=</span>';const cls=good===0?'flat':((d>0?1:-1)===good?'pos':'neg');return `<span class="dlt ${cls}">${d>0?'▲':'▼'} ${fmt(Math.abs(d))}</span>`};
       const hRows=s.map((r,i)=>{const e=k=>(r.entities.find(x=>x.entity===k)||{}).pct||0;return {run:rOpt(r),label:r.label,startTime:r.meta.startTime,status:r.solve.status,gap:r.solve.gapPct,solveTime:r.solve.solveTimeSec,
         objective:r.solve.objectiveValue,salePct:e('sale'),movePct:e('movement'),prodPct:e('production'),procPct:e('procurement'),stockPct:e('stock'),
-        vars:r.solve.variables,cons:r.solve.constraints,pen:S(r.penalties,p=>p.sum),cfg:r.meta.configHash?String(r.meta.configHash).slice(0,8):'—',
+        vars:r.solve.variables,cons:r.solve.constraints,pen:S(r.penalties,p=>p.sum),
         hot:(r.bounds.filter(b=>b.upperPct!=null&&b.upperPct>=50).length)}});
       hRows.forEach((x,i)=>{x._prev=i>0?hRows[i-1]:null});
       const withPrev=(k,good,fmt)=>({k:k+'_d',t:'Δ',num:1,w:110,v:x=>x._prev?x[k]-x._prev[k]:null,f:(d,x)=>dCell(k,good,fmt)(x[k],x),tip:'Изменение к предыдущему прогону в списке'});
@@ -2659,7 +2647,6 @@ function tabHIST(){
         {k:'pen',t:'Штрафы SOFT',num:1,opt:1,f:v=>nf(v,1),w:130},
         {k:'vars',t:'Переменных',num:1,opt:1,f:v=>nf(v),w:130},
         {k:'cons',t:'Ограничений',num:1,opt:1,f:v=>nf(v),w:130},
-        {k:'cfg',t:'Конфиг (хэш)',left:1,opt:1,flt:1,w:120},
         {k:'prodPct',t:'Производство, %',num:1,opt:1,f:v=>pctFmt(v),w:150},
         {k:'procPct',t:'Закупки, %',num:1,opt:1,f:v=>pctFmt(v),w:130},
         {k:'movePct',t:'Логистика, %',num:1,opt:1,f:v=>pctFmt(v),w:140},
@@ -2668,85 +2655,139 @@ function tabHIST(){
       ],hRows,{key:'hist_reg',sort:'startTime',dir:'asc',h:280,csv:1,name:'history'});
 
       if(multi){
-        const selA=$('#histA'),selB=$('#histB');
-        selA.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_A?'selected':''} title="${esc(r.label)}">${esc(rOpt(r))}</option>`).join('');
-        selB.innerHTML=s.map((r,i)=>`<option value="${i}" ${i===HIST_B?'selected':''} title="${esc(r.label)}">${esc(rOpt(r))}</option>`).join('');
-        const drawDelta=()=>{
-          const A=s[HIST_A],B=s[HIST_B];
-          const eA=k=>A.entities.find(e=>e.entity===k),eB=k=>B.entities.find(e=>e.entity===k);
-          const rev=r=>S(r.entities.filter(e=>e.value>0),e=>e.value),cost=r=>S(r.entities.filter(e=>e.value<0),e=>-e.value);
-          const penSum=r=>S(r.penalties,p=>p.sum);
+        const cmpBtn=$('#cmpSelBtn'),abAuto=$('#histAbAuto');
+        // Протухшие ключи (прогон убрали из «для анализа» или статус-фильтра) — вычищаем.
+        const validKeys=new Set(s.map(runKey));
+        [...CMP_SEL].forEach(k=>{if(!validKeys.has(k))CMP_SEL.delete(k)});
+        const autoPair=()=>{
+          CMP_SEL.clear();
+          const ci=s.findIndex(r=>runKey(r)===CUR_KEY);
+          if(ci>0){CMP_SEL.add(runKey(s[ci-1]));CMP_SEL.add(runKey(s[ci]))}
+          else{CMP_SEL.add(runKey(s[s.length-2]));CMP_SEL.add(runKey(s[s.length-1]))}
+        };
+        if(HIST_AB_AUTO||CMP_SEL.size<2)autoPair();
+
+        const drawCompare=()=>{
+          const cols=s.filter(r=>CMP_SEL.has(runKey(r))); // хронологический порядок — как в s
+          cmpBtn.textContent=cols.length?`Выбрано для сравнения: ${cols.length}`:'Выбрать прогоны для сравнения';
+          const box=$('#cmpTable');if(!box)return;
+          if(cols.length<2){
+            box.innerHTML='<div class="dtp-e" style="padding:16px 10px">Отметьте минимум два прогона кнопкой выше.</div>';
+            return;
+          }
+          const eOf=(r,k)=>r.entities.find(e=>e.entity===k);
+          const revOf=r=>S(r.entities.filter(e=>e.value>0),e=>e.value),costOf=r=>S(r.entities.filter(e=>e.value<0),e=>-e.value);
+          const penOf=r=>S(r.penalties,p=>p.sum);
           const pctF=v=>v==null?'—':pctFmt(v),ppF=v=>nf(v,2)+' п.п.';
-          /* rows: [label, a, b, good(1 up good,-1 up bad,0 neutral,null text), fmt, dfmt] */
+          /* Строка: k — подпись, get(r) — значение, good — направление «лучше»
+             (1 рост хорошо, -1 рост плохо, 0 нейтрально, null — текст), kind —
+             'num' (по умолчанию), 'text' (статус) или 'list' (типы ограничений). */
           const R=[];
           const sec=t=>R.push({sec:t});
-          const row=(k,a,b,good,fmt,dfmt)=>R.push({k,a,b,good,fmt:fmt||(v=>nf(v,2)),dfmt:dfmt||fmt||(v=>nf(v,2))});
+          const row=(k,get,good,fmt,dfmt,kind)=>R.push({k,get,good,kind:kind||'num',fmt:fmt||(v=>nf(v,2)),dfmt:dfmt||fmt||(v=>nf(v,2))});
           sec('Результат');
-          row('Статус',A.solve.status||'—',B.solve.status||'—',null);
-          row('Gap, %',A.solve.gapPct,B.solve.gapPct,-1,pctF,ppF);
-          row('Время решения, с',A.solve.solveTimeSec,B.solve.solveTimeSec,-1,v=>nf(v,2),v=>nf(v,2)+' с');
-          row('Итераций',A.solve.iterations,B.solve.iterations,0,v=>nf(v));
+          row('Статус',r=>r.solve.status||'—',null,null,null,'text');
+          row('Gap, %',r=>r.solve.gapPct,-1,pctF,ppF);
+          row('Время решения, с',r=>r.solve.solveTimeSec,-1,v=>nf(v,2),v=>nf(v,2)+' с');
+          row('Итераций',r=>r.solve.iterations,0,v=>nf(v));
           sec('Экономика');
-          row('Целевая функция',A.solve.objectiveValue,B.solve.objectiveValue,1,bn);
-          row('Выручка',rev(A),rev(B),1,bn);
-          row('Затраты',cost(A),cost(B),-1,bn);
-          const costEnts=[...new Set(A.entities.concat(B.entities).filter(e=>e.value<0).map(e=>e.entity))];
-          costEnts.forEach(k=>{const a=eA(k),b=eB(k);row('— '+(ENT_LBL[k]||k).toLowerCase(),a?-a.value:null,b?-b.value:null,-1,bn)});
-          row('Штрафы SOFT',penSum(A),penSum(B),-1,v=>nf(v,2));
+          row('Целевая функция',r=>r.solve.objectiveValue,1,bn);
+          row('Выручка',revOf,1,bn);
+          row('Затраты',costOf,-1,bn);
+          const costEnts=[...new Set(cols.flatMap(r=>r.entities.filter(e=>e.value<0).map(e=>e.entity)))];
+          costEnts.forEach(k=>row('— '+(ENT_LBL[k]||k).toLowerCase(),r=>{const e=eOf(r,k);return e?-e.value:null},-1,bn));
+          row('Штрафы SOFT',penOf,-1,v=>nf(v,2));
           sec('Блоки модели: задействовано, %');
-          ['sale','production','procurement','movement','stock'].forEach(k=>{const a=eA(k),b=eB(k);if(!a&&!b)return;
-            row(ENT_LBL[k]||k,a?a.pct:null,b?b.pct:null,k==='sale'?1:0,pctF,ppF)});
+          ['sale','production','procurement','movement','stock'].forEach(k=>{
+            if(!cols.some(r=>eOf(r,k)))return;
+            row(ENT_LBL[k]||k,r=>{const e=eOf(r,k);return e?e.pct:null},k==='sale'?1:0,pctF,ppF);
+          });
           sec('Состав модели');
-          row('Переменных',A.solve.variables,B.solve.variables,0,v=>nf(v));
-          row('Ограничений',A.solve.constraints,B.solve.constraints,0,v=>nf(v));
-          row('Горизонт, периодов',A.meta.periods,B.meta.periods,0,v=>v==null?'—':nf(v));
+          row('Переменных',r=>r.solve.variables,0,v=>nf(v));
+          row('Ограничений',r=>r.solve.constraints,0,v=>nf(v));
+          row('Горизонт, периодов',r=>r.meta.periods,0,v=>v==null?'—':nf(v));
           sec('Ограничения: упор в потолок, %');
           const bKey=b=>b.entity+':'+b.constraint;
-          const bMapA=new Map(A.bounds.map(b=>[bKey(b),b])),bMapB=new Map(B.bounds.map(b=>[bKey(b),b]));
-          const bKeys=[...new Set([...bMapA.keys(),...bMapB.keys()])]
-            .sort((x,y)=>Math.max((bMapB.get(y)||{}).upperPct||0,(bMapA.get(y)||{}).upperPct||0)-Math.max((bMapB.get(x)||{}).upperPct||0,(bMapA.get(x)||{}).upperPct||0)).slice(0,8);
-          bKeys.forEach(k=>{const a=bMapA.get(k),b=bMapB.get(k);const any=a||b;row((ENT_LBL[any.entity]||any.entity)+' · '+consLbl(any.constraint),a?a.upperPct:null,b?b.upperPct:null,-1,pctF,ppF)});
-          if(!bKeys.length)row('Данных о границах нет','—','—',null);
-          const cell=x=>{
-            if(x.sec)return `<tr class="kt-sub"><td colspan="5">${x.sec}</td></tr>`;
-            if(x.good===null)return `<tr><td class="k l">${x.k}</td><td class="a">${esc(x.a)}</td><td class="b">${esc(x.b)}</td><td class="dd ${x.a===x.b?'same':''}">${x.a===x.b?'без изменений':'изменился'}</td><td class="ev"></td></tr>`;
-            const na=x.a==null||!isFinite(x.a),nb=x.b==null||!isFinite(x.b);
-            if(na||nb)return `<tr><td class="k l">${x.k}</td><td class="a">${na?'—':x.fmt(x.a)}</td><td class="b">${nb?'—':x.fmt(x.b)}</td><td class="dd same">н/д</td><td class="ev"></td></tr>`;
-            const d=x.b-x.a,rel=x.a?d/Math.abs(x.a):null;
-            const flat=Math.abs(d)<1e-9;
-            const cls=flat||x.good===0?'':((d>0?1:-1)===x.good?'pos':'neg');
-            const ev=flat?'<span class="same">=</span>':(x.good===0?'':(cls==='pos'?'<span class="pos">лучше</span>':'<span class="neg">хуже</span>'));
-            return `<tr><td class="k l">${x.k}</td><td class="a">${x.fmt(x.a)}</td><td class="b">${x.fmt(x.b)}</td><td class="dd ${cls}">${flat?'<span class="same">без изменений</span>':`${d>0?'+':'−'}${x.dfmt(Math.abs(d))}${rel!=null&&Math.abs(rel)>=0.0005?` <span class="same">(${d>0?'+':'−'}${pc(Math.abs(rel))})</span>`:''}`}</td><td class="ev">${ev}</td></tr>`;
+          const bMaps=cols.map(r=>new Map(r.bounds.map(b=>[bKey(b),b])));
+          const bKeys=[...new Set(bMaps.flatMap(m=>[...m.keys()]))]
+            .sort((x,y)=>Math.max(...bMaps.map(m=>(m.get(y)||{}).upperPct||0))-Math.max(...bMaps.map(m=>(m.get(x)||{}).upperPct||0)))
+            .slice(0,8);
+          bKeys.forEach(k=>{
+            const any=bMaps.map(m=>m.get(k)).find(Boolean);
+            row((ENT_LBL[any.entity]||any.entity)+' · '+consLbl(any.constraint),r=>{const b=(new Map(r.bounds.map(x=>[bKey(x),x]))).get(k);return b?b.upperPct:null},-1,pctF,ppF);
+          });
+          if(!bKeys.length)row('Данных о границах нет',()=>null,null,null,null,'text');
+          sec('Типы ограничений в модели');
+          row('Типы ограничений',r=>r.meta.constraintTypes.map(consLbl),null,null,null,'list');
+
+          /* Разница настроек между выбранными версиями (без «Хэш конфигурации» —
+             бессмысленное для бизнес-пользователя значение; полный текст без
+             обрезки — раньше был виден только по наведению). */
+          const cfgGet={
+            'Солвер':r=>r.meta.solver,'Потоков':r=>r.meta.threads,
+            'Лимит времени, с':r=>r.meta.timeLimit,
+            'Целевой gap':r=>r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):null,
+            'Горизонт':r=>r.meta.periods,'Замороженные сущности':r=>r.meta.freezable,
+            'Декомпозиция по периодам':r=>r.meta.decompByPeriods?'да':'нет',
+            'Множитель стоимости':r=>r.meta.globalCostMultiplier,
+            'Включённые сущности':r=>r.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', ')
           };
-          /* Разница настроек между A и B */
-          const cfgRows=[
-            ['Солвер',A.meta.solver,B.meta.solver],['Потоков',A.meta.threads,B.meta.threads],
-            ['Лимит времени, с',A.meta.timeLimit,B.meta.timeLimit],['Целевой gap',A.meta.gapLimit!=null?pctFmt(A.meta.gapLimit):null,B.meta.gapLimit!=null?pctFmt(B.meta.gapLimit):null],
-            ['Горизонт',A.meta.periods,B.meta.periods],['Замороженные сущности',A.meta.freezable,B.meta.freezable],
-            ['Декомпозиция по периодам',A.meta.decompByPeriods?'да':'нет',B.meta.decompByPeriods?'да':'нет'],
-            ['Множитель стоимости',A.meta.globalCostMultiplier,B.meta.globalCostMultiplier],
-            ['Включённые сущности',A.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', '),B.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', ')],
-            ['Типы ограничений',A.meta.constraintTypes.map(consLbl).join(', '),B.meta.constraintTypes.map(consLbl).join(', ')],
-            ['Хэш конфигурации',A.meta.configHash,B.meta.configHash]
-          ].map(([k,a,b])=>({k,a:a==null||a===''?'—':String(a),b:b==null||b===''?'—':String(b)}));
-          const cfgDiff=cfgRows.filter(x=>x.a!==x.b);
-          const sameHash=A.meta.configHash&&A.meta.configHash===B.meta.configHash;
-          const saleA=eA('sale'),saleB=eB('sale');
-          const dObj=B.solve.objectiveValue-A.solve.objectiveValue,dSale=(saleB?saleB.pct:0)-(saleA?saleA.pct:0);
-          const verdictAB=`<div class="verdict ${dObj>=0&&dSale>=-1?'ok':'warn'}" style="margin:8px 0 12px"><div class="vi" aria-hidden="true">${dObj>=0&&dSale>=-1?'✓':'!'}</div><div><div class="vt">${esc(rOpt(A))} → ${esc(rOpt(B))}: эффект ${dObj>=0?'вырос':'снизился'} на ${bn(Math.abs(dObj))}, покрытие спроса ${dSale>=0?'выросло':'снизилось'} на ${nf(Math.abs(dSale),1)} п.п.</div>
-            <div class="vm">${sameHash?'Конфигурации одинаковы — разница объясняется входными данными.':(cfgDiff.length?`Настройки различаются (${cfgDiff.map(x=>x.k).join(', ')}) — часть разницы может быть следствием конфигурации, а не данных.`:'Хэши конфигураций не совпадают, но видимые настройки одинаковы — различие в параметрах, не выведенных в лог.')}${A.solve.status!==B.solve.status?` Статус изменился: ${esc(A.solve.status||'—')} → ${esc(B.solve.status||'—')}.`:''}</div></div></div>`;
-          $('#histDelta').innerHTML=verdictAB+`<div class="kt-grid" style="grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)">
-            <div><div class="kt-h">Показатели A → B</div><table class="kt-t ab-t"><thead><tr><th class="l">Показатель</th><th>A · ${esc(rShort(A))}</th><th>B · ${esc(rShort(B))}</th><th>Δ (B − A)</th><th></th></tr></thead><tbody>${R.map(cell).join('')}</tbody></table></div>
-            <div><div class="kt-h"${xAttr({t:'Что изменилось в настройках',what:'Сравнение конфигураций (Config) прогонов A и B: лимиты, точность, замороженные сущности, включённые блоки и типы ограничений.',why:'Часто именно смена настроек, а не данных, объясняет разницу результата. Совпадающие строки скрыты.'})}>Что изменилось в настройках${XI}</div>
-              ${cfgDiff.length?`<table class="kt-t ab-t"><thead><tr><th class="l">Параметр</th><th>A</th><th>B</th></tr></thead><tbody>${cfgDiff.map(x=>`<tr><td class="k l">${x.k}</td><td class="a" title="${esc(x.a)}">${esc(clip(x.a,40))}</td><td class="b" title="${esc(x.b)}">${esc(clip(x.b,40))}</td></tr>`).join('')}</tbody></table>`
-                :'<div class="dtp-e" style="padding:18px 10px">Настройки прогонов совпадают по всем прочитанным параметрам.</div>'}
-              <details class="risk-more" style="margin-top:8px"><summary>Все параметры (${cfgRows.length})</summary><table class="kt-t ab-t"><tbody>${cfgRows.map(x=>`<tr><td class="k l">${x.k}</td><td class="a" title="${esc(x.a)}">${esc(clip(x.a,40))}</td><td class="b" title="${esc(x.b)}">${esc(clip(x.b,40))}</td></tr>`).join('')}</tbody></table></details>
-            </div></div>`;
+          const cfgAll=Object.keys(cfgGet).map(k=>({k,vals:cols.map(r=>{const v=cfgGet[k](r);return v==null||v===''?'—':String(v)})}));
+          const cfgDiff=cfgAll.filter(x=>x.vals.some((v,i)=>i>0&&v!==x.vals[i-1]));
+
+          const cell=x=>{
+            if(x.sec)return `<tr class="kt-sub"><td colspan="${cols.length+1}">${esc(x.sec)}</td></tr>`;
+            const vals=cols.map(x.get);
+            if(x.kind==='list'){
+              const tds=vals.map((arr,i)=>{
+                if(i===0)return `<td class="ab-v ab-list">${arr.length?arr.map(esc).join(', '):'—'}</td>`;
+                const prevArr=vals[i-1]||[];const prevSet=new Set(prevArr),curSet=new Set(arr);
+                const kept=arr.filter(v=>prevSet.has(v)).map(esc);
+                const added=arr.filter(v=>!prevSet.has(v)).map(v=>`<span class="cmp-add">+ ${esc(v)}</span>`);
+                const removed=prevArr.filter(v=>!curSet.has(v)).map(v=>`<span class="cmp-del">− ${esc(v)}</span>`);
+                const parts=[...kept,...added,...removed];
+                return `<td class="ab-v ab-list">${parts.length?parts.join(', '):'—'}</td>`;
+              });
+              return `<tr><td class="k l">${esc(x.k)}</td>${tds.join('')}</tr>`;
+            }
+            if(x.kind==='text'){
+              const tds=vals.map((v,i)=>{
+                if(v==null)return '<td class="ab-v same">—</td>';
+                if(i===0)return `<td class="ab-v">${esc(v)}</td>`;
+                const same=v===vals[i-1];
+                return `<td class="ab-v${same?'':' chg'}">${esc(v)}${same?'':' <span class="same">изменился</span>'}</td>`;
+              });
+              return `<tr><td class="k l">${esc(x.k)}</td>${tds.join('')}</tr>`;
+            }
+            const tds=vals.map((v,i)=>{
+              const na=v==null||!isFinite(v);
+              if(i===0)return `<td class="ab-v">${na?'—':esc(x.fmt(v))}</td>`;
+              const p=vals[i-1],np=p==null||!isFinite(p);
+              if(na||np)return '<td class="ab-v same">н/д</td>';
+              const d=v-p,flat=Math.abs(d)<1e-9;
+              const cls=flat||x.good===0?'':((d>0?1:-1)===x.good?'pos':'neg');
+              return `<td class="ab-v ${cls}">${esc(x.fmt(v))}${flat?'':`<div class="s">${d>0?'+':'−'}${esc(x.dfmt(Math.abs(d)))}</div>`}</td>`;
+            });
+            return `<tr><td class="k l">${esc(x.k)}</td>${tds.join('')}</tr>`;
+          };
+          box.innerHTML=`<div class="abn-wrap"><table class="kt-t abn-t"><thead><tr><th class="l">Показатель</th>${cols.map(r=>`<th title="${esc(r.label)}">${esc(rShort(r))}</th>`).join('')}</tr></thead>
+            <tbody>${R.map(cell).join('')}</tbody></table></div>
+            <div class="kt-h" style="margin-top:16px"${xAttr({t:'Что изменилось в настройках',what:'Сравнение конфигураций выбранных прогонов: лимиты, точность, замороженные сущности, включённые блоки.',why:'Часто именно смена настроек, а не данных, объясняет разницу результата. Совпадающие параметры скрыты — полный список открывается ниже.'})}>Что изменилось в настройках${XI}</div>
+            ${cfgDiff.length?`<div class="abn-wrap"><table class="kt-t abn-t"><thead><tr><th class="l">Параметр</th>${cols.map(r=>`<th>${esc(rShort(r))}</th>`).join('')}</tr></thead><tbody>${cfgDiff.map(x=>`<tr><td class="k l">${esc(x.k)}</td>${x.vals.map((v,i)=>`<td class="ab-v ab-list${i>0&&v!==x.vals[i-1]?' chg':''}">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`
+              :'<div class="dtp-e" style="padding:18px 10px">Настройки прогонов совпадают по всем прочитанным параметрам.</div>'}
+            <details class="risk-more" style="margin-top:8px"><summary>Все параметры (${cfgAll.length})</summary><div class="abn-wrap"><table class="kt-t abn-t"><tbody>${cfgAll.map(x=>`<tr><td class="k l">${esc(x.k)}</td>${x.vals.map(v=>`<td class="ab-v ab-list">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></details>`;
         };
-        selA.onchange=()=>{HIST_A=+selA.value;HIST_AB_AUTO=false;if(!IS_DEMO)persistSession();drawDelta()};
-        selB.onchange=()=>{HIST_B=+selB.value;HIST_AB_AUTO=false;if(!IS_DEMO)persistSession();drawDelta()};
-        const abAuto=$('#histAbAuto');if(abAuto)abAuto.onclick=()=>{HIST_AB_AUTO=true;if(!IS_DEMO)persistSession();drawAll()};
-        drawDelta();
+        cmpBtn.onclick=e=>{
+          e.stopPropagation();
+          const P=dtp();
+          if(P.style.display==='block')dtpHide();
+          openRunPicker(cmpBtn,{
+            title:'Прогоны для сравнения',mode:'multi',runs:s,keyOf:runKey,selected:CMP_SEL,
+            onChanged:()=>{HIST_AB_AUTO=false;if(!IS_DEMO)persistSession();drawCompare()}
+          });
+        };
+        if(abAuto)abAuto.onclick=()=>{HIST_AB_AUTO=true;if(!IS_DEMO)persistSession();autoPair();drawCompare()};
+        drawCompare();
       }
     };
 
@@ -3092,7 +3133,7 @@ function buildReportHtml(r){
     ['Идентификация',rCtx(r)],['Начало расчёта',r.meta.startTime||'—'],
     ['Солвер',(r.meta.solver||'—')+(r.meta.threads?` · ${r.meta.threads} потоков`:'')],
     ['Лимит времени',r.meta.timeLimit!=null?r.meta.timeLimit+' сек':'—'],['Целевой gap',r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'],
-    ['Замороженные сущности',r.meta.freezable||'—'],['Хэш конфигурации',r.meta.configHash||'—'],
+    ['Замороженные сущности',r.meta.freezable||'—'],
     ['Источник',(LOAD_META.files||[]).join(', ')||LOAD_META.source||'—'],
     ['Загружено',LOAD_META.loadedAt?new Date(LOAD_META.loadedAt).toLocaleString('ru-RU'):'—']
   ];
