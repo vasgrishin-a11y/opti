@@ -25,7 +25,7 @@ KPI, графики и детальные таблицы, а в конце — �
 ```bash
 npm install
 npm start
-# → http://localhost:3000
+# → http://localhost:
 ```
 
 Порт и хост меняются переменными окружения: ``.
