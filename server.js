@@ -22,9 +22,9 @@ const express = require('express');
 const { Client } = require('pg');
 
 const PG_DEFAULTS = {
-  host: 'db-postgresql-app.k8s.b1gahmn2gdjf3lsm4jeh.in-plan.ru',
-  port: 48235,
-  database: 'pgs_app_data_db'
+  host: process.env.PG_HOST || 'db-postgresql-app.k8s.b1gahmn2gdjf3lsm4jeh.in-plan.ru',
+  port: Number(process.env.PG_PORT) || 48235,
+  database: process.env.PG_DATABASE || 'pgs_app_data_db'
 };
 const TABLE_NAME = 'optimizer_status';
 const MAX_ROWS = 300000; // жёсткий лимит строк в одном ответе /api/pg/load
@@ -403,8 +403,9 @@ function createApp(deps) {
         try {
           const t = await db.query(
             'SELECT table_schema AS s, table_name AS t FROM information_schema.tables ' +
-            `WHERE LOWER(table_name)='${TABLE_NAME}' ` +
-            `AND table_schema NOT IN ('pg_catalog','information_schema') ORDER BY 1`
+            'WHERE LOWER(table_name)=$1 ' +
+            "AND table_schema NOT IN ('pg_catalog','information_schema') ORDER BY 1",
+            [TABLE_NAME]
           );
           found = (t.rows || []).map(r => ({ schema: String(r.s), table: String(r.t) }));
         } catch (e) {
