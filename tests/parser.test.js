@@ -456,6 +456,11 @@ console.log('12. Реальный набор параметров из БД (Ali
   // Periods нет отдельной строкой — берём из Config
   assertEq(r.meta.periods, 20, 'горизонт взят из Config, раз строки Periods нет');
 
+  // time_limit в Config задаётся в МИНУТАХ: значение храним как есть,
+  // а для сравнения со временем решения (секунды) считаем timeLimitSec
+  assertEq(r.meta.timeLimit, 10, 'лимит времени — минуты, как в Config');
+  assertEq(r.meta.timeLimitSec, 600, 'лимит времени переведён в секунды (10 мин = 600 c)');
+
   // Остальное должно разобраться как обычно
   assertEq(r.solve.status, 'OPTIMAL', 'статус');
   assertEq(r.solve.variables, 239111, 'переменные');

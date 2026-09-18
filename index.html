@@ -665,6 +665,9 @@ const str=v=>v===undefined||v===null?'':String(v).trim();
 function timeFmt(sec){if(!isFinite(sec)||sec<=0)return '0 сек';
   if(sec<60)return nf(sec,sec<10?2:1)+' сек';
   const m=Math.floor(sec/60),r=sec-m*60;return m+' мин '+nf(r,0)+' сек'}
+/* Лимит времени в Config задаётся в МИНУТАХ — выводим его в исходных единицах,
+   а секунды для сравнения со временем решения считаем отдельно (timeLimitSec). */
+function limitFmt(min){if(!isFinite(min)||min<=0)return '0 мин';return nf(min,Math.abs(min%1)>1e-9?1:0)+' мин'}
 let TOAST_T;
 function toast(msg,type='ok',ms=4200){
   const el=$('#toast');if(!el)return;
@@ -1389,7 +1392,10 @@ function buildRun(g){
     constraintTypes:(get('Constraint types')||'').split(';').map(s=>s.trim()).filter(Boolean),
     globalCostMultiplier:numv('Global cost mutliplier')||numv('Global cost multiplier'),
     gapLimit:cfg&&cfg.gap_limit!=null?num(cfg.gap_limit)*100:null,
+    /* time_limit в Config — в минутах: храним как есть (для показа)
+       и в секундах (для сравнения со временем решения) */
     timeLimit:cfg&&cfg.time_limit!=null?num(cfg.time_limit):null,
+    timeLimitSec:cfg&&cfg.time_limit!=null?num(cfg.time_limit)*60:null,
     threads:cfg&&cfg.threads_number!=null?num(cfg.threads_number):null,
     solverType:cfg?cfg.solver_type:null,exportModel:cfg?cfg.export_model:null,
     freezable:cfg&&cfg.freezable_entities?cfg.freezable_entities.join(', '):'',
@@ -2021,9 +2027,9 @@ function qualityChecks(r){
     dups.length?'Дашборд берёт последнее значение — если в одном runid записано несколько этапов расчёта, показатели относятся только к последнему из них.':'',
     dups.length?'Если этапы нужно анализировать раздельно, добавьте в выгрузку признак этапа. Иначе трактуйте цифры как итог последнего этапа.':'—');
 
-  const timeNearLimit=r.meta.timeLimit&&r.solve.solveTimeSec>=r.meta.timeLimit*0.9;
+  const timeNearLimit=r.meta.timeLimitSec&&r.solve.solveTimeSec>=r.meta.timeLimitSec*0.9;
   add(timeNearLimit?'w':'i','Лимит времени расчёта',
-    r.meta.timeLimit?`Расчёт занял ${timeFmt(r.solve.solveTimeSec)} из лимита ${timeFmt(r.meta.timeLimit)} (${pc(r.solve.solveTimeSec/r.meta.timeLimit)}).`
+    r.meta.timeLimitSec?`Расчёт занял ${timeFmt(r.solve.solveTimeSec)} из лимита ${limitFmt(r.meta.timeLimit)} (${pc(r.solve.solveTimeSec/r.meta.timeLimitSec)}).`
       :'Лимит времени в конфигурации не задан — солвер работал до сходимости.',
     timeNearLimit?'Расчёт остановлен по таймеру, а не по достижению нужной точности: план мог быть улучшен, если бы времени хватило.':'',
     timeNearLimit?'Увеличить лимит времени и сравнить результат: если эффект плана заметно вырастет — лимит был узким местом.':'—');
@@ -2123,7 +2129,7 @@ function tabRUN(){
   const hot=bRows.filter(b=>b.upperPct!=null).slice().sort((a,b)=>b.upperPct-a.upperPct);
   const idle=bRows.filter(b=>b.lowerPct!=null).slice().sort((a,b)=>b.lowerPct-a.lowerPct);
   const critical=hot.filter(b=>b.upperPct>=50);
-  const timeShare=r.meta.timeLimit?r.solve.solveTimeSec/r.meta.timeLimit:null;
+  const timeShare=r.meta.timeLimitSec?r.solve.solveTimeSec/r.meta.timeLimitSec:null;
 
   /* — вердикт: единственный ответ, который бизнес ищет первым — */
   const vLevel=errs.length?'err':(warns.length?'warn':'ok');
@@ -2145,7 +2151,7 @@ function tabRUN(){
       d:gapKnown?deltaShort(r.solve.gapPct,prev?prev.solve.gapPct:null,v=>nf(v,3)+' п.п.',-1):'',
       bar:gapKnown?r.solve.gapPct:null,
       x:{t:'Точность решения (gap)',what:'Насколько найденный план может отличаться от теоретически лучшего. 0% — доказанный оптимум.',why:'Показывает, сколько выгоды могло остаться «на столе» из-за раннего останова расчёта.',res:gapKnown?(gapOk?`Отклонение ${pctFmt(r.solve.gapPct)} в пределах порога — план практически оптимален.`:`Отклонение ${pctFmt(r.solve.gapPct)} выше порога ${pctFmt(gapThr)} — часть выгоды не получена.`):(statusOk?'Gap в логе нет: модель линейная, симплекс-метод даёт точный оптимум.':'Gap не рассчитан, потому что допустимого решения нет.')}},
-    {k:'Время решения',v:timeFmt(r.solve.solveTimeSec),s:`полный цикл ${timeFmt(r.solve.calcTimeSec)}${r.meta.timeLimit?` · лимит ${timeFmt(r.meta.timeLimit)} (${pc(timeShare)})`:''}`,
+    {k:'Время решения',v:timeFmt(r.solve.solveTimeSec),s:`полный цикл ${timeFmt(r.solve.calcTimeSec)}${r.meta.timeLimitSec?` · лимит ${limitFmt(r.meta.timeLimit)} (${pc(timeShare)})`:''}`,
       cls:timeShare!=null&&timeShare>=0.9?'neg':'',
       d:deltaShort(r.solve.solveTimeSec,prev?prev.solve.solveTimeSec:null,v=>nf(v,2)+' с',-1),
       bar:timeShare!=null?timeShare*100:null,
@@ -2294,7 +2300,7 @@ function tabRUN(){
       <tr><td class="mt-k">Солвер</td><td class="mt-v">${esc(r.meta.solver)||'—'}${r.meta.threads?` · ${r.meta.threads} потоков`:''}</td></tr>
       <tr><td class="mt-k">Горизонт</td><td class="mt-v">${r.meta.periods||'—'} период(ов)</td></tr>
       <tr><td class="mt-k">Замороженные (защищённые) сущности</td><td class="mt-v">${esc(r.meta.freezable)||'—'}</td></tr>
-      <tr><td class="mt-k">Лимит времени на решение</td><td class="mt-v">${r.meta.timeLimit!=null?r.meta.timeLimit+' сек':'—'}</td></tr>
+      <tr><td class="mt-k">Лимит времени на решение</td><td class="mt-v">${r.meta.timeLimit!=null?limitFmt(r.meta.timeLimit):'—'}</td></tr>
       <tr><td class="mt-k">Целевой gap по настройке</td><td class="mt-v">${r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'}</td></tr>
       <tr><td class="mt-k">Множитель стоимости</td><td class="mt-v">${r.meta.globalCostMultiplier?nf(r.meta.globalCostMultiplier,2):'—'}</td></tr>
       <tr><td class="mt-k">Включённые сущности</td><td class="mt-v">${r.meta.includedEntities.map(e=>ENT_LBL[e]||e).join(', ')||'—'}</td></tr>
@@ -2761,7 +2767,7 @@ function tabHIST(){
              обрезки — раньше был виден только по наведению). */
           const cfgGet={
             'Солвер':r=>r.meta.solver,'Потоков':r=>r.meta.threads,
-            'Лимит времени, с':r=>r.meta.timeLimit,
+            'Лимит времени, мин':r=>r.meta.timeLimit,
             'Целевой gap':r=>r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):null,
             'Горизонт':r=>r.meta.periods,'Замороженные сущности':r=>r.meta.freezable,
             'Декомпозиция по периодам':r=>r.meta.decompByPeriods?'да':'нет',
@@ -3139,7 +3145,7 @@ function buildReportHtml(r){
   const revenue=S(r.entities.filter(e=>e.value>0),e=>e.value),costs=S(r.entities.filter(e=>e.value<0),e=>-e.value);
   const totalPen=S(r.penalties,p=>p.sum),penRatio=r.solve.objectiveValue?totalPen/Math.abs(r.solve.objectiveValue):0;
   const intVars=r.solve.variables&&r.solve.continuousVars?Math.max(0,r.solve.variables-r.solve.continuousVars):null;
-  const timeShare=r.meta.timeLimit?r.solve.solveTimeSec/r.meta.timeLimit:null;
+  const timeShare=r.meta.timeLimitSec?r.solve.solveTimeSec/r.meta.timeLimitSec:null;
   const G=[
     ['Результат прогона',[
       ['Статус решения',r.solve.status||'—'],
@@ -3168,7 +3174,7 @@ function buildReportHtml(r){
     ...(friendlyAlias(r.meta.alias)?[['Сценарий',friendlyAlias(r.meta.alias)]]:[]),
     ['Идентификация',rCtx(r)],['Начало расчёта',r.meta.startTime||'—'],
     ['Солвер',(r.meta.solver||'—')+(r.meta.threads?` · ${r.meta.threads} потоков`:'')],
-    ['Лимит времени',r.meta.timeLimit!=null?r.meta.timeLimit+' сек':'—'],['Целевой gap',r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'],
+    ['Лимит времени',r.meta.timeLimit!=null?limitFmt(r.meta.timeLimit):'—'],['Целевой gap',r.meta.gapLimit!=null?pctFmt(r.meta.gapLimit):'—'],
     ['Замороженные сущности',r.meta.freezable||'—'],
     ['Источник',(LOAD_META.files||[]).join(', ')||LOAD_META.source||'—'],
     ['Загружено',LOAD_META.loadedAt?new Date(LOAD_META.loadedAt).toLocaleString('ru-RU'):'—']
